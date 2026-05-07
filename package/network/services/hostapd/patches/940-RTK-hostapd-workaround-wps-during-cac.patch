@@ -1,0 +1,56 @@
+--- a/src/ap/wps_hostapd.c
++++ b/src/ap/wps_hostapd.c
+@@ -1514,6 +1514,33 @@ void hostapd_update_wps(struct hostapd_d
+ }
+ 
+ 
++static int is_under_cac(struct hostapd_data *hapd)
++{
++	char fname[64] = {0}, buf[128] = {0};
++	FILE *f = NULL;
++	int cac = 0;
++
++	snprintf(fname, sizeof(fname), "/proc/net/rtk_wifi6/%s/chan_plan",
++		 hapd->conf->iface);
++
++	f = fopen(fname, "r");
++	if (!f)
++		return 0;
++
++	while (fgets(buf, sizeof(buf), f)) {
++		if (!strstr(buf, "DFS"))
++			continue;
++
++		sscanf(buf, "%*d %*d %*d %d", &cac);
++		if (cac)
++			break;
++	}
++
++	fclose(f);
++	return cac;
++}
++
++
+ struct wps_add_pin_data {
+ 	const u8 *addr;
+ 	const u8 *uuid;
+@@ -1546,6 +1573,9 @@ int hostapd_wps_add_pin(struct hostapd_d
+ 	u8 u[UUID_LEN];
+ 	struct wps_add_pin_data data;
+ 
++	if (is_under_cac(hapd))
++		return -1;
++
+ 	data.addr = addr;
+ 	data.uuid = u;
+ 	data.pin = (const u8 *) pin;
+@@ -1591,6 +1621,9 @@ int hostapd_wps_button_pushed(struct hos
+ 	struct wps_button_pushed_ctx ctx;
+ 	int ret;
+ 
++	if (is_under_cac(hapd))
++		return -1;
++
+ 	os_memset(&ctx, 0, sizeof(ctx));
+ 	ctx.p2p_dev_addr = p2p_dev_addr;
+ 	ret = hostapd_wps_for_each(hapd, wps_button_pushed, &ctx);

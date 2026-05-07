@@ -1,0 +1,61 @@
+# FLAVOUR=
+PLATFORM=linux
+
+RSDK_TOOLCHAIN_DIR=/toolchain/msdk-4.8.5-mips-EB-4.4-u0.9.33-m32ut-180206
+# openwrt include it in outer Makefile RSDK_TOOLCHAIN_DIR = $(TOOLCHAIN_DIR)
+# corresponding configs: CONFIG_RSDK_DIR/CONFIG_RSDKDIR in jungel & luna
+
+USE_HAPD=y
+# corresponding configs: CONFIG_USER_HAPD/CONFIG_APP_HOSTAPD
+
+USE_WPA3=y
+# corresponding configs: CONFIG_RTL_WPA3_SUPPORT/CONFIG_RTL8852AE_BACKPORTS/CPTCFG_WIFI6_WPA3/CONFIG_WIFI6_WPA3/CONFIG_USER_WIRELESS_TOOLS
+
+# USE_BACKPORTS=
+# corresponding configs: CONFIG_RTL8852AE_BACKPORTS
+# only required by jungle platform
+
+USE_COMMOM_STRUCTURE=y
+# corresponding configs: CONFIG_RTL_KERNEL_USER_SHARE_STRUCTURE/CPTCFG_RTL8832BR/CPTCFG_RTL8852CE/CONFIG_RTL8852CE/CONFIG_RTL8852DE
+
+# USE_RTK_MULTI_AP_WFA=
+# corresponding configs: CONFIG_RTK_MULTI_AP_WFA
+
+USE_MULTI_AP_R4=y
+# USE_MULTI_AP_R3=
+# USE_MULTI_AP_R2=
+# corresponding configs: CONFIG_RTK_MULTI_AP_R4/CONFIG_RTK_MULTI_AP_R3/CONFIG_RTK_MULTI_AP_R2
+
+# USE_ELINKSDK_SUPPORT=
+# corresponding configs: CONFIG_ELINKSDK_SUPPORT
+
+# USE_RTIC_CONTROL=
+# USE_RTK_RNR=
+# corresponding configs: CONFIG_USER_RTIC_CONTROL/CONFIG_RTK_RNR
+
+HOST_IS_BIG_ENDIAN=y
+# HOST_IS_LITTLE_ENDIAN
+
+DRIVER_INC_PATH=backports-5.2.8-1/drivers/net/wireless/realtek/
+# openwrt include in outer Makefile DRIVER_INC_PATH=$(KERNEL_BUILD_DIR)/rtk_wifi6_ap/include
+# jungle and luna platform should add this path in previous step
+
+# CONFIG_RTK_DEV_AP=
+# also used by PON/XDSL(SD5/SD9), keep the name unchanged
+
+# used by PON/XDSL(SD5/SD9) platform in luna platform for DWLAN_WPA3/DWLAN_11W/DWLAN_SMUX_DEV
+# CONFIG_RTL_WPA3_SUPPORT=
+# CPTCFG_WIFI6_WPA3=y
+# CONFIG_RTL_11W_SUPPORT=
+# CPTCFG_RTL_11W_SUPPORT=
+# CPTCFG_RTW_80211W_SUPPORT=y
+# CONFIG_WIFI_SIMPLE_CONFIG=
+# CONFIG_RTL_SMUX_DEV=y
+# CPTCFG_RTL_SMUX_DEV=y
+
+# used for driver path setting in luna.
+# CONFIG_RTL8852AE_BACKPORTS=
+# CONFIG_RTL8852AE=
+# CONFIG_RTLWIFI6=
+# CONFIG_RTL8852CE=
+# CONFIG_RTL8852DE=

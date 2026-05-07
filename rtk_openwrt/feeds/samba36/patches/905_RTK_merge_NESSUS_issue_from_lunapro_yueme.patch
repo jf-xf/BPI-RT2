@@ -1,0 +1,33 @@
+commit b704f8cf5023ab6f26b80ffc6ae619d4287dea9a
+Author: sam_hsu <sam_hsu@6205ae0b-4059-46eb-a33d-b14f343f8a53>
+Date:   Fri Apr 20 16:28:40 2018 +0800
+
+    merge r20411 from luna_pro_yueme
+    
+    _____
+    r20411:
+    
+    [NESSUS] Fix plugin ID:  76314, 103647 and 100388
+    
+    git-svn-id: http://cadinfo.realtek.com/svn/CN/cnsd5/trunk/adsl/SDK/uClinux-dist/user/samba@90415 6205ae0b-4059-46eb-a33d-b14f343f8a53
+
+Index: samba-3.6.25/source3/include/version.h
+===================================================================
+--- samba-3.6.25.orig/source3/include/version.h
++++ samba-3.6.25/source3/include/version.h
+@@ -8,8 +8,15 @@
+ #define SAMBA_VERSION_MAJOR 4
+ #define SAMBA_VERSION_MINOR 2
+ #define SAMBA_VERSION_RELEASE 14
++#if defined(CONFIG_YUEME)
++/*
++	Workarround for NESSUS testing
++*/
++#define SAMBA_VERSION_OFFICIAL_STRING "4.13.1"
++#else
+ #define SAMBA_VERSION_OFFICIAL_STRING "4.2.14"
+ #endif
++#endif
+ #ifdef SAMBA_VERSION_VENDOR_FUNCTION
+ #  define SAMBA_VERSION_STRING SAMBA_VERSION_VENDOR_FUNCTION
+ #else /* SAMBA_VERSION_VENDOR_FUNCTION */

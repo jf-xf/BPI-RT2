@@ -1,0 +1,61 @@
+#!/bin/sh
+# pptpd integration for firewall3
+
+IPTABLES=/usr/sbin/iptables
+IP6TABLES=/usr/sbin/ip6tables
+PPTPD_CHAIN=pptpd
+PPTPD_ENABLE=
+
+. /lib/functions.sh	# for load UCI configuration
+
+# helper to insert in chain as penultimate
+iptables_prepend_rule() {
+        local iptables="$1"
+        local table="$2"
+        local chain="$3"
+        local target="$4"
+
+        config_load pptpd
+        config_get PPTPD_ENABLE pptpd enabled
+        [ -n "$PPTPD_ENABLE" ] || PPTPD_ENABLE=0
+        if [ $PPTPD_ENABLE -eq 1 ]; then
+                echo "$(basename $iptables): insert pptp chain to zone_wan_input"
+                $iptables -t "$table" -I "$chain" $($iptables -t "$table" --line-numbers -nL "$chain" | \
+                        sed -ne '$s/[^0-9].*//p') -j "$target"
+        else
+                echo "$(basename $iptables): remove pptp chain form zone_wan_input"
+                $iptables -t "$table" -D "$chain" -j "$target"
+        fi
+}
+
+ADDED=0
+
+update_extzone_rules() {
+    local ext_zone="$1"
+
+    [ -z "$ext_zone" ] && return
+
+    # IPv4 - we need to accept pptp negotiate packets in filter table. Such as pptp(1723), ppp lcp.
+    # need to insert as penultimate rule for filter since final rule might be a fw3 REJECT
+    iptables_prepend_rule "$IPTABLES" filter "zone_${ext_zone}_input" $PPTPD_CHAIN
+
+    # IPv6 if available - filter only
+    [ -x $IP6TABLES ] && {
+        iptables_prepend_rule "$IP6TABLES" filter "zone_${ext_zone}_input" $PPTPD_CHAIN
+    }
+    ADDED=$(($ADDED + 1))
+}
+
+$IPTABLES -F $PPTPD_CHAIN 2>/dev/null
+$IPTABLES -X $PPTPD_CHAIN 2>/dev/null
+$IPTABLES -N $PPTPD_CHAIN 2>/dev/null
+$IPTABLES -A $PPTPD_CHAIN -p tcp --dport 1723 -j ACCEPT -m comment --comment "Allow-PPTP" 2>/dev/null
+$IPTABLES -A $PPTPD_CHAIN -p gre -j ACCEPT -m comment --comment "Allow-GRE" 2>/dev/null
+
+$IP6TABLES -F $PPTPD_CHAIN 2>/dev/null
+$IP6TABLES -X $PPTPD_CHAIN 2>/dev/null
+$IP6TABLES -N $PPTPD_CHAIN 2>/dev/null
+$IP6TABLES -A $PPTPD_CHAIN -p tcp --dport 1723 -j ACCEPT -m comment --comment "Allow-PPTP" 2>/dev/null
+$IP6TABLES -A $PPTPD_CHAIN -p gre -j ACCEPT -m comment --comment "Allow-GRE" 2>/dev/null
+
+update_extzone_rules wan

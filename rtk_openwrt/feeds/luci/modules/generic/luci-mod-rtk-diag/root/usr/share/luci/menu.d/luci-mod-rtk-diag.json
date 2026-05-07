@@ -1,0 +1,58 @@
+{
+	"realtek/diagnostics/diagnostics": {
+		"title": "Diagnostics",
+		"order": 10,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		}
+	},
+
+	"realtek/diagnostics/diagnostics/ping4": {
+            "title": "Ping",
+            "order": 10,
+            "action": {
+                    "type": "view",
+                    "path": "rtk/diagnostics/diagnostics/ping"
+            },
+			"depends": {
+				"acl": [ "luci-mod-rtk-network-diagnostics" ]
+			}
+    },
+
+	"realtek/diagnostics/diagnostics/ping6": {
+            "title": "Ping6",
+            "order": 20,
+            "action": {
+                    "type": "view",
+                    "path": "rtk/diagnostics/diagnostics/ping6"
+            },
+			"depends": {
+				"acl": [ "luci-mod-rtk-network-diagnostics" ]
+			}
+    },
+
+	"realtek/diagnostics/diagnostics/tracert4": {
+            "title": "Tracert",
+            "order": 30,
+            "action": {
+                    "type": "view",
+                    "path": "rtk/diagnostics/diagnostics/tracert"
+            },
+			"depends": {
+				"acl": [ "luci-mod-rtk-network-diagnostics" ]
+			}
+    },
+
+	"realtek/diagnostics/diagnostics/tracert6": {
+            "title": "Tracert6",
+            "order": 40,
+            "action": {
+                    "type": "view",
+                    "path": "rtk/diagnostics/diagnostics/tracert6"
+            },
+			"depends": {
+				"acl": [ "luci-mod-rtk-network-diagnostics" ]
+			}
+    }
+}

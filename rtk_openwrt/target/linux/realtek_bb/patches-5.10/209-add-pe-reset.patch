@@ -1,0 +1,27 @@
+Index: linux-5.10.138/drivers/reset/Kconfig
+===================================================================
+--- linux-5.10.138.orig/drivers/reset/Kconfig
++++ linux-5.10.138/drivers/reset/Kconfig
+@@ -267,6 +267,12 @@ config RESET_ZYNQ
+ 	help
+ 	  This enables the reset controller driver for Xilinx Zynq SoCs.
+ 
++config RESET_TAURUS_PE
++	bool "Realtek Taurus PE Reset Driver"
++	depends on ARCH_REALTEK_TAURUS
++	help
++	  This enables the pe reset controller driver for Realtek Taurus SoCs.
++
+ source "drivers/reset/sti/Kconfig"
+ source "drivers/reset/hisilicon/Kconfig"
+ source "drivers/reset/tegra/Kconfig"
+Index: linux-5.10.138/drivers/reset/Makefile
+===================================================================
+--- linux-5.10.138.orig/drivers/reset/Makefile
++++ linux-5.10.138/drivers/reset/Makefile
+@@ -35,4 +35,4 @@ obj-$(CONFIG_RESET_UNIPHIER) += reset-un
+ obj-$(CONFIG_RESET_UNIPHIER_GLUE) += reset-uniphier-glue.o
+ obj-$(CONFIG_RESET_ZYNQ) += reset-zynq.o
+ obj-$(CONFIG_ARCH_ZYNQMP) += reset-zynqmp.o
+-
++obj-$(CONFIG_RESET_TAURUS_PE) += reset-taurus-pe.o

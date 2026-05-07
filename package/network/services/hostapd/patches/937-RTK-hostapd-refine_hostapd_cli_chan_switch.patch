@@ -1,0 +1,93 @@
+Index: hostapd-2022-01-16-cff80b4f/hostapd/ctrl_iface.c
+===================================================================
+--- hostapd-2022-01-16-cff80b4f.orig/hostapd/ctrl_iface.c
++++ hostapd-2022-01-16-cff80b4f/hostapd/ctrl_iface.c
+@@ -2840,6 +2840,73 @@ static int hostapd_ctrl_check_freq_param
+ }
+ #endif /* NEED_AP_MLME */
+ 
++static int hostapd_ctrl_check_freq_params_change(struct hostapd_iface *iface, struct hostapd_freq_params *freq_params)
++{
++	int ret = 0;
++	u8 seg0 = 0, seg1 = 0, bw = CHANWIDTH_USE_HT;
++
++	if(iface->freq != freq_params->freq)
++	{
++		ret = 1;
++		wpa_printf(MSG_INFO,
++			   "chanswitch: freq not same, old %d new %d", iface->freq, freq_params->freq);
++	}
++
++	if(iface->conf->secondary_channel != freq_params->sec_channel_offset)
++	{
++		ret = 1;
++		wpa_printf(MSG_INFO,
++			   "chanswitch: secondary_channel not same, old %d new %d", iface->conf->secondary_channel, freq_params->sec_channel_offset);
++	}
++
++	if(freq_params->center_freq1)
++		ieee80211_freq_to_chan(freq_params->center_freq1,
++					   	&seg0);
++	if(freq_params->center_freq2)
++		ieee80211_freq_to_chan(freq_params->center_freq2,
++					   	&seg1);
++	if(hostapd_get_oper_centr_freq_seg0_idx(iface->conf) != seg0)
++	{
++		ret = 1;
++		wpa_printf(MSG_INFO,
++			   "chanswitch: seg0 not same, old %d new %d", hostapd_get_oper_centr_freq_seg0_idx(iface->conf), seg0);
++	}
++	if(hostapd_get_oper_centr_freq_seg1_idx(iface->conf) != seg1)
++	{
++		ret = 1;
++		wpa_printf(MSG_INFO,
++			   "chanswitch: seg1 not same, old %d new %d", hostapd_get_oper_centr_freq_seg1_idx(iface->conf), seg1);
++	}
++
++	switch (freq_params->bandwidth) {
++	case 0:
++	case 20:
++	case 40:
++		bw = CHANWIDTH_USE_HT;
++		break;
++	case 80:
++		if (freq_params->center_freq2)
++			bw = CHANWIDTH_80P80MHZ;
++		else
++			bw = CHANWIDTH_80MHZ;
++		break;
++	case 160:
++		bw = CHANWIDTH_160MHZ;
++		break;
++	default:
++		wpa_printf(MSG_WARNING, "Unknown CSA bandwidth: %d",
++			   freq_params->bandwidth);
++		break;
++	}
++	if(hostapd_get_oper_chwidth(iface->conf) != bw)
++	{
++		ret = 1;
++		wpa_printf(MSG_INFO,
++			   "chanswitch: bw not same, old %d new %d", hostapd_get_oper_chwidth(iface->conf), bw);
++	}
++
++	return ret;
++}
+ 
+ static int hostapd_ctrl_iface_chan_switch(struct hostapd_iface *iface,
+ 					  char *pos)
+@@ -2863,6 +2930,14 @@ static int hostapd_ctrl_iface_chan_switc
+ 		return ret;
+ 	}
+ 
++	if(hostapd_ctrl_check_freq_params_change(iface, &settings.freq_params) == 0)
++	{
++		wpa_printf(MSG_INFO,
++			   "chanswitch: freq_params same to hostapd config");
++		ret = -1;
++		return ret;
++	}
++
+ 	switch (settings.freq_params.bandwidth) {
+ 	case 40:
+ 		bandwidth = CHAN_WIDTH_40;

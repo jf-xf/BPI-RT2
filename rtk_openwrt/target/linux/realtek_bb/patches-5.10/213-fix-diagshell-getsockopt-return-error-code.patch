@@ -1,0 +1,21 @@
+Index: linux-5.10.138/net/ipv4/ip_sockglue.c
+===================================================================
+--- linux-5.10.138.orig/net/ipv4/ip_sockglue.c
++++ linux-5.10.138/net/ipv4/ip_sockglue.c
+@@ -1775,8 +1775,16 @@ int ip_getsockopt(struct sock *sk, int l
+ 			return -EFAULT;
+ 
+ 		err = nf_getsockopt(sk, PF_INET, optname, optval, &len);
++		#if 1 
++		/*  RTK, for diagshell, RT API use socket option to get information.
++		 *  And the error code will grater than 0, so don't override error code 
++		 */
++		if (err >= 0)
++			put_user(len, optlen);
++		#else
+ 		if (err >= 0)
+ 			err = put_user(len, optlen);
++		#endif
+ 		return err;
+ 	}
+ #endif

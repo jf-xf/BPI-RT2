@@ -1,0 +1,29 @@
+{
+	"luci-app-rtk-tr069": {
+		"description": "Grant access to TR-069 procedures",
+		"read": {
+			"uci": [
+				"cwmp"
+			]
+		},
+		"write": {
+			"file": {
+				"/bin/mkdir -p /etc/icwmpd/certs": [
+					"exec"
+				],
+				"/bin/cp -f /tmp/acs-ca-cert.pem /etc/icwmpd/certs/acs-ca-cert.pem": [
+					"exec"
+				],
+				"/tmp/acs-ca-cert.pem": [
+					"write"
+				],
+				"/etc/icwmpd/certs/acs-ca-cert.pem": [
+					"write"
+				]
+			},
+			"uci": [
+				"cwmp"
+			]
+		}
+	}
+}

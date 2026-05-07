@@ -1,0 +1,12 @@
+menu "Realtek igmpproxy features"
+        depends on PACKAGE_rtk_igmpproxy
+		
+	config USER_IGMPPROXY
+		bool "use realtek igmpproxy"
+		default y if PACKAGE_rtk_igmpproxy
+
+	config USER_IGMPPROXY_SUPPORT_CFG_FILE
+	depends on USER_IGMPPROXY
+		bool "config igmpproxy with file"
+		default n
+endmenu

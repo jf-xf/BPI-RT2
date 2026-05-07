@@ -1,0 +1,22 @@
+config CA7774_RNG_OSC_THERMAL
+	tristate "Cortina CA7774 (G3) internal ring oscillator thermal driver"
+	depends on ARCH_CORTINA_G3 && THERMAL_OF && CPUFREQ_DT && COMMON_CLK_CA7774
+	help
+	  If you say yes here you get support for the internal 
+	  ring oscillator based thermal sensor driver for the Cortina CA7774 (G3) SoC. 
+	  This driver initialises, reports temperature in C and depends on CPUFREQ
+	  to obtain CPU speed for thermal calculations.
+
+config CA8271_THERMAL
+	tristate "Cortina CA8271 (82XX) thermal driver"
+	depends on (ARCH_REALTEK_TAURUS || ARCH_CORTINA_VENUS || ARCH_CORTINA_G3HGU ) && THERMAL_OF
+	help
+	    Support for the Cortina 8271(82XX) thermal sensor driver into the Linux thermal
+	    framework.
+
+config CORTINA_CPU_COOLING_HOTPLUG
+	tristate "CORTINA CPU Hotplug for Thermal-Zone"
+	depends on ARCH_CORTINA_G3HGU && CA8271_THERMAL
+	help
+	  If you say yes here you get support for CPU hot-plug. This driver register a cooling device 
+	  to dynamically remove online CPU to reduce heat.

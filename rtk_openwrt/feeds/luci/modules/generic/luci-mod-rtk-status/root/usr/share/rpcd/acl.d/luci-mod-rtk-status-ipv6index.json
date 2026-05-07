@@ -1,0 +1,17 @@
+{
+        "luci-mod-rtk-status-ipv6index": {
+                "description": "Grant access to main ipv6 status display",
+                "read": {
+                        "file": {
+                                "/www/luci-static/resources/view/status/ipv6include": [ "list" ],
+                                "/sbin/ip -[6] neigh show": [ "exec" ],
+                                "/sbin/ip -[6] route show table all": [ "exec" ],
+                                "/sbin/ip -[6] rule show": [ "exec" ]
+                        },
+                        "ubus": {
+                                "file": [ "list", "read", "exec" ],
+				"network.interface.lan": [ "status" ]
+                        }
+                }
+        }
+}

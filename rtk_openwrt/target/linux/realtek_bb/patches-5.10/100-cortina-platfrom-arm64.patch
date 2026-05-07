@@ -1,0 +1,156 @@
+Index: linux-5.10.138/arch/arm64/Kconfig.platforms
+===================================================================
+--- linux-5.10.138.orig/arch/arm64/Kconfig.platforms
++++ linux-5.10.138/arch/arm64/Kconfig.platforms
+@@ -1,6 +1,151 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ menu "Platform selection"
+ 
++config ARCH_CORTINA
++	bool "Cortina Access platform"
++	help
++	  This enables support for Cortina Access SoCs.
++
++config ARCH_CORTINA_SMC
++	bool "SMC for Cortina AARCH64"
++	depends on ARCH_CORTINA && ARM64
++	help
++	  This enables support for Cortina private SMC call for secured register access.
++
++config ARCH_CORTINA_GIC_V3_BOTH
++	bool "Support both ARM_GIC_V3 and ARM_GIC_V3_SECURED"
++	depends on ARCH_CORTINA && ARM64
++	select ARM_GIC_V3_SECURED
++	select ARM_GIC_V3
++	help
++	  This enables support Native ARM GIC_V3 and CA ARM_GIC_V3_SECURED Driver
++
++choice
++	prompt "Cortina Arch Type"
++	default ARCH_CORTINA_NONE
++	help
++	  Choose the G3 arch type
++
++config ARCH_CORTINA_NONE
++	bool "None"
++	help
++	  This is not Cortina Arch.
++
++config ARCH_CORTINA_VENUS
++	bool "Venus"
++	select GENERIC_IRQ_CHIP
++	select PINCTRL
++	select PINCTRL_CORTINA
++	select VENUS_DRIVER_SUPPORT
++	help
++	  This is Cortina Access Venus SoC.
++
++endchoice
++
++choice
++	prompt "Realtek Arch64 Type"
++	default ARCH_REALTEK_NONE
++	help
++	  Choose the Realtek arch64 type
++
++config ARCH_REALTEK_NONE
++	bool "None"
++	help
++	  This is not Realtek Arch.
++
++config ARCH_REALTEK_TAURUS
++        bool "Taurus"
++        select GENERIC_IRQ_CHIP
++        select PINCTRL
++        select PINCTRL_CORTINA
++        help
++          This is Realtek TAURUS SoC.
++
++config ARCH_REALTEK_9607F
++        bool "9607F"
++        select GENERIC_IRQ_CHIP
++        select PINCTRL
++        select PINCTRL_CORTINA
++        help
++          This is Realtek 9607F SoC.
++
++endchoice
++
++config RTK_DEV_AP
++	bool "Realtek Device type Wifi AP"
++	help
++	  This product is designed for Wifi AP.
++
++choice
++	prompt "Board Type"
++	default CORTINA_BOARD_FPGA
++	help
++	  Choose the board type
++
++config CORTINA_BOARD_FPGA
++	bool "FPGA Board"
++	help
++	  Cortina FPGA Board
++
++config REALTEK_BOARD_FPGA
++	bool "Realtek FPGA Board"
++	help
++	  Realtek FPGA Board
++
++config REALTEK_BOARD_FPGA_V8
++	bool "Realtek FPGA V8 Board"
++	help
++	  Realtek FPGAv8 Board
++
++config REALTEK_BOARD_TAURUS_ENG
++	bool "Taurus Engineering Board"
++	help
++	  Realtek Taurus Engineering Board
++
++config REALTEK_BOARD_9607F_ENG
++	bool "9607F Engineering Board"
++	help
++	  Realtek 9607F Engineering Board
++config CORTINA_BOARD_VENUS_ENG
++	bool "Venus Engineering Board"
++	help
++	  Cortina Venus Engineering Board
++
++config CORTINA_BOARD_G3_ENG
++	bool "G3 Engineering Board"
++	help
++	  Cortina Engineering Board
++
++config CORTINA_BOARD_G3HGU_ENG
++	bool "G3HGU Engineering Board"
++	help
++	  Cortina Engineering Board
++endchoice
++
++choice
++	prompt "CA PON MODE"
++	default CORTINA_PON_MODE_DUAL
++	depends on ARCH_CORTINA
++
++config CORTINA_PON_MODE_DUAL
++	bool "DUAL MODE"
++	help
++	  Cortina PON DUAL MODE 
++
++config CORTINA_PON_MODE_GPON
++	bool "GPON MODE"
++	help
++	  Cortina GPON MODE 
++
++config CORTINA_PON_MODE_EPON
++	bool "EPON MODE"
++	help
++	  Cortina EPON DUAL MODE 
++
++endchoice
++
++source "arch/arm64/Kconfig.hook"
++
+ config ARCH_ACTIONS
+ 	bool "Actions Semi Platforms"
+ 	select OWL_TIMER

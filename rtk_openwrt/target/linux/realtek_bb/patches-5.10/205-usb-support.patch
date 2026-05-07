@@ -1,0 +1,213 @@
+Index: linux-5.10.138/drivers/usb/host/xhci-plat.c
+===================================================================
+--- linux-5.10.138.orig/drivers/usb/host/xhci-plat.c
++++ linux-5.10.138/drivers/usb/host/xhci-plat.c
+@@ -36,6 +36,50 @@ static const struct xhci_driver_override
+ 	.start = xhci_plat_start,
+ };
+ 
++#if defined(CONFIG_ARCH_CORTINA_G3) || defined(CONFIG_ARCH_CORTINA_G3HGU) || defined(CONFIG_ARCH_CORTINA_VENUS)
++
++/*** Register Offset ***/
++#define CORTINA_XHCI_GUSB3PIPECTL0	    0xc2c0	/* data: 0x010c0003 */
++#define CORTINA_XHCI_GUSB3PIPECTL1	    0xc2c4	/* data: 0x010c0003 */
++#define CORTINA_XHCI_GCTL	            0xc110	/* data: 0x2ee01000 */
++#define CORTINA_XHCI_GSBUSCFG0	        0xc100	/* data: 0x0000000f */
++#define CORTINA_XHCI_GTXTHRCFG	        0xc108	/* data: 0x23100000 */
++#define CORTINA_XHCI_GRXTHRCFG	        0xc10c	/* data: 0x03800000 */
++#define CORTINA_XHCI_GUSB2PHYCFG_P0		0xc200	/* data: 0x40102400 */
++#define CORTINA_XHCI_GUSB2PHYCFG_P1		0xc204	/* data: 0x40102400 */
++#define CORTINA_XHCI_U3S2_PORTSC_P0		0x0440	/* # U3 S2 link status (port3, SS 0) */
++#define CORTINA_XHCI_U3S3_PORTSC_P1		0x0450	/* # U3 S3 link status (port4, SS 1) */
++#define CORTINA_XHCI_GUSB2PORTSC_P0		0x0420	/* data: 0x000206f3 */
++#define CORTINA_XHCI_GUSB2PORTSC_P1		0x0430	/* data: 0x000206f3 */
++
++/* Register configuration values */
++#define CORTINA_XHCI_GUSB3GPIPECTL_VAL	0x010c0003
++#define CORTINA_XHCI_GCTL_VAL			0x2ee01000
++#define CORTINA_XHCI_GSBUSCFG0_VAL		0x0000000f
++#define CORTINA_XHCI_GTXTHRCFG_VAL		0x23100000
++#define CORTINA_XHCI_GRXTHRCFG_VAL		0x03800000
++#define CORTINA_XHCI_GUSB2PHYCFG_VAL	0x40102400
++#define CORTINA_XHCI_USB2PORTSC_VAL		0x000206f3
++
++static void cortina_xhci_init(struct usb_hcd *hcd)
++{
++	if (hcd->regs != NULL) {
++		writel(CORTINA_XHCI_GUSB3GPIPECTL_VAL, hcd->regs + CORTINA_XHCI_GUSB3PIPECTL0);
++		writel(CORTINA_XHCI_GUSB3GPIPECTL_VAL, hcd->regs + CORTINA_XHCI_GUSB3PIPECTL1);
++		writel(CORTINA_XHCI_GCTL_VAL, hcd->regs + CORTINA_XHCI_GCTL);
++		writel(CORTINA_XHCI_GSBUSCFG0_VAL, hcd->regs + CORTINA_XHCI_GSBUSCFG0);
++		writel(CORTINA_XHCI_GTXTHRCFG_VAL, hcd->regs + CORTINA_XHCI_GTXTHRCFG);
++		writel(CORTINA_XHCI_GRXTHRCFG_VAL, hcd->regs + CORTINA_XHCI_GRXTHRCFG);
++		writel(CORTINA_XHCI_GUSB2PHYCFG_VAL, hcd->regs + CORTINA_XHCI_GUSB2PHYCFG_P0);
++		writel(CORTINA_XHCI_GUSB2PHYCFG_VAL, hcd->regs + CORTINA_XHCI_GUSB2PHYCFG_P1);
++		writel(CORTINA_XHCI_USB2PORTSC_VAL, hcd->regs + CORTINA_XHCI_GUSB2PORTSC_P0);
++		writel(CORTINA_XHCI_USB2PORTSC_VAL, hcd->regs + CORTINA_XHCI_GUSB2PORTSC_P1);
++	}
++
++    return;
++}
++#endif
++
+ static void xhci_priv_plat_start(struct usb_hcd *hcd)
+ {
+ 	struct xhci_plat_priv *priv = hcd_to_xhci_priv(hcd);
+@@ -44,6 +88,16 @@ static void xhci_priv_plat_start(struct
+ 		priv->plat_start(hcd);
+ }
+ 
++static int xhci_priv_plat_setup(struct usb_hcd *hcd)
++{
++	struct xhci_plat_priv *priv = hcd_to_xhci_priv(hcd);
++
++	if (!priv->plat_setup)
++		return 0;
++
++	return priv->plat_setup(hcd);
++}
++
+ static int xhci_priv_init_quirk(struct usb_hcd *hcd)
+ {
+ 	struct xhci_plat_priv *priv = hcd_to_xhci_priv(hcd);
+@@ -111,6 +165,7 @@ static const struct xhci_plat_priv xhci_
+ };
+ 
+ static const struct xhci_plat_priv xhci_plat_marvell_armada3700 = {
++	.plat_setup = xhci_mvebu_a3700_plat_setup,
+ 	.init_quirk = xhci_mvebu_a3700_init_quirk,
+ };
+ 
+@@ -167,6 +222,8 @@ static const struct of_device_id usb_xhc
+ 	}, {
+ 		.compatible = "brcm,bcm7445-xhci",
+ 		.data = &xhci_plat_brcm,
++	}, {
++		.compatible = "cortina,ca77xx-xhci",
+ 	},
+ 	{},
+ };
+@@ -289,6 +346,11 @@ static int xhci_plat_probe(struct platfo
+ 
+ 	device_set_wakeup_capable(&pdev->dev, true);
+ 
++#if defined(CONFIG_ARCH_CORTINA_G3) || defined(CONFIG_ARCH_CORTINA_G3HGU) || defined(CONFIG_ARCH_CORTINA_VENUS)
++	if(of_device_is_compatible(pdev->dev.of_node, "cortina,ca77xx-xhci"))
++		cortina_xhci_init(hcd);
++#endif
++
+ 	xhci->main_hcd = hcd;
+ 	xhci->shared_hcd = __usb_create_hcd(driver, sysdev, &pdev->dev,
+ 			dev_name(&pdev->dev), hcd);
+@@ -330,12 +392,24 @@ static int xhci_plat_probe(struct platfo
+ 
+ 	hcd->tpl_support = of_usb_host_tpl_support(sysdev->of_node);
+ 	xhci->shared_hcd->tpl_support = hcd->tpl_support;
+-	if (priv && (priv->quirks & XHCI_SKIP_PHY_INIT))
++
++	if (priv) {
++		ret = xhci_priv_plat_setup(hcd);
++		if (ret)
++			goto disable_usb_phy;
++	}
++
++	if ((xhci->quirks & XHCI_SKIP_PHY_INIT) || (priv && (priv->quirks & XHCI_SKIP_PHY_INIT)))
+ 		hcd->skip_phy_initialization = 1;
+ 
+ 	if (priv && (priv->quirks & XHCI_SG_TRB_CACHE_SIZE_QUIRK))
+ 		xhci->quirks |= XHCI_SG_TRB_CACHE_SIZE_QUIRK;
+ 
++#if defined(CONFIG_ARCH_CORTINA_VENUS) || defined(CONFIG_ARCH_REALTEK_TAURUS) || defined(CONFIG_ARCH_REALTEK_9607F)
++	if(of_device_is_compatible(pdev->dev.of_node, "cortina,ca77xx-xhci"))
++		usb_phy_vbus_on(hcd->usb_phy);
++#endif
++
+ 	ret = usb_add_hcd(hcd, irq, IRQF_SHARED);
+ 	if (ret)
+ 		goto disable_usb_phy;
+@@ -419,9 +493,6 @@ static int __maybe_unused xhci_plat_susp
+ 	struct xhci_hcd	*xhci = hcd_to_xhci(hcd);
+ 	int ret;
+ 
+-	if (pm_runtime_suspended(dev))
+-		pm_runtime_resume(dev);
+-
+ 	ret = xhci_priv_suspend_quirk(hcd);
+ 	if (ret)
+ 		return ret;
+Index: linux-5.10.138/drivers/usb/phy/Kconfig
+===================================================================
+--- linux-5.10.138.orig/drivers/usb/phy/Kconfig
++++ linux-5.10.138/drivers/usb/phy/Kconfig
+@@ -192,4 +192,26 @@ config JZ4770_PHY
+ 	  This driver provides PHY support for the USB controller found
+ 	  on the JZ-series and X-series SoCs from Ingenic.
+ 
++config PHY_TAURUS_USB2
++	tristate "Realtek Taurus USB2.0 PHY driver"
++	depends on ARCH_CORTINA
++	depends on RESET_CORTINA
++	depends on PHY_TAURUS
++	depends on USB_SUPPORT
++	select USB_PHY
++	help
++	  Enable this to support the Realtek Taurus USB2.0 PHY.
++	  If unsure, say N.
++
++config PHY_TAURUS_USB3
++	tristate "Realtek Taurus USB3.0 PHY driver"
++	depends on ARCH_CORTINA
++	depends on RESET_CORTINA
++	depends on PHY_TAURUS
++	depends on USB_SUPPORT
++	select USB_PHY
++	help
++	  Enable this to support the Realtek Taurus USB3.0 PHY.
++	  If unsure, say N.
++
+ endmenu
+Index: linux-5.10.138/drivers/usb/phy/Makefile
+===================================================================
+--- linux-5.10.138.orig/drivers/usb/phy/Makefile
++++ linux-5.10.138/drivers/usb/phy/Makefile
+@@ -25,3 +25,5 @@ obj-$(CONFIG_USB_ULPI)			+= phy-ulpi.o
+ obj-$(CONFIG_USB_ULPI_VIEWPORT)		+= phy-ulpi-viewport.o
+ obj-$(CONFIG_KEYSTONE_USB_PHY)		+= phy-keystone.o
+ obj-$(CONFIG_JZ4770_PHY)		+= phy-jz4770.o
++obj-$(CONFIG_PHY_TAURUS_USB2)		+= phy-taurus-usb2.o
++obj-$(CONFIG_PHY_TAURUS_USB3)		+= phy-taurus-usb3.o
+Index: linux-5.10.138/drivers/usb/host/xhci-plat.h
+===================================================================
+--- linux-5.10.138.orig/drivers/usb/host/xhci-plat.h
++++ linux-5.10.138/drivers/usb/host/xhci-plat.h
+@@ -13,6 +13,7 @@
+ struct xhci_plat_priv {
+ 	const char *firmware_name;
+ 	unsigned long long quirks;
++	int (*plat_setup)(struct usb_hcd *);
+ 	void (*plat_start)(struct usb_hcd *);
+ 	int (*init_quirk)(struct usb_hcd *);
+ 	int (*suspend_quirk)(struct usb_hcd *);
+Index: linux-5.10.138/drivers/usb/host/xhci-mvebu.h
+===================================================================
+--- linux-5.10.138.orig/drivers/usb/host/xhci-mvebu.h
++++ linux-5.10.138/drivers/usb/host/xhci-mvebu.h
+@@ -12,12 +12,18 @@ struct usb_hcd;
+ 
+ #if IS_ENABLED(CONFIG_USB_XHCI_MVEBU)
+ int xhci_mvebu_mbus_init_quirk(struct usb_hcd *hcd);
++int xhci_mvebu_a3700_plat_setup(struct usb_hcd *hcd);
+ int xhci_mvebu_a3700_init_quirk(struct usb_hcd *hcd);
+ #else
+ static inline int xhci_mvebu_mbus_init_quirk(struct usb_hcd *hcd)
+ {
+ 	return 0;
+ }
++
++static inline int xhci_mvebu_a3700_plat_setup(struct usb_hcd *hcd)
++{
++	return 0;
++}
+ 
+ static inline int xhci_mvebu_a3700_init_quirk(struct usb_hcd *hcd)
+ {

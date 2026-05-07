@@ -1,0 +1,322 @@
+#!/usr/bin/lua
+
+local function execute(cmd)
+  print(cmd)
+  os.execute(cmd)
+end
+
+----------------------
+
+local uci = require("luci.model.uci").cursor()
+
+local opthelp = [[
+ -c <profile>	  Reset as controller with profile <profile>
+ -a <profile>	  Reset as agent with profile <profile>
+]]
+
+SERVICE_NAME = "rtk_multiap"
+
+IFACE_NUM = 5
+ROOT_IDX = 0
+VXD_IDX = 5
+
+RADIO_NUM = 2
+RADIO_5GL_IDX = 0
+RADIO_24G_IDX = 1
+-- RADIO_5GH_IDX = 2
+
+LATEST_PROFILE = 4
+
+MAP_ROLE_DISABLED = "0"
+MAP_ROLE_CONTROLLER = "1"
+MAP_ROLE_AGENT = "2"
+
+ETH_PATH="/tmp/eth_interfaces"
+
+function capture(cmd, filter, need_all)
+  local f = assert(io.popen(cmd, 'r'))
+  local s = assert(f:read('*a'))
+  f:close()
+  s = string.gsub(s, '^%s+', '')
+  s = string.gsub(s, '%s+$', '')
+  s = string.gsub(s, '[\n\r]+', ' ')
+  if not filter then return s end
+  local result = nil
+  for w in string.gmatch(s, filter) do
+    if result then
+      result = result .. " " .. w
+    else
+      result = w
+    end
+    if not need_all then return result end
+  end
+  return result
+end
+
+local function fexist(name)
+  local f = io.open(name, "r")
+  if f ~= nil then
+    io.close(f)
+    return true
+  else
+    return false
+  end
+end
+
+local function fwrite(path, s)
+  if not s then return end
+  local f
+  f = assert(io.open(path, "w+"))
+  f:write(s)
+  f:close()
+end
+
+local function fread(path)
+  local f, s
+  f = assert(io.open(path, "r"))
+  s = f:read("*all")
+  f:close()
+  return s
+end
+
+local function fremove(path)
+  os.remove(path)
+end
+
+local retained_uci = {
+  ".name",
+  ".anonymous",
+  ".type",
+  ".index",
+  "device",
+  "network",
+  "ifname",
+  "bss_load_update_period",
+  "map_bss_type",
+  "mode",
+  "disabled",
+  "macaddr"
+}
+
+local function set_wireless(role)
+  local function _derive_macaddr(ifname, iface_idx)
+    command = "ifconfig "..ifname
+    root_macaddr = capture(command,"HWaddr%s+([%a%d:]+)")
+    if not root_macaddr then return end
+    macaddr_ext = string.sub(root_macaddr, 3)
+    if tonumber(iface_idx) == 0 then -- root interface
+      macaddr = "00"..macaddr_ext
+    else -- non-root interfaces
+      prefix = string.format("%02x", 2^iface_idx)
+      macaddr = prefix..macaddr_ext
+    end
+    return macaddr
+  end
+
+  local radio_name = nil
+  local htmode = nil
+  local ssid = nil
+
+  wireless = uci:get_all("wireless")
+
+  for i=0,(RADIO_NUM-1) do
+    ssid = "RTK_"
+    if (i == RADIO_24G_IDX) then
+      htmode = "HE20"
+      ssid = ssid.."24_"..i
+      default_vap_ssid = "AP-"
+      ifname = "wlan0"
+    elseif (i == RADIO_5GL_IDX) then
+      htmode = "HE80"
+      ssid = ssid.."5L_"..i
+      default_vap_ssid = "OpenWrt-"
+      ifname = "wlan1"
+    elseif (i == RADIO_5GH_IDX) then
+      htmode = "HE80"
+      ssid = ssid.."5H_"..i
+      default_vap_ssid = "TBD-" -- TODO
+      ifname = "wlan2"
+    end
+
+    -- set radio details
+    device_name = "phy"..i
+    uci:set("wireless", device_name, "htmode", htmode)
+    uci:set("wireless", device_name, "repeater_ssid", "MAP_RPT")
+
+    for j=0,IFACE_NUM do
+      radio_name = "default_radio"..i..j
+
+      -- get uci section
+      iface_uci = wireless[radio_name]
+
+      -- delete uci if not supposed to be retained
+      for k,v in pairs(iface_uci) do
+        local retain = 0
+        for _,check in pairs(retained_uci) do
+          if k == check then
+            retain = 1
+            break
+          end
+        end
+        if retain ~= 1 then
+          uci:delete("wireless", radio_name, k)
+        end
+      end
+
+      -- set defaults for all interfaces
+      uci:set("wireless", radio_name, "macaddr", _derive_macaddr(ifname, j))
+      uci:set("wireless", radio_name, "encryption", "none")
+      uci:set("wireless", radio_name, "ieee80211w", 1)
+      uci:set("wireless", radio_name, "ieee80211k", 1)
+      uci:set("wireless", radio_name, "bss_transition", 1)
+
+      -- set root interface
+      if (j == ROOT_IDX) then
+        uci:delete("wireless", radio_name, "disabled")
+        uci:set("wireless", radio_name, "ssid", ssid)
+        uci:set("wireless", radio_name, "hidden", 0)
+        uci:set("wireless", radio_name, "mbo", 1)
+        uci:set("wireless", radio_name, "iw_enabled", 1)
+        uci:set("wireless", radio_name, "iw_venue_name", "eng:Realtek") -- arbitrary value
+        uci:set("wireless", radio_name, "iw_venue_url", "http://www.example.com/info-eng") -- arbitrary value
+      end
+
+      -- set vap interfaces
+      if (j > ROOT_IDX and j < VXD_IDX) then
+        vap_ssid = default_vap_ssid..j
+        uci:set("wireless", radio_name, "ssid", vap_ssid)
+        uci:set("wireless", radio_name, "hidden", 0)
+        uci:set("wireless", radio_name, "mbo", 1)
+        uci:set("wireless", radio_name, "iw_enabled", 1)
+        uci:set("wireless", radio_name, "iw_venue_name", "eng:Realtek") -- arbitrary value
+        uci:set("wireless", radio_name, "iw_venue_url", "http://www.example.com/info-eng") -- arbitrary value
+        uci:set("wireless", radio_name, "disabled", 1)
+      end
+
+      -- set vxd interface
+      if (j == VXD_IDX) then
+        vxd_ssid = "AP-Server-"..(i+1)
+        uci:set("wireless", radio_name, "ssid", vxd_ssid)
+        if role == "agent" then
+          uci:set("wireless", radio_name, "mode", "sta")
+          uci:set("wireless", radio_name, "multi_ap", 1)
+          uci:set("wireless", radio_name, "wps_pushbutton", 1)
+        end
+        uci:set("wireless", radio_name, "disabled", 1)
+      end
+    end
+  end
+end
+
+local function set_ethernet(role, eth_interfaces)
+  if role == "controller" then
+    for _,interface in pairs(eth_interfaces) do
+      execute("ifconfig "..interface.. " up")
+    end
+  else -- role == "agent"
+    interfaces = ""
+    for _,interface in pairs(eth_interfaces) do
+      execute("ifconfig "..interface.. " down")
+      interfaces = interfaces.." "..interface
+    end
+    fwrite(ETH_PATH, interfaces)
+    uci:delete("network", "@device[0]", "ports")
+  end
+end
+
+local function set_controller(profile_num)
+  -- set as controller
+  uci:set("rtkmap", "map", "controller", MAP_ROLE_CONTROLLER)
+  -- set profile number
+  uci:set("rtkmap", "map", "profile", profile_num)
+end
+
+local function set_agent(profile_num)
+  -- set as agent
+  uci:set("rtkmap", "map", "controller", MAP_ROLE_AGENT)
+  -- set profile number
+  uci:set("rtkmap", "map", "profile", profile_num)
+  -- set configured band
+  uci:set("rtkmap", "map", "configured_band", 0)
+end
+
+local function clear_files()
+  execute("rm /var/log/message*");
+  execute("rm /var/log/multi_ap_r2.txt");
+  execute("rm /tmp/*.config");
+  execute("rm /tmp/map_*.txt");
+  execute("rm /tmp/map_vlan_setting");
+  execute("rm /tmp/map_vlan_setting_configured");
+  execute("rm /tmp/dpp_*");
+  execute("rm /tmp/map_vlan_need_reset");
+  execute("echo 1 > /tmp/map_lock");
+end
+
+local function reset()
+  -- commit uci
+  uci:commit("network")
+  uci:commit("wireless")
+  uci:commit("rtkmap")
+end
+
+local function main()
+  local opts, args = require("rtk.optarg").from_opthelp(opthelp)
+  if not opts then
+    print("Usage: ".._G.arg[0]..": [-ca] [PROFILE]")
+    print(opthelp)
+    os.exit(1)
+  end
+  print(_G.arg[0], _G.arg[1], _G.arg[2])
+
+  local profile_num = nil
+
+  eth_interfaces = {}
+  if fexist(ETH_PATH) then
+    -- this means that thet eth interfaces were previously removed
+    found = fread(ETH_PATH)
+    fremove(ETH_PATH)
+    interfaces = string.gmatch(found, "%S+")
+    for interface in interfaces do
+      table.insert(eth_interfaces, interface)
+    end
+    uci:set("network", "@device[0]", "ports", eth_interfaces)
+  else
+    ports = uci:get("network", "@device[0]", "ports")
+    for _,v in pairs(ports) do
+      table.insert(eth_interfaces, v)
+    end
+  end
+
+  if opts.c then
+    -- controller
+    profile_num = tonumber(opts.c)
+    if (profile_num < 1 or profile_num > LATEST_PROFILE) then
+      print("Invalid profile number")
+      return nil
+    end
+    print("Reset as controller with profile number", profile_num)
+    set_controller(profile_num)
+    set_ethernet("controller", eth_interfaces)
+    set_wireless("controller")
+    clear_files()
+    reset()
+  elseif opts.a then
+    -- agent
+    profile_num = tonumber(opts.a)
+    if (profile_num < 1 or profile_num > LATEST_PROFILE) then
+      print("Invalid profile number")
+      return nil
+    end
+    print("Reset as agent with profile number", profile_num)
+    set_agent(profile_num)
+    set_ethernet("agent", eth_interfaces)
+    set_wireless("agent")
+    clear_files()
+    reset()
+  else
+    print("Unknown arguments!")
+  end
+
+end
+
+main()

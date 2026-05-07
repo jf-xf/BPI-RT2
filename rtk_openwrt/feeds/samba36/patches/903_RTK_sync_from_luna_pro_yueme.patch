@@ -1,0 +1,80 @@
+commit 6220faa15de166a8d7d315028e498d3dbe275ac8
+Author: kevin.su <kevin.su@6205ae0b-4059-46eb-a33d-b14f343f8a53>
+Date:   Thu Apr 12 16:13:55 2018 +0800
+
+    [VoIP]
+    1. Sync from luna pro yueme
+    
+    
+    git-svn-id: http://cadinfo.realtek.com/svn/CN/cnsd5/trunk/adsl/SDK/uClinux-dist/user/samba@90183 6205ae0b-4059-46eb-a33d-b14f343f8a53
+
+diff --git a/source3/include/safe_string.h b/source3/include/safe_string.h
+index 56e3b67a..86bd0bde 100755
+--- a/source3/include/safe_string.h
++++ b/source3/include/safe_string.h
+@@ -42,9 +42,9 @@
+ #define strcat(dest,src) __ERROR__XX__NEVER_USE_STRCAT___;
+ 
+ #ifdef sprintf
+-#undef sprintf
++//#undef sprintf
+ #endif /* sprintf */
+-#define sprintf __ERROR__XX__NEVER_USE_SPRINTF__;
++//#define sprintf __ERROR__XX__NEVER_USE_SPRINTF__;
+ 
+ /*
+  * strcasecmp/strncasecmp aren't an error, but it means you're not thinking about
+diff --git a/source3/smbd/trans2.c b/source3/smbd/trans2.c
+index 41e115c9..f75519c1 100755
+--- a/source3/smbd/trans2.c
++++ b/source3/smbd/trans2.c
+@@ -2986,9 +2986,11 @@ NTSTATUS smbd_do_qfsinfo(connection_struct *conn,
+ 	struct smb_filename smb_fname;
+ 	SMB_STRUCT_STAT st;
+ 	NTSTATUS status = NT_STATUS_OK;
++	static int fnameflag = 0;
+ 
+ 	if (fname == NULL || fname->base_name == NULL) {
+ 		filename = ".";
++		fnameflag = 1;
+ 	} else {
+ 		filename = fname->base_name;
+ 	}
+@@ -3201,8 +3203,18 @@ cBytesSector=%u, cUnitTotal=%u, cUnitAvail=%d\n", (unsigned int)bsize, (unsigned
+ 		{
+ 			uint64_t dfree,dsize,bsize,block_size,sectors_per_unit,bytes_per_sector;
+ 			data_len = 32;
+-			if (get_dfree_info(conn,filename,False,&bsize,&dfree,&dsize) == (uint64_t)-1) {
+-				return map_nt_error_from_unix(errno);
++			DEBUG(5,("smbd_do_qfsinfo : smbfullpath=[%s]", smbfullpath));
++			if ( fnameflag )
++			{
++				if (get_dfree_info(conn,smbfullpath,False,&bsize,&dfree,&dsize) == (uint64_t)-1) {
++					return map_nt_error_from_unix(errno);
++				}
++			}
++			else				
++			{
++				if (get_dfree_info(conn,filename,False,&bsize,&dfree,&dsize) == (uint64_t)-1) {
++					return map_nt_error_from_unix(errno);
++				}
+ 			}
+ 			block_size = lp_block_size(snum);
+ 			if (bsize < block_size) {
+@@ -5128,6 +5140,8 @@ static void call_trans2qfilepathinfo(connection_struct *conn,
+ 	size_t fixed_portion;
+ 	NTSTATUS status = NT_STATUS_OK;
+ 
++	memset(smbfullpath, 0x0, sizeof(smbfullpath));
++
+ 	if (!params) {
+ 		reply_nterror(req, NT_STATUS_INVALID_PARAMETER);
+ 		return;
+@@ -5379,6 +5393,7 @@ static void call_trans2qfilepathinfo(connection_struct *conn,
+ 		}
+ 	}
+ 
++	sprintf(&smbfullpath,"%s/%s", conn->connectpath, smb_fname_str_dbg(smb_fname));
+ 	DEBUG(3,("call_trans2qfilepathinfo %s (fnum = %d) level=%d call=%d "
+ 		 "total_data=%d\n", smb_fname_str_dbg(smb_fname),
+ 		 fsp ? fsp->fnum : -1, info_level,tran_call,total_data));

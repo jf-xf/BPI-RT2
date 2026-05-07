@@ -1,0 +1,8 @@
+config service 'xl2tpd'
+	option 'enabled' '0'
+	option 'localip' '10.10.10.1'
+	option 'remoteip' '10.10.10.200-10.10.10.210'
+
+config 'login'
+	option 'username' 'l2tp'
+	option 'password' 'l2tp'

@@ -1,0 +1,32 @@
+#!/bin/sh /etc/rc.common
+
+START=14  
+
+PNAME=RTK
+PROG=/bin/startup
+DEBUG=1
+
+
+W_LOG()
+{
+	if [ $DEBUG -eq 1 ]; then
+		echo "[${PNAME}] $@" > /dev/console
+	fi
+}
+
+W_ERR()
+{
+	if [ $DEBUG -eq 1 ]; then
+		echo "[${PNAME}][ERR] $@" > /dev/console
+	fi
+}
+
+start()
+{
+	W_LOG "Starting config ..."
+	${PROG} &> /dev/console 
+	/bin/sh /etc/scripts/fw_loaded.sh
+}
+
+
+

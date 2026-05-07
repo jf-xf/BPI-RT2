@@ -1,0 +1,265 @@
+Index: linux-5.10.138/arch/mips/Kbuild.platforms
+===================================================================
+--- linux-5.10.138.orig/arch/mips/Kbuild.platforms
++++ linux-5.10.138/arch/mips/Kbuild.platforms
+@@ -22,6 +22,7 @@ platform-$(CONFIG_NLM_COMMON)		+= netlog
+ platform-$(CONFIG_PIC32MZDA)		+= pic32/
+ platform-$(CONFIG_MACH_PISTACHIO)	+= pistachio/
+ platform-$(CONFIG_RALINK)		+= ralink/
++platform-$(CONFIG_RTK_SOC_RTL9607C)     += rtl9607c/
+ platform-$(CONFIG_MIKROTIK_RB532)	+= rb532/
+ platform-$(CONFIG_SGI_IP22)		+= sgi-ip22/
+ platform-$(CONFIG_SGI_IP27)		+= sgi-ip27/
+Index: linux-5.10.138/arch/mips/Kconfig
+===================================================================
+--- linux-5.10.138.orig/arch/mips/Kconfig
++++ linux-5.10.138/arch/mips/Kconfig
+@@ -123,6 +123,18 @@ choice
+ 	prompt "System type"
+ 	default MIPS_GENERIC_KERNEL
+ 
++config RTK_MIPS_SOC
++	bool "Realtek MIPS series SoCs"
++	select BOOT_ELF32
++	select SYS_HAS_EARLY_PRINTK
++	select SYS_SUPPORTS_ARBIT_HZ
++	select SYS_SUPPORTS_HIGHMEM
++	select SYS_SUPPORTS_32BIT_KERNEL
++	select SYS_SUPPORTS_ZBOOT
++	select CPU_SUPPORTS_32BIT_KERNEL
++	select IRQ_MIPS_CPU
++	select HAVE_PCI
++
+ config MIPS_GENERIC_KERNEL
+ 	bool "Generic board-agnostic MIPS kernel"
+ 	select MIPS_GENERIC
+@@ -1052,6 +1064,7 @@ source "arch/mips/lantiq/Kconfig"
+ source "arch/mips/pic32/Kconfig"
+ source "arch/mips/pistachio/Kconfig"
+ source "arch/mips/ralink/Kconfig"
++source "arch/mips/rtl9607c/Kconfig"
+ source "arch/mips/sgi-ip27/Kconfig"
+ source "arch/mips/sibyte/Kconfig"
+ source "arch/mips/txx9/Kconfig"
+Index: linux-5.10.138/arch/mips/boot/dts/Makefile
+===================================================================
+--- linux-5.10.138.orig/arch/mips/boot/dts/Makefile
++++ linux-5.10.138/arch/mips/boot/dts/Makefile
+@@ -1,4 +1,5 @@
+ # SPDX-License-Identifier: GPL-2.0
++subdir-$(CONFIG_RTK_MIPS_SOC)           += realtek
+ subdir-$(CONFIG_BMIPS_GENERIC)		+= brcm
+ subdir-$(CONFIG_CAVIUM_OCTEON_SOC)	+= cavium-octeon
+ subdir-$(CONFIG_MACH_PISTACHIO)		+= img
+Index: linux-5.10.138/drivers/mtd/nand/raw/Makefile
+===================================================================
+--- linux-5.10.138.orig/drivers/mtd/nand/raw/Makefile
++++ linux-5.10.138/drivers/mtd/nand/raw/Makefile
+@@ -69,3 +69,6 @@ nand-objs += nand_macronix.o
+ nand-objs += nand_micron.o
+ nand-objs += nand_samsung.o
+ nand-objs += nand_toshiba.o
++
++obj-$(CONFIG_MTD_SPI_NAND_RTK)   += nand-objs
++obj-$(CONFIG_MTD_SPI_NAND_RTK)  += nand_ecc.o
+Index: linux-5.10.138/drivers/clk/Kconfig
+===================================================================
+--- linux-5.10.138.orig/drivers/clk/Kconfig
++++ linux-5.10.138/drivers/clk/Kconfig
+@@ -384,5 +384,5 @@ source "drivers/clk/ti/Kconfig"
+ source "drivers/clk/uniphier/Kconfig"
+ source "drivers/clk/x86/Kconfig"
+ source "drivers/clk/zynqmp/Kconfig"
+-
++source "drivers/clk/realtek/Kconfig"
+ endif
+Index: linux-5.10.138/drivers/gpio/Kconfig
+===================================================================
+--- linux-5.10.138.orig/drivers/gpio/Kconfig
++++ linux-5.10.138/drivers/gpio/Kconfig
+@@ -503,6 +503,12 @@ config GPIO_REG
+ 	  A 32-bit single register GPIO fixed in/out implementation.  This
+ 	  can be used to represent any register as a set of GPIO signals.
+ 
++config GPIO_RTK_SOC
++	bool "Realtek SOC GPIO controller"
++	depends on RTK_SOC_RTL8198D || RTK_SOC_RTL9607C
++	help
++	  Say yes here to support Realtek SOC GPIOs.
++
+ config GPIO_SAMA5D2_PIOBU
+ 	tristate "SAMA5D2 PIOBU GPIO support"
+ 	depends on MFD_SYSCON
+Index: linux-5.10.138/drivers/gpio/Makefile
+===================================================================
+--- linux-5.10.138.orig/drivers/gpio/Makefile
++++ linux-5.10.138/drivers/gpio/Makefile
+@@ -127,6 +127,7 @@ obj-$(CONFIG_GPIO_RCAR)			+= gpio-rcar.o
+ obj-$(CONFIG_GPIO_RDA)			+= gpio-rda.o
+ obj-$(CONFIG_GPIO_RDC321X)		+= gpio-rdc321x.o
+ obj-$(CONFIG_GPIO_REG)			+= gpio-reg.o
++obj-$(CONFIG_GPIO_RTK_SOC)		+= gpio-rtk-soc.o
+ obj-$(CONFIG_ARCH_SA1100)		+= gpio-sa1100.o
+ obj-$(CONFIG_GPIO_SAMA5D2_PIOBU)	+= gpio-sama5d2-piobu.o
+ obj-$(CONFIG_GPIO_SCH311X)		+= gpio-sch311x.o
+Index: linux-5.10.138/drivers/irqchip/irq-mips-gic.c
+===================================================================
+--- linux-5.10.138.orig/drivers/irqchip/irq-mips-gic.c
++++ linux-5.10.138/drivers/irqchip/irq-mips-gic.c
+@@ -26,7 +26,9 @@
+ #include <asm/traps.h>
+ 
+ #include <dt-bindings/interrupt-controller/mips-gic.h>
+-
++#if defined(CONFIG_RTK_SOC_RTL9607C) || defined(CONFIG_RTK_SOC_RTL8198D)
++#include <asm/mach-rtl960xc/irq.h>
++#endif
+ #define GIC_MAX_INTRS		256
+ #define GIC_MAX_LONGS		BITS_TO_LONGS(GIC_MAX_INTRS)
+ 
+@@ -472,7 +474,9 @@ static int gic_irq_domain_map(struct irq
+ 						    NULL);
+ 		if (err)
+ 			return err;
+-
++#if defined(CONFIG_RTK_SOC_RTL9607C) || defined(CONFIG_RTK_SOC_RTL8198D)
++		irq_set_chip(virq,&gic_level_irq_controller);
++#endif
+ 		irqd_set_single_target(irq_desc_get_irq_data(irq_to_desc(virq)));
+ 		return gic_shared_irq_domain_map(d, virq, hwirq, 0);
+ 	}
+@@ -500,6 +504,9 @@ static int gic_irq_domain_map(struct irq
+ 		if (err)
+ 			return err;
+ 
++#if defined(CONFIG_RTK_SOC_RTL9607C) || defined(CONFIG_RTK_SOC_RTL8198D)
++		irq_set_chip(virq,&gic_all_vpes_local_irq_controller);
++#endif
+ 		irq_set_handler(virq, handle_percpu_irq);
+ 		break;
+ 
+@@ -509,7 +516,9 @@ static int gic_irq_domain_map(struct irq
+ 						    NULL);
+ 		if (err)
+ 			return err;
+-
++#if defined(CONFIG_RTK_SOC_RTL9607C) || defined(CONFIG_RTK_SOC_RTL8198D)
++		irq_set_chip(virq,&gic_local_irq_controller);
++#endif
+ 		irq_set_handler(virq, handle_percpu_devid_irq);
+ 		irq_set_percpu_devid(virq);
+ 		break;
+@@ -810,7 +819,12 @@ static int __init gic_of_init(struct dev
+ 	}
+ 
+ 	gic_irq_domain = irq_domain_add_simple(node, GIC_NUM_LOCAL_INTRS +
+-					       gic_shared_intrs, 0,
++					       gic_shared_intrs,
++#if defined(CONFIG_RTK_SOC_RTL9607C) || defined(CONFIG_RTK_SOC_RTL8198D)
++						MIPS_GIC_IRQ_BASE,
++#else
++						0,
++#endif
+ 					       &gic_irq_domain_ops, NULL);
+ 	if (!gic_irq_domain) {
+ 		pr_err("Failed to add IRQ domain");
+Index: linux-5.10.138/drivers/usb/host/ehci.h
+===================================================================
+--- linux-5.10.138.orig/drivers/usb/host/ehci.h
++++ linux-5.10.138/drivers/usb/host/ehci.h
+@@ -740,6 +740,9 @@ ehci_port_speed(struct ehci_hcd *ehci, u
+ static inline unsigned int ehci_readl(const struct ehci_hcd *ehci,
+ 		__u32 __iomem *regs)
+ {
++#if defined(CONFIG_RTK_MIPS_SOC)
++	return (le32_to_cpu((*(volatile unsigned long *)(regs))));
++#else
+ #ifdef CONFIG_USB_EHCI_BIG_ENDIAN_MMIO
+ 	return ehci_big_endian_mmio(ehci) ?
+ 		readl_be(regs) :
+@@ -747,6 +750,7 @@ static inline unsigned int ehci_readl(co
+ #else
+ 	return readl(regs);
+ #endif
++#endif
+ }
+ 
+ #ifdef CONFIG_SOC_IMX28
+@@ -764,6 +768,9 @@ static inline void imx28_ehci_writel(con
+ static inline void ehci_writel(const struct ehci_hcd *ehci,
+ 		const unsigned int val, __u32 __iomem *regs)
+ {
++#if defined(CONFIG_RTK_MIPS_SOC)
++	((*(volatile unsigned long *)(regs))=cpu_to_le32(val));
++#else
+ #ifdef CONFIG_USB_EHCI_BIG_ENDIAN_MMIO
+ 	ehci_big_endian_mmio(ehci) ?
+ 		writel_be(val, regs) :
+@@ -774,6 +781,7 @@ static inline void ehci_writel(const str
+ 	else
+ 		writel(val, regs);
+ #endif
++#endif
+ }
+ 
+ /*
+Index: linux-5.10.138/drivers/usb/host/ohci.h
+===================================================================
+--- linux-5.10.138.orig/drivers/usb/host/ohci.h
++++ linux-5.10.138/drivers/usb/host/ohci.h
+@@ -561,6 +561,9 @@ static inline struct usb_hcd *ohci_to_hc
+ static inline unsigned int _ohci_readl (const struct ohci_hcd *ohci,
+ 					__hc32 __iomem * regs)
+ {
++#if defined(CONFIG_RTK_MIPS_SOC)
++	return (le32_to_cpu((*(volatile unsigned long *)(regs))));
++#else
+ #ifdef CONFIG_USB_OHCI_BIG_ENDIAN_MMIO
+ 	return big_endian_mmio(ohci) ?
+ 		readl_be (regs) :
+@@ -568,11 +571,15 @@ static inline unsigned int _ohci_readl (
+ #else
+ 	return readl (regs);
+ #endif
++#endif
+ }
+ 
+ static inline void _ohci_writel (const struct ohci_hcd *ohci,
+ 				 const unsigned int val, __hc32 __iomem *regs)
+ {
++#if defined(CONFIG_RTK_MIPS_SOC)
++	((*(volatile unsigned long *)(regs))=cpu_to_le32(val));
++#else
+ #ifdef CONFIG_USB_OHCI_BIG_ENDIAN_MMIO
+ 	big_endian_mmio(ohci) ?
+ 		writel_be (val, regs) :
+@@ -580,6 +587,7 @@ static inline void _ohci_writel (const s
+ #else
+ 		writel (val, regs);
+ #endif
++#endif
+ }
+ 
+ #define ohci_readl(o,r)		_ohci_readl(o,r)
+Index: linux-5.10.138/arch/mips/include/asm/thread_info.h
+===================================================================
+--- linux-5.10.138.orig/arch/mips/include/asm/thread_info.h
++++ linux-5.10.138/arch/mips/include/asm/thread_info.h
+@@ -78,6 +78,9 @@ static inline struct thread_info *curren
+ #endif /* !__ASSEMBLY__ */
+ 
+ /* thread information allocation */
++#ifdef CONFIG_KERNEL_STACK_SIZE_ORDER
++#define THREAD_SIZE_ORDER (CONFIG_KERNEL_STACK_SIZE_ORDER)
++#else
+ #if defined(CONFIG_PAGE_SIZE_4KB) && defined(CONFIG_32BIT)
+ #define THREAD_SIZE_ORDER (1)
+ #endif
+@@ -96,6 +99,7 @@ static inline struct thread_info *curren
+ #ifdef CONFIG_PAGE_SIZE_64KB
+ #define THREAD_SIZE_ORDER (0)
+ #endif
++#endif /* CONFIG_KERNEL_STACK_SIZE_ORDER */
+ 
+ #define THREAD_SIZE (PAGE_SIZE << THREAD_SIZE_ORDER)
+ #define THREAD_MASK (THREAD_SIZE - 1UL)

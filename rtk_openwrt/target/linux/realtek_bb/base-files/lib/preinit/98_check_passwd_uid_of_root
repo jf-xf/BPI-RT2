@@ -1,0 +1,31 @@
+#!/bin/sh
+
+function find_user()
+{
+	local found=0
+	while IFS=: read -r name _ num1 num2 _
+	do
+		if [ $num1 = $num2 ]; then
+			if [ "$name" = "$1" -o "$num1" = "$1" ]; then
+				found=1
+				printf '%s\n' "$name $num1 $num2"
+			fi
+		fi
+	done < /etc/passwd > /tmp/users.txt
+	rm /tmp/users.txt
+	if [ $found = 0 ]; then
+			return 1
+	fi
+	return 0
+}
+
+function do_check_passwd()
+{
+	find_user 0
+	if [ ! $? = 0 ]; then
+		echo "No found uid(0) user, force add root to passwd !!"
+		echo "root:x:0:0:root:/root:/bin/sh" >> /etc/passwd
+	fi
+}
+
+boot_hook_add preinit_main do_check_passwd

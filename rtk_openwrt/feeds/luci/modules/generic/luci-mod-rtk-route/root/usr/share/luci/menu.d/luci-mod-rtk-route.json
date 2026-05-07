@@ -1,0 +1,35 @@
+{
+	"realtek/advance/advance": {
+		"title": "Advance",
+		"order": 10,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		}
+	},
+
+	"realtek/advance/advance/route4": {
+		"title": "Routing",
+		"order": 30,
+		"action": {
+			"type": "view",
+			"path": "rtk/advance/advance/route4"
+		},
+		"depends": {
+			"acl": [ "luci-mod-rtk-network-config-route" ]
+		}
+	},
+
+	"realtek/advance/ipv6/route6": {
+		"title": "IPv6 Routing",
+		"order": 60,
+		"action": {
+			"type": "view",
+			"path": "rtk/advance/ipv6/route6"
+		},
+		"depends": {
+			"acl": [ "luci-mod-rtk-network-config-route" ]
+		}
+	}
+
+}

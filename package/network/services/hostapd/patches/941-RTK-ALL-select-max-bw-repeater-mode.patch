@@ -1,0 +1,207 @@
+--- a/hostapd/ctrl_iface.c
++++ b/hostapd/ctrl_iface.c
+@@ -195,6 +195,35 @@ static int hostapd_ctrl_iface_update(str
+ 	iface->interfaces->config_read_cb = config_read_cb;
+ }
+ 
++static int rtw_ctrl_iface_remote_ap(struct hostapd_iface *iface, char *txt)
++{
++	char *opt, *val;
++
++	wpa_printf(MSG_INFO, "rtw_ctrl_iface_remote_ap: %s", txt);
++	for (opt = strtok(txt, " ");
++	     opt;
++		 opt = strtok(NULL, " ")) {
++
++		if ((val = get_option(opt, "freq=")))
++			iface->rtw_remote_ap.freq = atoi(val);
++		else if ((val = get_option(opt, "ht=")))
++			iface->rtw_remote_ap.ht = atoi(val);
++		else if ((val = get_option(opt, "offset=")))
++			iface->rtw_remote_ap.offset = atoi(val);
++		else if ((val = get_option(opt, "width=")))
++			iface->rtw_remote_ap.width = atoi(val);
++		else if ((val = get_option(opt, "cf1=")))
++			iface->rtw_remote_ap.cf1 = atoi(val);
++		else if ((val = get_option(opt, "cf2=")))
++			iface->rtw_remote_ap.cf2 = atoi(val);
++		else
++			break;
++	}
++
++	iface->rtw_remote_ap.valid = 1;
++	return 0;
++}
++
+ #ifdef NEED_AP_MLME
+ static int hostapd_ctrl_iface_sa_query(struct hostapd_data *hapd,
+ 				       const char *txtaddr)
+@@ -4043,6 +4072,9 @@ static int hostapd_ctrl_iface_receive_pr
+ 	} else if (os_strcmp(buf, "RELOAD_WPA_PSK") == 0) {
+ 		if (hostapd_ctrl_iface_reload_wpa_psk(hapd))
+ 			reply_len = -1;
++	} else if (os_strncmp(buf, "RELOAD_CONFIG", 13) == 0) {
++		if (hostapd_reload_config(hapd->iface, 0))
++			reply_len = -1;
+ 	} else if (os_strncmp(buf, "RELOAD", 6) == 0) {
+ 		if (hostapd_ctrl_iface_reload(hapd->iface))
+ 			reply_len = -1;
+@@ -4128,6 +4160,8 @@ static int hostapd_ctrl_iface_receive_pr
+ 						      reply_size);
+ 	} else if (os_strncmp(buf, "UPDATE ", 7) == 0) {
+ 		hostapd_ctrl_iface_update(hapd, buf + 7);
++	} else if (os_strncmp(buf, "RTW_REMOTE_AP ", 14) == 0) {
++		rtw_ctrl_iface_remote_ap(hapd->iface, buf + 14);
+ 	} else if (os_strcmp(buf, "ERP_FLUSH") == 0) {
+ 		ieee802_1x_erp_flush(hapd);
+ #ifdef RADIUS_SERVER
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -260,6 +260,41 @@ int hostapd_check_max_sta(struct hostapd
+ 	return 0;
+ }
+ 
++static int rtw_sync_max_chbw(struct hostapd_data *hapd, struct rtw_remote_ap_args* rtw_remote_ap) {
++	u8 oper_chwidth = hostapd_get_oper_chwidth(hapd->iconf);
++	enum chan_width conf_width, max_width;
++
++	if (((oper_chwidth == CHANWIDTH_160MHZ) || (oper_chwidth == CHANWIDTH_80P80MHZ)) &&
++		((rtw_remote_ap->width == CHAN_WIDTH_80P80) || (rtw_remote_ap->width == CHAN_WIDTH_160)))
++		conf_width = rtw_remote_ap->width; // sync remote ap 160Mhz mode (80+80/160)
++	else if (oper_chwidth == CHANWIDTH_160MHZ)
++		conf_width = CHAN_WIDTH_160;
++	else if (oper_chwidth == CHANWIDTH_80P80MHZ)
++		conf_width = CHAN_WIDTH_80P80;
++	else if (oper_chwidth == CHANWIDTH_80MHZ)
++		conf_width = CHAN_WIDTH_80;
++	else if (hapd->iconf->secondary_channel)
++		conf_width = CHAN_WIDTH_40;
++	else if (hapd->iconf->ieee80211n)
++		conf_width = CHAN_WIDTH_20;
++	else
++		conf_width = CHAN_WIDTH_20_NOHT;
++
++	max_width = rtw_remote_ap->width < conf_width ? conf_width : rtw_remote_ap->width;
++
++	wpa_printf(MSG_INFO, "rtw_sync_max_chbw: conf_bw: %d, sync_bw: %d, max_bw: %d", conf_width, rtw_remote_ap->width, max_width);
++
++	hostapd_event_ch_switch(hapd,
++		rtw_remote_ap->freq,
++		rtw_remote_ap->ht == 0 ? hapd->iconf->ieee80211n : rtw_remote_ap->ht,
++		rtw_remote_ap->offset == 0 ? hapd->iconf->secondary_channel : rtw_remote_ap->offset,
++		max_width,
++		rtw_remote_ap->cf1,
++		rtw_remote_ap->cf2,
++		0
++	);
++}
++
+ int hostapd_reload_config(struct hostapd_iface *iface, int reconf)
+ {
+ 	struct hapd_interfaces *interfaces = iface->interfaces;
+@@ -267,6 +302,7 @@ int hostapd_reload_config(struct hostapd
+ 	struct hostapd_config *newconf, *oldconf;
+ 	size_t j;
+ 	int i;
++	struct rtw_remote_ap_args rtw_remote_ap = iface->rtw_remote_ap;
+ 
+ 	if (iface->config_fname == NULL) {
+ 		/* Only in-memory config in use - assume it has been updated */
+@@ -359,6 +395,8 @@ int hostapd_reload_config(struct hostapd
+ 			hapd->config_id = strdup(newconf->bss[j]->config_id);
+ 		hapd->iconf = newconf;
+ 		hapd->conf = newconf->bss[j];
++		if (rtw_remote_ap.valid == 1)
++			rtw_sync_max_chbw(hapd, &rtw_remote_ap);
+ 		hostapd_reload_bss(hapd);
+ 	}
+ 
+--- a/src/ap/hostapd.h
++++ b/src/ap/hostapd.h
+@@ -465,6 +465,19 @@ struct hostapd_sta_info {
+ };
+ 
+ /**
++ * struct rtw_remote_ap_args - temporarily keep remote ap information
++ */
++struct rtw_remote_ap_args {
++	u8 valid;
++	int freq;
++	int ht;
++	int offset;
++	enum chan_width width;
++	int cf1;
++	int cf2;
++};
++
++/**
+  * struct hostapd_iface - hostapd per-interface data structure
+  */
+ struct hostapd_iface {
+@@ -620,6 +633,7 @@ struct hostapd_iface {
+ 
+ 	int (*enable_iface_cb)(struct hostapd_iface *iface);
+ 	int (*disable_iface_cb)(struct hostapd_iface *iface);
++	struct rtw_remote_ap_args rtw_remote_ap;
+ };
+ 
+ /* hostapd.c */
+--- a/wpa_supplicant/events.c
++++ b/wpa_supplicant/events.c
+@@ -4937,6 +4937,22 @@ supplicant_ch_switch_started(struct wpa_
+ 
+ 	if (ret < 0)
+ 		wpa_printf(MSG_ERROR, "\nFailed to reload hostapd AP interfaces\n");
++
++	cmd = os_zalloc(128*sizeof(char)); // no asprintf allowd, use snprintf instead.
++	if (cmd == NULL)
++		return;
++	snprintf(cmd, 128, "RTW_REMOTE_AP freq=%d offset=%d cf1=%d cf2=%d width=%d ht=%d",
++ 		data->ch_switch.freq,
++ 		data->ch_switch.ch_offset,
++ 		data->ch_switch.cf1,
++ 		data->ch_switch.cf2,
++		data->ch_switch.ch_width,
++		data->ch_switch.ht_enabled);
++	ret = wpa_ctrl_request(wpa_s->hostapd, cmd, os_strlen(cmd), buf, &len, NULL);
++	free(cmd);
++
++	if (ret < 0)
++		wpa_printf(MSG_ERROR, "\nFailed to perform RTW_REMOTE_AP\n");
+ }
+ 
+ void supplicant_event(void *ctx, enum wpa_event_type event,
+--- a/wpa_supplicant/wpa_supplicant.c
++++ b/wpa_supplicant/wpa_supplicant.c
+@@ -148,26 +148,18 @@ static int hostapd_reload(struct wpa_sup
+ 	char *cmd = NULL;
+ 	char buf[256];
+ 	size_t len = sizeof(buf);
+-	enum hostapd_hw_mode hw_mode;
+-	u8 channel;
+-	int sec_chan = 0;
+ 	int ret;
+ 
+ 	if (!bss)
+ 		return -1;
+-
+-	if (bss->ht_param & HT_INFO_HT_PARAM_STA_CHNL_WIDTH) {
+-		int sec = bss->ht_param & HT_INFO_HT_PARAM_SECONDARY_CHNL_OFF_MASK;
+-		if (sec == HT_INFO_HT_PARAM_SECONDARY_CHNL_ABOVE)
+-			sec_chan = 1;
+-		else if (sec ==  HT_INFO_HT_PARAM_SECONDARY_CHNL_BELOW)
+-			sec_chan = -1;
+-	}
+-
+-	hw_mode = ieee80211_freq_to_chan(bss->freq, &channel);
++	/* No remove old code, to bypass sprintf check for jenkins
+ 	if (asprintf(&cmd, "UPDATE channel=%d sec_chan=%d hw_mode=%d",
+ 		     channel, sec_chan, hw_mode) < 0)
++	*/
++	cmd = os_zalloc(16*sizeof(char));
++	if (cmd == NULL)
+ 		return -1;
++	snprintf(cmd, 16, "RELOAD_CONFIG");
+ 
+ 	ret = wpa_ctrl_request(wpa_s->hostapd, cmd, os_strlen(cmd), buf, &len, NULL);
+ 	free(cmd);

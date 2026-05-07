@@ -1,0 +1,288 @@
+#
+# Realtek Semiconductor Corp.
+#
+# Luna Platform Kernel Configuration
+# MIPS_IA
+
+if RTK_SOC_RTL8198D || RTK_SOC_RTL9607C
+menu "Luna Platform Configuration"
+
+config RTK_SOC
+	bool "Realtek SoC driver support"
+	default y
+	help
+	  Build drivers/soc/realtek
+
+config KERNEL_STACK_SIZE_ORDER
+        int "Kenel Stack Size Order Configuration"
+        default "2" if RTK_SOC_RTL9607C || RTK_SOC_RTL8198D
+        default "1"
+        help
+         With Page Size 4K
+         1 for 8K kenel stack size
+         2 for 16K kernel stack size
+         3 for 32K kernel stack size
+         etc...
+
+config LUNA
+        bool
+        default y
+
+config LUNA_MEMORY_AUTO_DETECTION
+        bool
+        default y
+
+config RTL8686_IPC_MEM_SIZE
+        hex
+        default "0x00100000"
+
+config RTL8686_DSP_MEM_SIZE
+        hex
+        default "0x00700000"
+
+if NONE_IMP
+config LUNA_CMU
+	depends on !ARCH_LUNA_SLAVE
+	bool "Luna platform clock mangement module"
+	default n
+	help
+		Enable/Disable clock management dynamic mode by Kernel.
+		When this moduel is built, clock management dynamic mode
+		will be turned off at the entry of RLX trap handler and
+		turned on at the entry of cpu_idle().
+
+config CPU0_FREQ_DIV_INDEX
+	int "CPU0 frequency dividing factor at dynamic mode on (1:(1/2)F, 2:(1/4)..)"
+	depends on LUNA_CMU
+	range 1 7
+	default 1
+	help
+		1:(1/2)F, 2:(1/4), 3:(1/8), 4:(1/16), 5:(1/32), 6:(1/64), 7:(1/128)
+
+config CPU0_DLY_SLP_INDEX
+	int "CPU0 frequency dividing activation delay (0: 0.5us, 1:1us, ...)"
+	depends on LUNA_CMU
+	range 0 7
+	default 0
+	help
+		0:0.5us, 1:1us, 2:2us, 3:4us, 4:8us, 5:16us, 6:32us, 7:No Sleep
+endif
+
+config LUNA_WDT_KTHREAD
+	depends on !ARCH_LUNA_SLAVE
+	bool "Luna platform watchdog with watchdog kthread for kick"
+	default n
+	help
+		Control (enable/disable) watchdog.
+		Configure time-out and etc setting for watchdog
+
+config WDT_ENABLE
+	int "Enable or disalble WDT Kick at boot-up/RC34"
+	depends on LUNA_WDT_KTHREAD
+	range 0 2
+	default 2
+	help
+                0:disable, 1:enable(Kicking begin on bootup), 2: Kicking begin on RC34
+
+config WDT_CLK_SC
+	int "WDT overflow scale"
+	depends on LUNA_WDT_KTHREAD
+	range 0 3
+	default 3
+	help
+		0:2^25, 1:2^26, 2:2^27, 3:2^28
+
+config WDT_PH1_TO
+	int "WDT phase 1 time-out threshold"
+	depends on LUNA_WDT_KTHREAD
+	range 0 31
+	default 31
+
+
+config WDT_PH2_TO
+	int "WDT phase 2 time-out threshold"
+	depends on LUNA_WDT_KTHREAD
+	range 0 31
+	default 0
+	help
+		In the WDT ISR, related system information for further debugging should be collected within PH2.
+
+config WDT_RESET_MODE
+	int "WDT reset mode after PH2 time-out expires."
+	depends on LUNA_WDT_KTHREAD
+	range 0 2
+	default 0
+	help
+		0:H/W Full Chip Reset,
+		1:H/W CPU & IPSec Reset
+		2:S/W Reset
+
+config LUNA_RESERVE_DRAM_FOR_PBO
+	bool "Luna platform reserve DRAM for PBO"
+	depends on !ARCH_LUNA_SLAVE
+	default n
+	help
+		Enable/Disable DRAM reservation for PBO
+
+config LUNA_PBO_DL_DRAM_OFFSET
+	hex "Luna platform PBO DL DRAM OFFSET(INVALID with Luna memory auto distribution)"
+	depends on LUNA_RESERVE_DRAM_FOR_PBO
+	default 0x1700000
+	help
+		The offset of DRAM to be reserved for PBO DL.
+
+config LUNA_PBO_DL_DRAM_SIZE
+	hex "Luna platform PBO DL DRAM SIZE"
+	depends on LUNA_RESERVE_DRAM_FOR_PBO
+	default 0x100000
+	help
+		The size of DRAM to be reserved for PBO DL.
+
+config LUNA_PBO_UL_DRAM_OFFSET
+	hex "Luna platform PBO UL DRAM OFFSET(INVALID with Luna memory auto distribution)"
+	depends on LUNA_RESERVE_DRAM_FOR_PBO
+	default 0x1F00000
+	help
+		The offset of DRAM to be reserved for PBO UL.
+
+config LUNA_PBO_UL_DRAM_SIZE
+	hex "Luna platform PBO UL DRAM SIZE"
+	depends on LUNA_RESERVE_DRAM_FOR_PBO
+	default 0x100000
+	help
+		The size of DRAM to be reserved for PBO UL.
+
+choice
+	prompt "Flash Size"
+	default 64M_FLASH
+
+config 4M_FLASH
+	bool "4M"
+
+config  8M_FLASH
+	bool "8M"
+
+config  16M_FLASH
+	bool "16M"
+
+config  32M_FLASH
+	bool "32M"
+
+config  48M_FLASH
+	bool "48M"
+
+config  64M_FLASH
+	bool "64M"
+
+endchoice
+
+config FLASH_SIZE
+	hex
+	default "400000" if 4M_FLASH
+	default "800000" if 8M_FLASH
+	default "1000000" if 16M_FLASH
+	default "2000000" if 32M_FLASH
+	default "3000000" if 48M_FLASH
+	default "4000000" if 64M_FLASH
+	default "4000000"
+
+if NONE_IMP
+config LUNA_USE_SRAM
+	bool "Luna platform 32KB SRAM mapping"
+	depends on !ARCH_LUNA_SLAVE
+	default n
+	help
+		Enable/Disable the 32KB SRAM Mapping automatically.
+		The function will map 32KB space for __sram address of vmlinux.lds from DRAM onto SRAM
+		to improve the performance.
+
+config LUNA_USE_SRAM_ADDR
+	hex "Luna platform 32KB SRAM mapping address(0 => Address of __sram section)"
+	depends on LUNA_USE_SRAM
+	default 0x0
+	help
+		The start address of sram mapping. 0x0 indicates that the platform will map the __section section
+		from DRAM to SRAM with 32KB memory space. The assigned address would be used instead of __sram address.
+
+endif
+
+config SDK_FPGA_PLATFORM
+	bool "Luna FPGA platform"
+	default n
+	help
+		For FPGA board.
+		LX: 30MHz
+
+config OPENWRT_SDK
+        bool "Openwrt support"
+        default n
+        help
+
+config YUEME_DMIPS_FEATURE
+	depends on !ARCH_LUNA_SLAVE && YUEME
+	bool "YUEME_DMIPS_FEATURE"
+	default n
+
+config YUEME_TMPFS_FEATURE
+        depends on !ARCH_LUNA_SLAVE && YUEME
+        bool "YUEME_TMPFS_FEATURE"
+        default n
+        help
+             Limit file size on under /tmp directory!(tmpfs)
+
+config YUEME_TMPFS_SIZE_FEATURE
+        depends on !ARCH_LUNA_SLAVE && YUEME && TMPFS
+        int "YUEME_TMPFS_SIZE_FEATURE"
+        default 16
+        help
+		By default, /tmp and /var is limited to 16MB.
+		If YUEME_TMPFS_SIZE_FEATURE=0, the system will to 40% of MemTotal.
+
+config YUEME_APP_FORK_LIMIT_FEATURE
+        depends on !ARCH_LUNA_SLAVE && YUEME && CGROUP_SCHED
+        bool "YUEME App Framework Fork Limit FEATURE"
+        default n
+        help
+             Limit the fork number of appframework!
+
+config YUEME_APP_FORK_LIMIT_NUM
+	int "YUEME_APP_FORK_LIMIT_NUM"
+	depends on YUEME_APP_FORK_LIMIT_FEATURE && YUEME && CGROUP_SCHED
+	default 100
+	help
+		Appframework'app can't fork over this value.
+
+config YUEME_APP_THREAD_LIMIT_NUM
+	int "YUEME_APP_THREAD_LIMIT_NUM"
+	depends on YUEME_APP_FORK_LIMIT_FEATURE
+	default 300
+	help
+		Appframework'app can't create thread over this value.
+
+config YUEME_APP_FORK_LIMIT_KILLER
+	bool "YUEME Appframework Limit Killer"
+	depends on YUEME_APP_FORK_LIMIT_FEATURE
+        default n
+        help
+             Every 120(s), Kthread(appf_m) will try to kill the process
+             which forked over YUEME_APP_FORK_LIMIT_NUM.
+
+config YUEME_FS_CHECK_FEATURE
+	bool "YUEME App Framework FS Write Check"
+	depends on YAFFS_FS	&& YUEME && CGROUP_SCHED
+        default n
+        help
+             Avoid the application of AppFramework write fully the FS(YAFFS_FS) for Flash Partition.
+
+config YUEME_FS_LIMIT_PERCENTAGE
+	int "YUEME App Framework FS Write Allow Percentage"
+	depends on YUEME_FS_CHECK_FEATURE
+	range 0 100
+        default 90
+        help
+             This option will inhibit the write operation into YAFFS_FS when FS's usage is higher than threshold.
+             the FS is higher than CONFIG_YUEME_FS_LIMIT_PERCENTAGE%, the system doesn't allow this write operation.
+             The system will try to kill this process.
+
+endmenu
+endif

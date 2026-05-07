@@ -1,0 +1,22 @@
+if (PACKAGE_map-topology)
+
+menu "Configurations"
+
+config TOPOLOGYD_EASYMESH_VENDOR_EXT
+	bool "Enable extra features through Easymesh vendor extension"
+	default y
+
+config TOPOLOGYD_EASYMESH_VENDOR_EXT_OUI_DEFAULT
+	string
+	default "\\\\x11\\\\x22\\\\x33"
+
+config TOPOLOGYD_EASYMESH_VENDOR_EXT_OUI
+	string "Vendor OUI in '\\\\xAB\\\\xCD\\\\xEF' format"
+	default TOPOLOGYD_EASYMESH_VENDOR_EXT_OUI_DEFAULT
+	help
+	Extra features not covered by the base Easymesh specification can be
+	enabled through TOPOLOGYD_EASYMESH_VENDOR_EXT. Please provide the Vendor's OUI
+	through which such features would be exposed.
+
+endmenu
+endif

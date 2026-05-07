@@ -1,0 +1,16 @@
+#!/bin/sh
+#
+
+if [ $# -lt 1 ]; then echo "Usage: $0 <offset>";  exit 1 ; fi
+
+if [ -d /proc/net/rtk_wifi6/wlan0 ]
+then
+	echo 0x$1 4 > /proc/net/rtk_wifi6/wlan0/read_reg
+	cat /proc/net/rtk_wifi6/wlan0/read_reg
+elif [ -d /proc/net/rtl8852ae/wlan0 ]
+then 
+	echo 0x$1 4 > /proc/net/rtl8852ae/wlan0/read_reg
+	cat /proc/net/rtl8852ae/wlan0/read_reg
+else
+	iwpriv wlan0 read_reg dw,$1
+fi

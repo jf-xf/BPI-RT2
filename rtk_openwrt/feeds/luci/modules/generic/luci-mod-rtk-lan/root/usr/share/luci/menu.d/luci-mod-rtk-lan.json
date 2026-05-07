@@ -1,0 +1,34 @@
+{
+	"realtek/lan/lan": {
+		"title": "LAN",
+		"order": 10,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		}
+	},
+
+	"realtek/lan/lan/settings": {
+		"title": "LAN Interface Settings",
+		"order": 10,
+		"action": {
+			"type": "view",
+			"path": "rtk/lan/lan/settings"
+		},
+		"depends": {
+			"acl": [ "luci-mod-rtk-lan" ]
+		}
+	},
+
+	"realtek/lan/lan/lanports": {
+		"title": "LAN Ports",
+		"order": 20,
+		"action": {
+			"type": "view",
+			"path": "rtk/lan/lan/lanports"
+		},
+		"depends": {
+			"acl": [ "luci-mod-rtk-lanports" ]
+		}
+	}
+}

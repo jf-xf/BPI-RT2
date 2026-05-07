@@ -1,0 +1,17 @@
+{
+	"luci-app-rtk-igmpsnooping": {
+		"description": "Grant UCI access for luci-app-rtk-igmpsnooping",
+		"read": {
+			"uci": [ "igmpsnooping" ],
+			"ubus": {
+				"rtk-rpc": [ "set_igmpsnoop" ]
+			}
+		},
+		"write": {
+			"uci": [ "igmpsnooping" ],
+			"ubus": {
+				"rtk-rpc": [ "set_igmpsnoop" ]
+			}
+		}
+	}
+}

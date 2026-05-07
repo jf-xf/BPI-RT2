@@ -1,0 +1,40 @@
+Index: firewall-2019-11-22-8174814a/zones.c
+===================================================================
+--- firewall-2019-11-22-8174814a.orig/zones.c	2021-09-13 19:43:10.882815912 +0800
++++ firewall-2019-11-22-8174814a/zones.c	2021-09-13 19:44:04.806814502 +0800
+@@ -102,7 +102,7 @@
+ check_policy(struct uci_element *e, enum fw3_flag *pol, enum fw3_flag def,
+              const char *name)
+ {
+-	if (*pol == FW3_FLAG_UNSPEC)
++	if (*pol < FW3_FLAG_UNSPEC)
+ 	{
+ 		warn_elem(e, "has no %s policy specified, using default", name);
+ 		*pol = def;
+@@ -314,13 +314,19 @@
+ 
+ 		resolve_cthelpers(state, e, zone);
+ 
+-		fw3_setbit(zone->flags[0], fw3_to_src_target(zone->policy_input));
+-		fw3_setbit(zone->flags[0], zone->policy_forward);
+-		fw3_setbit(zone->flags[0], zone->policy_output);
+-
+-		fw3_setbit(zone->flags[1], fw3_to_src_target(zone->policy_input));
+-		fw3_setbit(zone->flags[1], zone->policy_forward);
+-		fw3_setbit(zone->flags[1], zone->policy_output);
++		if(zone->policy_input !=FW3_FLAG_UNSPEC)
++			fw3_setbit(zone->flags[0], fw3_to_src_target(zone->policy_input));
++		if(zone->policy_forward !=FW3_FLAG_UNSPEC)
++			fw3_setbit(zone->flags[0], zone->policy_forward);
++		if(zone->policy_output !=FW3_FLAG_UNSPEC)
++			fw3_setbit(zone->flags[0], zone->policy_output);
++
++		if(zone->policy_input !=FW3_FLAG_UNSPEC)
++			fw3_setbit(zone->flags[1], fw3_to_src_target(zone->policy_input));
++		if(zone->policy_forward !=FW3_FLAG_UNSPEC)
++			fw3_setbit(zone->flags[1], zone->policy_forward);
++		if(zone->policy_output !=FW3_FLAG_UNSPEC)
++			fw3_setbit(zone->flags[1], zone->policy_output);
+ 
+ 		list_add_tail(&zone->list, &state->zones);
+ 	}

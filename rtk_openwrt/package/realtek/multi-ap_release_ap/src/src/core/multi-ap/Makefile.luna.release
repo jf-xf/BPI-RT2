@@ -1,0 +1,131 @@
+BUILD_FOLDER               := $(shell pwd)/build
+
+CUSTOMIZED_FOLDER          := $(shell pwd)/customized
+
+CONTROLLER_EXE             := map_controller
+AGENT_EXE                  := map_agent
+MAP_CHECKER_EXE            := map_checker
+HLE_ENTITY_EXE			   := hle_entity
+
+MAP_REINIT_EXE			   := map_reinit
+MAP_REINIT_SRC_MAIN		   := src/luna_map_reinit.c src/ini.c src/config_file_handler.c src/base64.c
+MAP_REINIT_OBJ_MAIN        := $(patsubst src/%.c,$(BUILD_FOLDER)/%.o,$(MAP_REINIT_SRC_MAIN))
+
+MAP_RESET_EXE              := map_reset
+MAP_RESET_SRC_MAIN         := src/luna_map_reset.c
+MAP_RESET_OBJ_MAIN         := $(patsubst src/%.c,$(BUILD_FOLDER)/%.o,$(MAP_RESET_SRC_MAIN))
+
+MAP_VLAN_EXE               := map_vlan_config
+MAP_VLAN_SRC_MAIN          := src/jungle_map_vlan_config.c
+MAP_VLAN_OBJ_MAIN          := $(patsubst src/%.c,$(BUILD_FOLDER)/%.o,$(MAP_VLAN_SRC_MAIN))
+
+CUSTOMIZED_SRC             := customized/map_vendor_specific_data.c
+CUSTOMIZED_OBJ             := $(patsubst customized/%.c,$(BUILD_FOLDER)/%.o,$(CUSTOMIZED_SRC))
+MIB_INC     := $(ROOTDIR)/user/boa/src/LINUX/
+
+
+EXTERNAL_INC  := $(MIB_INC) $(shell pwd)/include $(ROOTDIR)/linux-4.4.x/drivers/net/wireless/realtek/rtl8192cd/ $(ROOTDIR)/include
+
+CCFLAGS       := -Wall -Wextra -Werror -O2 -DRTK_MULTI_AP $(addprefix -I,$(EXTERNAL_INC))
+CCFLAGS       += $(COMMON_CFLAGS) $(EXTRA_CFLAGS)
+
+LDFLAGS       += -L$(MIB_INC) $(LIBMIB) $(LIBVOIP)
+
+LDFLAGS       += -L$(ROOTDIR)/lib
+
+LDFLAGS       += -lrt -lpthread -lmib -lrtk
+
+ifneq ($(origin DIR_USERS), undefined)
+	include $(DIR_USERS)/.config
+else ifneq ($(origin CONFIG_CONFIG), undefined)
+	include $(CONFIG_CONFIG)
+else ifneq ($(wildcard ../users/.config),)
+	include ../../users/.config
+else ifneq ($(wildcard ../config/.config),)
+	include ../config/.config
+else
+$(error Undefined users directory)
+endif
+
+LDFLAGS     +=  -lssl -lcrypt -lcrypto
+
+ifeq ($(CONFIG_ELINKSDK_SUPPORT),y)
+	LDFLAGS     += -L$(shell pwd)/../../lib_elinksdk -lelinksdk
+endif
+
+ifeq ($(CONFIG_USER_LANNETINFO),y)
+RTK_ETHERNET_LANNETINFO = $(shell echo -n y)
+CCFLAGS += -DRTK_ETHERNET_LANNETINFO
+endif
+
+ifeq ($(CONFIG_RTK_MULTI_AP_WFA),y)
+	CCFLAGS       += -DRTK_MULTI_AP_WFA
+endif
+
+ifeq ($(CONFIG_RTK_DEV_AP),y)
+CCFLAGS += -DRTK_RETRY_GET_FLOCK
+endif
+
+ifeq ($(CONFIG_ELINKSDK_SUPPORT),y)
+LDFLAGS     += -L$(ROOTDIR)/user/ctcap/lib_elinksdk -lelinksdk
+endif
+
+EXTRA_LDFLAGS += -lm
+LIB_MAPVENDORDATA_SO = lib/libmapVendorData.so
+LIB_MAPVENDORDATA_OBJ = $(CUSTOMIZED_OBJ)
+LIB_MAPVENDORDATA_LDFLAGS = -lmapVendorData -L./lib
+CCFLAGS      += -fPIC
+
+MULTI_AP_DIR := $(shell pwd)/
+
+export MULTI_AP_DIR
+
+################################################################################
+# Targets
+################################################################################
+.PHONY: all
+all: clean $(MAP_REINIT_EXE) $(MAP_RESET_EXE)
+	$(MAKE) -C vendor
+
+$(MAP_REINIT_EXE): $(MAP_REINIT_OBJ_MAIN) $(LIB_MAPVENDORDATA_SO)
+	$(CC) $(MAP_REINIT_OBJ_MAIN) $(LDFLAGS) $(LIB_MAPVENDORDATA_LDFLAGS) -o $@
+
+$(MAP_RESET_EXE): $(MAP_RESET_OBJ_MAIN)
+	$(CC) $(CCFLAGS) $(LDFLAGS) $< -o $@
+
+$(MAP_VLAN_EXE): $(MAP_VLAN_OBJ_MAIN)
+	$(CC) $< -o $@
+
+$(BUILD_FOLDER)/%.o : src/%.c
+	mkdir -p $(BUILD_FOLDER)
+	$(CC) $(CCFLAGS) -c $(addprefix -I,$(EXTERNAL_INC)) $< -o $@
+
+$(BUILD_FOLDER)/%.o : customized/%.c
+	$(CC) $(CCFLAGS) $(LDFLAGS) -c $(addprefix -I,$(EXTERNAL_INC)) $< -o $@
+
+$(LIB_MAPVENDORDATA_SO): $(LIB_MAPVENDORDATA_OBJ)
+	$(CC) -s -shared -o $@ $^
+
+.PHONY: clean
+clean:
+	rm -f $(BUILD_FOLDER)/*.o
+	rm -f $(MAP_REINIT_EXE)
+	rm -f $(MAP_RESET_EXE)
+	rm -f $(MAP_VLAN_EXE)
+	rm -f $(LIB_MAPVENDORDATA_SO)
+	$(MAKE) -C vendor clean
+
+.PHONY: romfs
+romfs:
+	$(ROMFSINST) $(CONTROLLER_EXE) /bin/map_controller
+	$(ROMFSINST) $(AGENT_EXE) /bin/map_agent
+	$(ROMFSINST) $(MAP_CHECKER_EXE) /bin/map_checker
+	$(ROMFSINST) $(HLE_ENTITY_EXE) /bin/hle_entity
+	$(ROMFSINST) $(MAP_REINIT_EXE) /bin/map_reinit
+	$(ROMFSINST) $(MAP_RESET_EXE) /bin/map_reset
+	$(ROMFSINST) $(MAP_VLAN_EXE) /bin/map_vlan_config
+	$(ROMFSINST) multiap.conf /etc/multiap.conf
+	$(ROMFSINST) lib/libmultiap.so /lib
+	$(ROMFSINST) $(LIB_MAPVENDORDATA_SO) /lib/libmapVendorData.so
+	$(ROMFSINST) lib/libmapvendor.so /lib
+	$(MAKE) -C vendor romfs

@@ -1,0 +1,55 @@
+#
+# For Building library or executable
+#
+
+MODULE_NAME_EXE         := $(MODULE_NAME)
+MODULE_NAME_LIB         := lib$(MODULE_NAME).a
+MODULE_NAME_SO          := lib$(MODULE_NAME).so
+CFLAGS                  += $(EXTRA_CFLAGS)
+LDFLAGS                 += $(EXTRA_LDFLAGS)
+
+
+ifeq ($(executable),yes)
+        OUTPUT_MODULE_NAME  := $(MODULE_NAME_EXE)
+        BUILD_CMD           := $(CC) -o
+        LIB_CFLAG           := 
+        MODULE_INSTALL_PATH := $(ROOT_PATH)/kernel/uClinux/romfs/bin
+else
+    ifeq ($(sharedlib),yes)
+        OUTPUT_MODULE_NAME  := $(MODULE_NAME_SO)
+        BUILD_CMD           := $(CC) -shared -o
+        LIB_CFLAG           := -fPIC
+        ifeq ($(SDK_TARGET_ARCH), TYPE_MIPS)
+          LIB_CFLAG         += -mabicalls
+        endif
+    else
+        OUTPUT_MODULE_NAME  := $(MODULE_NAME_LIB)
+        BUILD_CMD           := $(AR) rcs
+        LIB_CFLAG           :=
+    endif
+    MODULE_INSTALL_PATH     := $(ROOT_PATH)/kernel/uClinux/romfs/lib
+endif
+
+
+$(OUTPUT_MODULE_NAME): $(MODULE_EXTRA_TARGET) $(MODULE_OBJ)
+	$(BUILD_CMD) $@ $(LDFLAGS) $(addprefix $(ROOT_PATH)/$(MODULE_DIR)/,$(MODULE_OBJ)) $(MODULE_SHARED_LIB)
+	$(STRIP) --strip-debug -R .note -R .comment $@
+
+
+$(MODULE_OBJ): 
+	$(if $(wildcard $(dir $@)),,mkdir -p $(dir $@))
+	$(CC) $(CFLAGS) $(LIB_CFLAG) -c $(addprefix $(ROOT_PATH)/,$(subst $(BUILD_OUTPUT_DIR)/,,$(subst .o,.c,$@))) -o $@
+
+
+install:
+ifeq ($(OUTPUT_MODULE_NAME), $(wildcard $(OUTPUT_MODULE_NAME)))
+	$(if $(wildcard $(MODULE_INSTALL_PATH)),,mkdir -p $(MODULE_INSTALL_PATH))
+	@cp $(OUTPUT_MODULE_NAME) $(MODULE_INSTALL_PATH)
+	@echo "$(OUTPUT_MODULE_NAME) installed"
+endif
+
+clean:
+	rm -f $(OUTPUT_MODULE_NAME)
+	find \( -name '*.[oas]' -o -name *.so \) -type f -print | xargs rm -rf
+	rm -rf $(BUILD_OUTPUT_DIR)
+

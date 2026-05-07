@@ -1,0 +1,154 @@
+//
+// Copyright (C) 2012 Realtek Semiconductor Corp.
+// All Rights Reserved.
+//
+// This program is the proprietary software of Realtek Semiconductor
+// Corporation and/or its licensors, and only be used, duplicated,
+// modified or distributed under the authorized license from Realtek.
+//
+// ANY USE OF THE SOFTWARE OTHER THAN AS AUTHORIZED UNDER
+// THIS LICENSE OR COPYRIGHT LAW IS PROHIBITED.
+//
+// $Revision: 68395 $
+// $Date: 2016-05-27 16:38:35 +0800 (Fri, 27 May 2016) $
+//
+// Purpose : Define diag shell commands for mib extension.
+//
+// Feature : The file have include the following module and sub-modules
+//           1) flow counter commands.
+//           2) netif counter commands.
+//
+
+//rt_mib configuration
+//get configuration
+//counter configuration
+//flow_cache_mib configuration
+//flow_idx, <0-65535>
+rt_mib get counter flow_cache_mib <UINT:flow_idx>
+
+//rt_mib configuration
+//reset configuration
+//counter configuration
+//flow_cache_mib configuration
+//flow_idx, <0-65535>
+rt_mib reset counter flow_cache_mib <UINT:flow_idx>
+
+//rt_mib configuration
+//get configuration
+//counter configuration
+//flow configuration
+//index, <0-31>
+rt_mib get counter flow <UINT:index>
+
+//rt_mib configuration
+//reset configuration
+//counter configuration
+//flow configuration
+//index, <0-31>
+rt_mib reset counter flow <UINT:index>
+
+//rt_mib configuration
+//get configuration
+//counter configuration
+//netif configuration
+//device name string
+rt_mib get counter netif <STRING:dev_name>
+
+//rt_mib configuration
+//reset configuration
+//counter configuration
+//netif configuration
+//device name string
+rt_mib reset counter netif <STRING:dev_name>
+
+//rt_mib configuration
+//get configuration
+//counter configuration
+//acl configuration
+//index, <0-31>
+rt_mib get counter acl <UINT:index>
+
+//rt_mib configuration
+//set configuration
+//acl configuration
+//index configuration
+//index, <0-31>
+//mib type configuration
+//type, 0:byte count 1:packet count
+//type configuration
+rt_mib set acl index <UINT:index> type <UINT:type>
+
+//rt_mib configuration
+//reset configuration
+//counter configuration
+//acl configuration
+//index, <0-31>
+rt_mib reset counter acl <UINT:index>
+
+
+//rt_mib configuration
+//get configuration
+//counter configuration
+//gem filter configuration
+//index, <0-31>
+rt_mib get counter gem-filter <UINT:index>
+
+//rt_mib configuration
+//reset configuration
+//counter configuration
+//gem filter configuration
+//index, <0-31>
+rt_mib reset counter gem-filter <UINT:index>
+
+//rt_mib configuration
+//set configuration
+//gem-filter configuration
+//index configuration
+//index, <0-31>
+//rule state configuration
+//state, 0:disable 1:enable
+//type configuration
+//type, 0:flowid 1: portid
+//id configuration
+//id, flowid or portid
+rt_mib set gem-filter index <UINT:index> state <UINT:state>
+
+//rt_mib configuration
+//set configuration
+//gem-filter configuration
+//index configuration
+//index, <0-31>
+//rule state configuration
+//state, 0:disable 1:enable
+//type configuration
+//type, 0:flowid 1: portid
+//id configuration
+//id, flowid or portid
+rt_mib set gem-filter index <UINT:index> state <UINT:state> type <UINT:type> id <UINT:id>
+
+//rt_mib configuration
+//set configuration
+//gem-filter configuration
+//index configuration
+//index, <0-31>
+//rule state configuration
+//state, 0:disable 1:enable
+//type configuration
+//type, 0:flowid 1: portid
+//id configuration
+//id, flowid or portid
+//filter-vid configuration
+//vlanid, <0-4091>; 0xffff(65535) as disable
+//filter-pri configuration
+//priority, <0-7>, 8 as disable
+//filter-pkttype configuration
+//pkttype, <0-3>, 0: disable, 1: UC, 2:MC, 3:BC
+rt_mib set gem-filter index <UINT:index> state <UINT:state> type <UINT:type> id <UINT:id> filter-vid <UINT:vid> filter-pri <UINT:pri> filter-pkttype <UINT:pkttype>
+
+//rt_mib configuration
+//get configuration
+//gem-filter configuration
+//index configuration
+//index, <0-31>
+rt_mib get gem-filter index <UINT:index>
+

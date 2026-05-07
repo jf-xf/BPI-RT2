@@ -1,0 +1,549 @@
+Index: bulkdata-2.0.3.1/bbf_plugin/datamodel.c
+===================================================================
+--- bulkdata-2.0.3.1.orig/bbf_plugin/datamodel.c
++++ bulkdata-2.0.3.1/bbf_plugin/datamodel.c
+@@ -107,7 +107,7 @@ static int addObjBulkDataProfile(char *r
+ 	dmuci_set_value_by_section(profile_s, "csv_encoding_field_separator", ",");
+ 	dmuci_set_value_by_section(profile_s, "csv_encoding_row_separator", "&#10;");
+ 	dmuci_set_value_by_section(profile_s, "csv_encoding_escape_character", "&quot;");
+-	dmuci_set_value_by_section(profile_s, "csv_encoding_report_format", "­column");
++	dmuci_set_value_by_section(profile_s, "csv_encoding_report_format", "column");
+ 	dmuci_set_value_by_section(profile_s, "csv_encoding_row_time_stamp", "unix");
+ 	dmuci_set_value_by_section(profile_s, "json_encoding_report_format", "objecthierarchy");
+ 	dmuci_set_value_by_section(profile_s, "json_encoding_report_time_stamp", "unix");
+@@ -333,13 +333,13 @@ static int get_BulkData_MinReportingInte
+ 
+ static int get_BulkData_Protocols(char *refparam, struct dmctx *ctx, void *data, char *instance, char **value)
+ {
+-	*value = "HTTP";
++	*value = "HTTP,File";
+ 	return 0;
+ }
+ 
+ static int get_BulkData_EncodingTypes(char *refparam, struct dmctx *ctx, void *data, char *instance, char **value)
+ {
+-	*value = "JSON,CSV";
++	*value = "JSON,CSV,XML";
+ 	return 0;
+ }
+ 
+@@ -477,6 +477,8 @@ static int set_BulkDataProfile_Protocol(
+ 		case VALUESET:
+ 			if(strcmp(value, "HTTP") == 0)
+ 				dmuci_set_value_by_section(((struct dmmap_dup *)data)->config_section, "protocol", "http");
++			else if(strcmp(value, "File") == 0)
++				dmuci_set_value_by_section(((struct dmmap_dup *)data)->config_section, "protocol", "file");
+ 			break;
+ 	}
+ 	return 0;
+@@ -490,6 +492,8 @@ static int get_BulkDataProfile_EncodingT
+ 		*value = "JSON";
+ 	else if(strcmp(*value, "csv") == 0)
+ 		*value = "CSV";
++	else if(strcmp(*value, "xml") == 0)
++		*value = "XML";
+ 	return 0;
+ }
+ 
+@@ -505,6 +509,8 @@ static int set_BulkDataProfile_EncodingT
+ 				dmuci_set_value_by_section(((struct dmmap_dup *)data)->config_section, "encoding_type", "json");
+ 			else if(strcmp(value, "CSV") == 0)
+ 				dmuci_set_value_by_section(((struct dmmap_dup *)data)->config_section, "encoding_type", "csv");
++			else if(strcmp(value, "XML") == 0)
++				dmuci_set_value_by_section(((struct dmmap_dup *)data)->config_section, "encoding_type", "xml");
+ 			break;
+ 	}
+ 	return 0;
+@@ -576,6 +582,69 @@ static int get_BulkDataProfile_Parameter
+ 	return 0;
+ }
+ 
++/*#Device.BulkData.Profile.{i}.FileTransferURL!UCI:bulkdata/profile,@i-1/ftp_url*/
++static int get_BulkDataProfile_FileTransferURL(char *refparam, struct dmctx *ctx, void *data, char *instance, char **value)
++{
++	dmuci_get_value_by_section_string(((struct dmmap_dup *)data)->config_section, "ftp_url", value);
++	return 0;
++}
++
++static int set_BulkDataProfile_FileTransferURL(char *refparam, struct dmctx *ctx, void *data, char *instance, char *value, int action)
++{
++	switch (action)	{
++		case VALUECHECK:
++			if (dm_validate_string(value, -1, 1024, NULL, NULL))
++				return FAULT_9007;
++			break;
++		case VALUESET:
++			dmuci_set_value_by_section(((struct dmmap_dup *)data)->config_section, "ftp_url", value);
++			break;
++	}
++	return 0;
++}
++
++/*#Device.BulkData.Profile.{i}.FileTransferUsername!UCI:bulkdata/profile,@i-1/ftp_username*/
++static int get_BulkDataProfile_FileTransferUsername(char *refparam, struct dmctx *ctx, void *data, char *instance, char **value)
++{
++	dmuci_get_value_by_section_string(((struct dmmap_dup *)data)->config_section, "ftp_username", value);
++	return 0;
++}
++
++static int set_BulkDataProfile_FileTransferUsername(char *refparam, struct dmctx *ctx, void *data, char *instance, char *value, int action)
++{
++	switch (action)	{
++		case VALUECHECK:
++			if (dm_validate_string(value, -1, 256, NULL, NULL))
++				return FAULT_9007;
++			break;
++		case VALUESET:
++			dmuci_set_value_by_section(((struct dmmap_dup *)data)->config_section, "ftp_username", value);
++			break;
++	}
++	return 0;
++}
++
++/*#Device.BulkData.Profile.{i}.FileTransferPassword!UCI:bulkdata/profile,@i-1/ftp_password*/
++static int get_BulkDataProfile_FileTransferPassword(char *refparam, struct dmctx *ctx, void *data, char *instance, char **value)
++{
++	*value = "";
++	return 0;
++}
++
++static int set_BulkDataProfile_FileTransferPassword(char *refparam, struct dmctx *ctx, void *data, char *instance, char *value, int action)
++{
++	switch (action)	{
++		case VALUECHECK:
++			if (dm_validate_string(value, -1, 256, NULL, NULL))
++				return FAULT_9007;
++			break;
++		case VALUESET:
++			dmuci_set_value_by_section(((struct dmmap_dup *)data)->config_section, "ftp_password", value);
++			break;
++	}
++	return 0;
++}
++
+ /*#Device.BulkData.Profile.{i}.Parameter.{i}.Name!UCI:bulkdata/profile_parameter,@i-1/name*/
+ static int get_BulkDataProfileParameter_Name(char *refparam, struct dmctx *ctx, void *data, char *instance, char **value)
+ {
+@@ -1150,9 +1219,9 @@ DMLEAF tBulkDataProfileParams[] = {
+ //{"StreamingHost", &DMWRITE, DMT_STRING, get_BulkDataProfile_StreamingHost, set_BulkDataProfile_StreamingHost, BBFDM_BOTH},
+ //{"StreamingPort", &DMWRITE, DMT_UNINT, get_BulkDataProfile_StreamingPort, set_BulkDataProfile_StreamingPort, BBFDM_BOTH},
+ //{"StreamingSessionID", &DMWRITE, DMT_UNINT, get_BulkDataProfile_StreamingSessionID, set_BulkDataProfile_StreamingSessionID, BBFDM_BOTH},
+-//{"FileTransferURL", &DMWRITE, DMT_STRING, get_BulkDataProfile_FileTransferURL, set_BulkDataProfile_FileTransferURL, BBFDM_BOTH},
+-//{"FileTransferUsername", &DMWRITE, DMT_STRING, get_BulkDataProfile_FileTransferUsername, set_BulkDataProfile_FileTransferUsername, BBFDM_BOTH},
+-//{"FileTransferPassword", &DMWRITE, DMT_STRING, get_BulkDataProfile_FileTransferPassword, set_BulkDataProfile_FileTransferPassword, BBFDM_BOTH},
++{"FileTransferURL", &DMWRITE, DMT_STRING, get_BulkDataProfile_FileTransferURL, set_BulkDataProfile_FileTransferURL, BBFDM_BOTH},
++{"FileTransferUsername", &DMWRITE, DMT_STRING, get_BulkDataProfile_FileTransferUsername, set_BulkDataProfile_FileTransferUsername, BBFDM_BOTH},
++{"FileTransferPassword", &DMWRITE, DMT_STRING, get_BulkDataProfile_FileTransferPassword, set_BulkDataProfile_FileTransferPassword, BBFDM_BOTH},
+ //{"ControlFileFormat", &DMWRITE, DMT_STRING, get_BulkDataProfile_ControlFileFormat, set_BulkDataProfile_ControlFileFormat, BBFDM_BOTH},
+ //{"Controller", &DMREAD, DMT_STRING, get_BulkDataProfile_Controller, NULL, BBFDM_USP},
+ {0}
+Index: bulkdata-2.0.3.1/src/bulkdata.c
+===================================================================
+--- bulkdata-2.0.3.1.orig/src/bulkdata.c
++++ bulkdata-2.0.3.1/src/bulkdata.c
+@@ -55,50 +55,63 @@ static void bulkdata_profile_cb(struct u
+ 		create_failed_report(profile, &report);
+ 
+ 	DEBUG("The content of the profile name report '%s' is :\n==========\n%s\n==========\n", profile->profile_name, report);
+-	http_code = http_send_message(profile, report);
+-	if (http_code != 200) {
+-		unsigned int retry_period = 0;
+ 
+-		if (profile->retry_count == 0 || profile->next_retry > now || !profile->http_retry_enable) {  //Perdiodic execution
+-			retry_period = get_retry_period(profile->http_retry_minimum_wait_interval);
+-			profile->next_period = now + profile->reporting_interval;
+-			profile->next_retry = now + retry_period;
+-			profile->retry_count = 1;
+-			profile->min_retry = profile->http_retry_minimum_wait_interval * 2;
+-			if ((profile->next_retry < profile->next_period) && profile->http_retry_enable) {
+-				INFO("Retry session of profile name '%s' in %d sec", profile->profile_name, retry_period);
+-				uloop_timeout_set(timeout, 1000 * retry_period);
+-			} else {
++	if (strcmp(profile->protocol, "http") == 0) {
++		http_code = http_send_message(profile, report);
++		if (http_code != 200) {
++			unsigned int retry_period = 0;
++	
++			if (profile->retry_count == 0 || profile->next_retry > now || !profile->http_retry_enable) {  //Perdiodic execution
++				retry_period = get_retry_period(profile->http_retry_minimum_wait_interval);
++				profile->next_period = now + profile->reporting_interval;
++				profile->next_retry = now + retry_period;
++				profile->retry_count = 1;
++				profile->min_retry = profile->http_retry_minimum_wait_interval * 2;
++				if ((profile->next_retry < profile->next_period) && profile->http_retry_enable) {
++					INFO("Retry session of profile name '%s' in %d sec", profile->profile_name, retry_period);
++					uloop_timeout_set(timeout, 1000 * retry_period);
++				} else {
++					INFO("Start New session of profile name '%s' in %d sec", profile->profile_name, profile->reporting_interval);
++					uloop_timeout_set(timeout, 1000 * profile->reporting_interval);
++				}
++			} else { //Retry execution
++				retry_period = get_retry_period(profile->min_retry);
++				profile->min_retry*=2;
++				profile->next_retry+=retry_period;
++				profile->retry_count++;
++				if (profile->next_retry < profile->next_period) {
++					INFO("Retry session of profile name '%s' in %d sec", profile->profile_name, retry_period);
++					uloop_timeout_set(timeout, 1000 * retry_period);
++				} else {
++					INFO("Retry session of profile name '%s' in %ld sec", profile->profile_name, (profile->next_period-profile->next_retry+retry_period));
++					uloop_timeout_set(timeout, 1000 * (profile->next_period-profile->next_retry+retry_period));
++				}
++			}
++	
++			if (profile->new_report) {
++				bulkdata_add_failed_report(profile, profile->new_report);
++				FREE(profile->new_report);
++			}
++			FREE(report);
++		} else {
++			if (profile->retry_count == 0 || profile->next_retry > now || !profile->http_retry_enable) {
+ 				INFO("Start New session of profile name '%s' in %d sec", profile->profile_name, profile->reporting_interval);
+ 				uloop_timeout_set(timeout, 1000 * profile->reporting_interval);
+-			}
+-		} else { //Retry execution
+-			retry_period = get_retry_period(profile->min_retry);
+-			profile->min_retry*=2;
+-			profile->next_retry+=retry_period;
+-			profile->retry_count++;
+-			if (profile->next_retry < profile->next_period) {
+-				INFO("Retry session of profile name '%s' in %d sec", profile->profile_name, retry_period);
+-				uloop_timeout_set(timeout, 1000 * retry_period);
+ 			} else {
+-				INFO("Retry session of profile name '%s' in %ld sec", profile->profile_name, (profile->next_period-profile->next_retry+retry_period));
+-				uloop_timeout_set(timeout, 1000 * (profile->next_period-profile->next_retry+retry_period));
++				INFO("Retry session of profile name '%s' in %ld sec", profile->profile_name, (profile->next_period-profile->next_retry));
++				uloop_timeout_set(timeout, 1000 * (profile->next_period-profile->next_retry));
+ 			}
+-		}
+-
+-		if (profile->new_report) {
+-			bulkdata_add_failed_report(profile, profile->new_report);
+ 			FREE(profile->new_report);
++			FREE(report);
++			empty_failed_reports_list(profile);
++			profile->retry_count= 0;
+ 		}
+-		FREE(report);
+-	} else {
+-		if (profile->retry_count == 0 || profile->next_retry > now || !profile->http_retry_enable) {
+-			INFO("Start New session of profile name '%s' in %d sec", profile->profile_name, profile->reporting_interval);
+-			uloop_timeout_set(timeout, 1000 * profile->reporting_interval);
+-		} else {
+-			INFO("Retry session of profile name '%s' in %ld sec", profile->profile_name, (profile->next_period-profile->next_retry));
+-			uloop_timeout_set(timeout, 1000 * (profile->next_period-profile->next_retry));
+-		}
++	}
++	else if (strcmp(profile->protocol, "file") == 0) {
++		ftp_send_message(profile, report);	
++		INFO("Start New session of profile name '%s' in %d sec", profile->profile_name, profile->reporting_interval);
++		uloop_timeout_set(timeout, 1000 * profile->reporting_interval);
++
+ 		FREE(profile->new_report);
+ 		FREE(report);
+ 		empty_failed_reports_list(profile);
+Index: bulkdata-2.0.3.1/src/config.c
+===================================================================
+--- bulkdata-2.0.3.1.orig/src/config.c
++++ bulkdata-2.0.3.1/src/config.c
+@@ -60,7 +60,7 @@ static void load_profile_config(struct b
+ 	DEBUG("The nombre of retained failed reports of profile name '%s' is : %d", bulkdata->profile[idx].profile_name, bulkdata->profile[idx].nbre_of_retained_failed_reports);
+ 
+ 	data = buci_get_value_bysection(s, "protocol");
+-	bulkdata->profile[idx].protocol = strdup((data && *data && !strcasecmp(data, "http")) ? data : "http");
++	bulkdata->profile[idx].protocol = strdup((data && *data) ? data : "http");
+ 	DEBUG("The protocol of profile name '%s' is : %s", bulkdata->profile[idx].profile_name, bulkdata->profile[idx].protocol);
+ 
+ 	data = buci_get_value_bysection(s, "encoding_type");
+@@ -120,6 +120,18 @@ static void load_profile_config(struct b
+ 	bulkdata->profile[idx].http_password = strdup((data && *data) ? data : "");
+ 	DEBUG("The HTTP password of profile name '%s' is : %s", bulkdata->profile[idx].profile_name, bulkdata->profile[idx].http_password);
+ 
++	data = buci_get_value_bysection(s, "ftp_url");
++	bulkdata->profile[idx].ftp_url = strdup((data && *data) ? data : "");
++	DEBUG("The FTP url of profile name '%s' is : %s", bulkdata->profile[idx].profile_name, bulkdata->profile[idx].ftp_url);
++
++	data = buci_get_value_bysection(s, "ftp_username");
++	bulkdata->profile[idx].ftp_username = strdup((data && *data) ? data : "");
++	DEBUG("The FTP username of profile name '%s' is : %s", bulkdata->profile[idx].profile_name, bulkdata->profile[idx].ftp_username);
++
++	data = buci_get_value_bysection(s, "ftp_password");
++	bulkdata->profile[idx].ftp_password = strdup((data && *data) ? data : "");
++	DEBUG("The FTP password of profile name '%s' is : %s", bulkdata->profile[idx].profile_name, bulkdata->profile[idx].ftp_password);
++
+ 	data = buci_get_value_bysection(s, "http_compression");
+ 	bulkdata->profile[idx].http_compression = strdup((data && *data) ? data : "none");
+ 	DEBUG("The HTTP compression of profile name '%s' is : %s", bulkdata->profile[idx].profile_name, bulkdata->profile[idx].http_compression);
+@@ -291,6 +303,9 @@ static void free_profiles_enable(struct
+ 		FREE(bulkdata->profile[i].http_password);
+ 		FREE(bulkdata->profile[i].http_compression);
+ 		FREE(bulkdata->profile[i].http_method);
++		FREE(bulkdata->profile[i].ftp_url);
++		FREE(bulkdata->profile[i].ftp_username);
++		FREE(bulkdata->profile[i].ftp_password);
+ 	}
+ 	FREE(bulkdata->profile);
+ }
+Index: bulkdata-2.0.3.1/src/config.h
+===================================================================
+--- bulkdata-2.0.3.1.orig/src/config.h
++++ bulkdata-2.0.3.1/src/config.h
+@@ -71,6 +71,9 @@ typedef struct profile {
+ 	struct profile_parameter *profile_parameter;
+ 	struct profile_http_request_uri_parameter *profile_http_uri_parameter;
+ 	struct list_head *failed_reports;
++	char *ftp_url;
++	char *ftp_username;
++	char *ftp_password;
+ } profile;
+ 
+ typedef struct bulkdata {
+Index: bulkdata-2.0.3.1/src/report.c
+===================================================================
+--- bulkdata-2.0.3.1.orig/src/report.c
++++ bulkdata-2.0.3.1/src/report.c
+@@ -369,12 +369,111 @@ static void create_csv_failed_report(str
+ 	add_failed_reports_to_report_csv(profile, report, 0);
+ }
+ 
++int bulkdata_time_format(time_t ts, char **dst)
++{
++	char time_buf[32] = { 0, 0 };
++	struct tm *t_tm;
++
++	*dst = strdup("0001-01-01T00:00:00+00:00");
++
++	t_tm = localtime(&ts);
++	if (t_tm == NULL)
++		return -1;
++
++	if(strftime(time_buf, sizeof(time_buf), "%Y-%m-%dT%H:%M:%SZ", t_tm) == 0)
++		return -1;
++
++	FREE(*dst);
++	*dst = strdup(time_buf);
++	return 0;
++}
++
++int create_xml_bulkdata_report(struct profile *profile, char **report)
++{
++	char *str1 = NULL, *str2 = NULL, *str3 = NULL;
++	param_data_t *p = NULL;
++	int i = 0, profile_param_number = profile->profile_parameter_number;
++	char *dst1 = NULL, *dst2 = NULL, *manufacturer_oui = NULL, *serial_number = NULL;
++	int res = 0;
++
++	INFO("Total nums of parameters on Profilr: %d", profile->profile_parameter_number);
++
++	bulkdata_time_format(time(NULL), &dst1);
++	vendor_data_t oui_data = { .path = "Device.DeviceInfo.ManufacturerOUI" };
++	res = get_value_single(&oui_data);
++	manufacturer_oui = (res == 0) ? oui_data.p_value : strdup("");
++
++	vendor_data_t sn_data = { .path = "Device.DeviceInfo.SerialNumber" };
++	res = get_value_single(&sn_data);
++	serial_number = (res == 0) ? sn_data.p_value : strdup("");
++
++	asprintf(report, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
++							"<ipdr:IPDRDoc xmlns:ipdr=\"http://www.ipdr.org/namespaces/ipdr\"\n"
++							"              xmlns=\"urn:broadband-forum-org:ipdr:tr-232-1-0\"\n"
++							"              xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n"
++							"              xsi:schemaLocation=\"urn:broadband-forum-org:ipdr:tr-232-1-0\n"
++							"                  tr-232-1-0-0-serviceSpec.xsd\n"
++							"                  http://www.ipdr.org/namespaces/ipdr\n"
++							"                  http://www.ipdr.org/public/IPDRDoc3.5.1.xsd\"\n"
++							"              docId=\"f81d4fae-7dec-11d0-a765-00a0c91e6bf6\"\n"
++							"              creationTime=\"%s\"\n"
++							"              IPDRRecorderInfo=\"Profile\"\n"
++							"              version=\"3.5.1\">\n", dst1);
++
++	asprintf(&str1, "	<ipdr:IPDR xsi:type=\"BulkDataReport\">\n"
++							"		<OUI>%s</OUI>\n"
++							"		<ProductClass></ProductClass>\n"
++							"		<SerialNumber>%s</SerialNumber>\n"
++							"		<Suspect>false</Suspect>\"\n", manufacturer_oui, serial_number);
++	append_string_to_string(str1, report);
++	FREE(manufacturer_oui);
++	FREE(serial_number);
++	FREE(str1);
++	FREE(dst1);
++
++	for (i = 0; i < profile_param_number; i++) {
++		LIST_HEAD(results_list);
++
++		vendor_data_t ref_data = {
++			.path = profile->profile_parameter[i].reference,
++			.list = &results_list
++		};
++
++		int res = get_value_group(&ref_data);
++		if (res != 0)
++			continue;
++
++		list_for_each_entry(p, &results_list, list) {
++			asprintf(&str2,"		<BulkData>\n"
++						"			<Name>%s</Name>\n"
++						"			<Value>%s</Value>\n"
++						"		</BulkData>\n", profile->profile_parameter[i].reference, p->data);
++			append_string_to_string(str2, report);
++			FREE(str2);
++		}
++
++		bulkdata_free_data_from_list(&results_list);
++	}
++
++	bulkdata_time_format(time(NULL), &dst2);
++	asprintf(&str3,"	</ipdr:IPDR>\n"
++				"	<ipdr:IPDRDoc.End count=\"1\" endTime=\"%s\">\n"
++				"</ipdr:IPDRDoc>\n", dst2);
++	append_string_to_string(str3, report);
++	FREE(dst2);
++	FREE(str3);	
++
++	return 0;
++}
++
+ void create_encoding_bulkdata_report(struct profile *profile, char **report)
+ {
+ 	if (strcasecmp(profile->encoding_type, "json") == 0) {
+ 		create_json_bulkdata_report(profile, report);
+ 	} else if (strcasecmp(profile->encoding_type, "csv") == 0) {
+ 		create_csv_bulkdata_report(profile, report);
++	} else if (strcasecmp(profile->encoding_type, "xml") == 0) {
++		create_xml_bulkdata_report(profile, report);
+ 	}
+ }
+ 
+Index: bulkdata-2.0.3.1/src/utils.c
+===================================================================
+--- bulkdata-2.0.3.1.orig/src/utils.c
++++ bulkdata-2.0.3.1/src/utils.c
+@@ -584,6 +584,116 @@ error:
+ 	return -1;
+ }
+ 
++int ftp_send_message(struct profile *profile, char *msg_out)
++{
++#define LOCAL_FILE      "/tmp/report.txt"
++#define UPLOAD_FILE_AS  "report-uploading.txt"
++//#define RENAME_FILE_TO  "renamed-and-fine.txt"
++
++	char remote_url[1048] = {0};  //fttp_url string limit is 1024. Please refer to set_BulkDataProfile_FileTransferURL(). And string Length of UPLOAD_FILE_AS is 20.
++	struct curl_slist *header_list = NULL;
++	CURLcode res;
++	long http_code = 0;
++	char errbuf[CURL_ERROR_SIZE];
++	FILE *hd_src = NULL;
++	struct stat file_info;
++	unsigned long fsize;
++	static const char buf_1 [] = "RNFR " UPLOAD_FILE_AS;
++	//static const char buf_2 [] = "RNTO " RENAME_FILE_TO;
++
++	/* get a FILE * of the same file and write data to report */
++	hd_src = fopen(LOCAL_FILE, "w+");
++	if (hd_src){
++		fprintf(hd_src, "%s\n", msg_out);
++		fclose(hd_src);
++	}
++
++	/* get the file size of the local file */
++	if(stat(LOCAL_FILE, &file_info)) {
++		printf("Couldn't open '%s': %s\n", LOCAL_FILE, strerror(errno));
++		return -1;
++	}
++	fsize = (unsigned long)file_info.st_size;
++
++	hd_src = fopen(LOCAL_FILE, "rb");
++	if (hd_src == NULL)
++		return -1;
++
++	CURL *curl = curl_easy_init();
++	if (!curl) {
++		if (hd_src) 
++			fclose(hd_src); /* close the local file */
++		return -1;
++	}
++
++	snprintf(remote_url, sizeof(remote_url), "%s/%s", profile->ftp_url, UPLOAD_FILE_AS);
++	INFO("FTP url: %s", remote_url);
++
++	/* build a list of commands to pass to libcurl */
++	header_list = curl_slist_append(header_list, buf_1);
++	//header_list = curl_slist_append(header_list, buf_2);
++
++	/* we want to use our own read function */
++	//curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_callback);
++
++	/* enable uploading */
++	curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
++	/* specify target */
++	curl_easy_setopt(curl, CURLOPT_URL, remote_url);
++	curl_easy_setopt(curl, CURLOPT_USERNAME, profile->ftp_username);
++	curl_easy_setopt(curl, CURLOPT_PASSWORD, profile->ftp_password);    
++ 
++	/* pass in that last of FTP commands to run after the transfer */
++	curl_easy_setopt(curl, CURLOPT_POSTQUOTE, header_list);
++ 
++	/* now specify which file to upload */
++	curl_easy_setopt(curl, CURLOPT_READDATA, hd_src);
++ 
++	/*	Set the size of the file to upload (optional).  If you give a *_LARGE
++		option you MUST make sure that the type of the passed-in argument is a
++		curl_off_t. If you use CURLOPT_INFILESIZE (without _LARGE) you must
++		make sure that to pass in a type 'long' argument. */
++	curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE,
++                     (curl_off_t)fsize);
++
++
++	curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
++
++	INFO("Send the report of profile name '%s' to Bulkdata Collector", profile->profile_name);
++	res = curl_easy_perform(curl);
++
++	if (res != CURLE_OK) {
++		size_t len = strlen(errbuf);
++		if (len) {
++			if (errbuf[len - 1] == '\n') errbuf[len - 1] = '\0';
++			WARNING("libcurl: (%d) %s", res, errbuf);
++		} else {
++			ERR("libcurl: (%d) %s", res, curl_easy_strerror(res));
++		}
++	}
++
++	if (res)
++		goto error;
++
++	curl_easy_cleanup(curl);
++	if (header_list) {
++		curl_slist_free_all(header_list);
++		header_list = NULL;
++	}	
++
++	if (hd_src) fclose(hd_src); /* close the local file */
++	return http_code;
++
++error:
++	curl_easy_cleanup(curl);
++	if (header_list) {
++		curl_slist_free_all(header_list);
++		header_list = NULL;
++	}
++	if (hd_src) fclose(hd_src); /* close the local file */
++	return -1;
++}
++
+ char *get_bulkdata_profile_parameter_name(char *paramref, char *paramname, char *param)
+ {
+ 	char buf[512] = {0};
+Index: bulkdata-2.0.3.1/src/utils.h
+===================================================================
+--- bulkdata-2.0.3.1.orig/src/utils.h
++++ bulkdata-2.0.3.1/src/utils.h
+@@ -48,6 +48,7 @@ int get_value_single(vendor_data_t *arg)
+ int get_value_group(vendor_data_t *arg);
+ 
+ int http_send_message(struct profile *profile, char *msg_out);
++int ftp_send_message(struct profile *profile, char *msg_out);
+ 
+ char *get_bulkdata_profile_parameter_name(char *paramref, char *paramname, char *param);
+ void append_string_to_string(char *strappend, char **target);

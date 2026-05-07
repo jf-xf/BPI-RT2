@@ -1,0 +1,31 @@
+Index: linux-5.10.138/net/core/dev.c
+===================================================================
+--- linux-5.10.138.orig/net/core/dev.c
++++ linux-5.10.138/net/core/dev.c
+@@ -3674,6 +3674,12 @@ netdev_features_t netif_skb_features(str
+ }
+ EXPORT_SYMBOL(netif_skb_features);
+ 
++#if defined(CONFIG_RTK_HOST_SPEEDUP) && !defined(TRACEPOINTS_ENABLED)
++typedef int (*SPEEDUP_TX_HANDLE)(void *data, struct sk_buff *skb, struct net_device *dev);
++
++SPEEDUP_TX_HANDLE speedup_tx_handler;
++EXPORT_SYMBOL(speedup_tx_handler);
++#endif
+ static int xmit_one(struct sk_buff *skb, struct net_device *dev,
+ 		    struct netdev_queue *txq, bool more)
+ {
+@@ -3690,6 +3696,13 @@ static int xmit_one(struct sk_buff *skb,
+ 
+ 	len = skb->len;
+ 	PRANDOM_ADD_NOISE(skb, dev, txq, len + jiffies);
++#if defined(CONFIG_RTK_HOST_SPEEDUP) && !defined(TRACEPOINTS_ENABLED)
++	SPEEDUP_TX_HANDLE tx_handler;
++
++	tx_handler = rcu_dereference(speedup_tx_handler);
++	if (tx_handler)
++		tx_handler(NULL, skb, dev);
++#endif
+ 	trace_net_dev_start_xmit(skb, dev);
+ 	rc = netdev_start_xmit(skb, dev, txq, more);
+ 	trace_net_dev_xmit(skb, rc, dev, len);

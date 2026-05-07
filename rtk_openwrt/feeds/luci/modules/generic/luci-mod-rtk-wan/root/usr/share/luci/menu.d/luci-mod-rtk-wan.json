@@ -1,0 +1,32 @@
+{
+	"realtek/wan/wan": {
+		"title": "WAN",
+		"order": 10,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		}
+	},
+
+	"realtek/wan/vpn": {
+		"title": "VPN",
+		"order": 20,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		}
+	},
+
+	"realtek/wan/wan/pon": {
+		"title": "PON WAN",
+		"order": 10,
+		"action": {
+			"type": "view",
+			"path": "rtk/wan/wan/pon"
+		},
+		"depends": {
+			"uci": { "network": true },
+			"acl": [ "luci-mod-rtk-wan-config" ]
+		}
+	}
+}

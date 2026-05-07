@@ -1,0 +1,68 @@
+--- a/ebtables-standalone.c
++++ b/ebtables-standalone.c
+@@ -1,14 +1,65 @@
++#include <stdio.h>
++#include <stdlib.h>
+ #include <string.h>
++#include <errno.h>
++#include <dlfcn.h>
++#include <dirent.h>
++#include <sys/stat.h>
+ #include "include/ebtables_u.h"
+ 
++#define LOAD_EXTENSION_DIR "/usr/lib/ebtables/dyn"
++#define EXTENSION_PREFIX "libebt_"
++static int load_extensions(const char *search_path, const char *prefix);
++
+ static struct ebt_u_replace replace;
+ void ebt_early_init_once();
+ 
+ int main(int argc, char *argv[])
+ {
+ 	ebt_silent = 0;
++	load_extensions(LOAD_EXTENSION_DIR, EXTENSION_PREFIX);
+ 	ebt_early_init_once();
+ 	strcpy(replace.name, "filter");
+ 	do_command(argc, argv, EXEC_STYLE_PRG, &replace);
+ 	return 0;
+ }
++
++static int load_extensions(const char *search_path, const char *prefix)
++{
++	DIR *dir;
++	void *handle;
++	struct dirent **nameList;
++	int total, i;
++	void (*initFunc)(void);
++	struct stat sb;
++	char path[256];
++	
++	if(!search_path || (dir = opendir(search_path)) == NULL ) {
++		//ebt_print_error("Error to open directory (%s)\n", (search_path)?search_path:"NULL");
++		return 1;
++	}
++	else {
++		closedir(dir);
++		total = scandir(search_path, &nameList ,0,alphasort);
++		if(total < 0) {
++			//ebt_print_error("Fail to scandir...\n");
++			return 1;
++		}
++		else {
++			for(i = 0; i < total; i++) {
++				if(nameList[i]->d_name != NULL && 
++					!strncmp(nameList[i]->d_name, prefix, strlen(prefix)))
++				{
++					sprintf(path, "%s/%s", search_path, nameList[i]->d_name);
++					if(stat(path, &sb) == 0 && S_ISREG(sb.st_mode)) {
++						handle = dlopen(path, RTLD_NOW|RTLD_GLOBAL);
++					}
++				}
++				free(nameList[i]);
++			}
++			free(nameList);
++		}
++	}
++
++	return NULL;
++}

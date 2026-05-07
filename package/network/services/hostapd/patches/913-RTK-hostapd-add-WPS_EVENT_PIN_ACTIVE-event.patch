@@ -1,0 +1,121 @@
+From ed88c51d9677503a35f2ddbffa407f94ff8a273f Mon Sep 17 00:00:00 2001
+From: "lucien.zhliu" <lucien.zhliu@realtek.com>
+Date: Mon, 8 Aug 2022 20:41:32 +0800
+Subject: [PATCH] [hostapd] Add WPS_EVENT_PIN_ACTIVE event
+
+1. WPS PBC will flash WPS LED, but WPS PIN won't because WPS_EVENT_PIN_ACTIVE event is not defined
+2. /var/hostapd_wps.sh will handle WPS_EVENT_PIN_ACTIVE to flash WPS LED
+---
+ src/ap/wps_hostapd.c    | 3 +++
+ src/common/wpa_ctrl.h   | 2 ++
+ src/wps/wps.h           | 5 +++++
+ src/wps/wps_common.c    | 9 +++++++++
+ src/wps/wps_i.h         | 1 +
+ src/wps/wps_registrar.c | 1 +
+ 6 files changed, 21 insertions(+)
+ mode change 100644 => 100755 src/common/wpa_ctrl.h
+ mode change 100644 => 100755 src/wps/wps.h
+ mode change 100644 => 100755 src/wps/wps_common.c
+ mode change 100644 => 100755 src/wps/wps_i.h
+ mode change 100644 => 100755 src/wps/wps_registrar.c
+
+diff --git a/src/ap/wps_hostapd.c b/src/ap/wps_hostapd.c
+index 4d1a498..32e9bf7 100755
+--- a/src/ap/wps_hostapd.c
++++ b/src/ap/wps_hostapd.c
+@@ -918,6 +918,9 @@ static void hostapd_wps_event_cb(void *ctx, enum wps_event event,
+ 		hostapd_wps_event_pbc_disable(hapd);
+ 		wpa_msg(hapd->msg_ctx, MSG_INFO, WPS_EVENT_DISABLE);
+ 		break;
++	case WPS_EV_PIN_ACTIVE:
++		wpa_msg(hapd->msg_ctx, MSG_INFO, WPS_EVENT_PIN_ACTIVE);
++		break;
+ 	case WPS_EV_ER_AP_ADD:
+ 		break;
+ 	case WPS_EV_ER_AP_REMOVE:
+diff --git a/src/common/wpa_ctrl.h b/src/common/wpa_ctrl.h
+old mode 100644
+new mode 100755
+index 2c7ec04..157a978
+--- a/src/common/wpa_ctrl.h
++++ b/src/common/wpa_ctrl.h
+@@ -157,6 +157,8 @@ extern "C" {
+ #define WPS_EVENT_ACTIVE "WPS-PBC-ACTIVE "
+ /* PBC mode was disabled */
+ #define WPS_EVENT_DISABLE "WPS-PBC-DISABLE "
++/* PIN mode was activated */
++#define WPS_EVENT_PIN_ACTIVE "WPS-PIN-ACTIVE "
+ 
+ #define WPS_EVENT_ENROLLEE_SEEN "WPS-ENROLLEE-SEEN "
+ 
+diff --git a/src/wps/wps.h b/src/wps/wps.h
+old mode 100644
+new mode 100755
+index fed3e28..634d306
+--- a/src/wps/wps.h
++++ b/src/wps/wps.h
+@@ -484,6 +484,11 @@ enum wps_event {
+ 	 */
+ 	WPS_EV_PBC_DISABLE,
+ 
++	/**
++	 * WPS_EV_PIN_ACTIVE - PIN mode was activated
++	 */
++	WPS_EV_PIN_ACTIVE,
++
+ 	/**
+ 	 * WPS_EV_ER_AP_ADD - ER: AP added
+ 	 */
+diff --git a/src/wps/wps_common.c b/src/wps/wps_common.c
+old mode 100644
+new mode 100755
+index 747dc47..be7dc88
+--- a/src/wps/wps_common.c
++++ b/src/wps/wps_common.c
+@@ -351,6 +351,15 @@ void wps_pbc_disable_event(struct wps_context *wps)
+ }
+ 
+ 
++void wps_pin_active_event(struct wps_context *wps)
++{
++	if (wps->event_cb == NULL)
++		return;
++
++	wps->event_cb(wps->cb_ctx, WPS_EV_PIN_ACTIVE, NULL);
++}
++
++
+ #ifdef CONFIG_WPS_OOB
+ 
+ struct wpabuf * wps_get_oob_cred(struct wps_context *wps, int rf_band,
+diff --git a/src/wps/wps_i.h b/src/wps/wps_i.h
+old mode 100644
+new mode 100755
+index 2cf22d4..1d36ac3
+--- a/src/wps/wps_i.h
++++ b/src/wps/wps_i.h
+@@ -147,6 +147,7 @@ void wps_pbc_overlap_event(struct wps_context *wps);
+ void wps_pbc_timeout_event(struct wps_context *wps);
+ void wps_pbc_active_event(struct wps_context *wps);
+ void wps_pbc_disable_event(struct wps_context *wps);
++void wps_pin_active_event(struct wps_context *wps);
+ 
+ struct wpabuf * wps_build_wsc_ack(struct wps_data *wps);
+ struct wpabuf * wps_build_wsc_nack(struct wps_data *wps);
+diff --git a/src/wps/wps_registrar.c b/src/wps/wps_registrar.c
+old mode 100644
+new mode 100755
+index 9587293..27b3e8c
+--- a/src/wps/wps_registrar.c
++++ b/src/wps/wps_registrar.c
+@@ -828,6 +828,7 @@ int wps_registrar_add_pin(struct wps_registrar *reg, const u8 *addr,
+ 		wps_registrar_add_authorized_mac(
+ 			reg, (u8 *) "\xff\xff\xff\xff\xff\xff");
+ 	wps_registrar_selected_registrar_changed(reg, 0);
++	wps_pin_active_event(reg->wps);
+ 	eloop_cancel_timeout(wps_registrar_set_selected_timeout, reg, NULL);
+ 	eloop_register_timeout(WPS_PBC_WALK_TIME, 0,
+ 			       wps_registrar_set_selected_timeout,
+-- 
+2.37.1
+

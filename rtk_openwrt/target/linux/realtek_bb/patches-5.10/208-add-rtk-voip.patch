@@ -1,0 +1,429 @@
+Index: linux-5.10.138/Makefile
+===================================================================
+--- linux-5.10.138.orig/Makefile
++++ linux-5.10.138/Makefile
+@@ -1120,6 +1120,11 @@ endif # CONFIG_BPF
+ 
+ PHONY += prepare0
+ 
++ifeq ($(CONFIG_RTK_VOIP),y)
++drivers-$(CONFIG_RTK_VOIP)      += rtk_voip/
++endif
++
++
+ export MODORDER := $(extmod-prefix)modules.order
+ export MODULES_NSDEPS := $(extmod-prefix)modules.nsdeps
+ 
+Index: linux-5.10.138/arch/arm64/Kconfig
+===================================================================
+--- linux-5.10.138.orig/arch/arm64/Kconfig
++++ linux-5.10.138/arch/arm64/Kconfig
+@@ -87,10 +87,10 @@ config ARM64
+ 	select ARM_ARCH_TIMER
+ 	select ARM_GIC if !ARCH_CORTINA_VENUS && !ARCH_REALTEK_TAURUS
+ 	select AUDIT_ARCH_COMPAT_GENERIC
+-	select ARM_GIC_V2M if PCI && !ARCH_CORTINA_VENUS && !ARCH_REALTEK_TAURUS
++	select ARM_GIC_V2M if PCI && !ARCH_CORTINA
+ 	select ARM_GIC_V3_SECURED if ARCH_CORTINA_VENUS && !CORTINA_BOARD_FPGA
+ 	select ARM_GIC_V3 if !ARCH_CORTINA_VENUS || (CORTINA_BOARD_FPGA && ARCH_CORTINA_VENUS)
+-	select ARM_GIC_V3_ITS if PCI && !ARCH_CORTINA_VENUS && !ARCH_REALTEK_TAURUS
++	select ARM_GIC_V3_ITS if PCI && !ARCH_CORTINA
+ 	select ARM_PSCI_FW
+ 	select BUILDTIME_TABLE_SORT
+ 	select CLONE_BACKWARDS
+@@ -1954,3 +1954,6 @@ source "arch/arm64/kvm/Kconfig"
+ if CRYPTO
+ source "arch/arm64/crypto/Kconfig"
+ endif
++
++source "drivers/rtk_voip/Kconfig"
++
+Index: linux-5.10.138/arch/arm64/kernel/vmlinux.lds.S
+===================================================================
+--- linux-5.10.138.orig/arch/arm64/kernel/vmlinux.lds.S
++++ linux-5.10.138/arch/arm64/kernel/vmlinux.lds.S
+@@ -196,7 +196,29 @@ SECTIONS
+ 	.init.data : {
+ 		INIT_DATA
+ 		INIT_SETUP(16)
++#ifndef CONFIG_RTK_VOIP
+ 		INIT_CALLS
++#else
++                __initcall_start = .;
++                KEEP(*(.initcallearly.init))
++                INIT_CALLS_LEVEL(0)
++                INIT_CALLS_LEVEL(1)
++                INIT_CALLS_LEVEL(2)
++                INIT_CALLS_LEVEL(3)
++                INIT_CALLS_LEVEL(4)
++                INIT_CALLS_LEVEL(5)
++                INIT_CALLS_LEVEL(rootfs)
++                INIT_CALLS_LEVEL(6)
++                INIT_CALLS_LEVEL(7)
++                *(.initcall98.init)
++                *(.initcall98a.init) *(.initcall98b.init) *(.initcall98c.init) *(.initcall98d.init) *(.initcall98e.init)
++                *(.initcall98f.init) *(.initcall98g.init) *(.initcall98h.init) *(.initcall98i.init) *(.initcall98j.init)
++                *(.initcall99.init)
++                *(.initcall99a.init) *(.initcall99b.init) *(.initcall99c.init) *(.initcall99d.init) *(.initcall99e.init)
++                *(.initcall99f.init) *(.initcall99g.init)
++                *(.initcall99s.init)
++                __initcall_end = .;
++#endif
+ 		CON_INITCALL
+ 		INIT_RAM_FS
+ 		*(.init.rodata.* .init.bss)	/* from the EFI stub */
+Index: linux-5.10.138/arch/mips/Kconfig
+===================================================================
+--- linux-5.10.138.orig/arch/mips/Kconfig
++++ linux-5.10.138/arch/mips/Kconfig
+@@ -3356,3 +3356,5 @@ source "drivers/firmware/Kconfig"
+ source "arch/mips/kvm/Kconfig"
+ 
+ source "arch/mips/vdso/Kconfig"
++
++source "drivers/rtk_voip/Kconfig"
+Index: linux-5.10.138/arch/mips/kernel/vmlinux.lds.S
+===================================================================
+--- linux-5.10.138.orig/arch/mips/kernel/vmlinux.lds.S
++++ linux-5.10.138/arch/mips/kernel/vmlinux.lds.S
+@@ -60,6 +60,100 @@ SECTIONS
+ 	_text = .;	/* Text and read-only data */
+ 	.text : {
+ 		TEXT_TEXT
++#if defined(CONFIG_RTK_VOIP) && defined(CONFIG_RTK_VOIP_STANDALONE_ARCH)
++		/*Realtek LUNA SDK IMEM DECLARATION*/
++		. = ALIGN(8);
++		*(.AllPoleFilter_fixed16s)
++		*(.AllZeroFilter_fixed16s)
++		*(.getCBvec_fixed16s)
++
++		/* . = ALIGN(ZZ_IRAMSIZE_ZZ); */
++#ifdef CONFIG_IMEM_SIZE
++		. = ALIGN(CONFIG_IMEM_SIZE);
++#endif
++		__ILBCENC_IMEM_start = .;
++		*(.iLBC_Lsp_Azs)
++		*(.iLBC_Get_lsp_pols)
++		*(.iLBC_crossconvs)
++		*(.iLBC_Autocorrs)
++		*(.iLBC_Levinsons)
++		*(.iCBSearch_hbsrchlps)
++		*(.iCBSearch_mainlps)
++		*(.iCBSearch_hbsrchstg0s)
++		*(.iCBSearch_Loop4s)
++		*(.ilbcenc_oper_32bs)
++		*(.iLBC_Chebps_1xs)
++		*(.searchAugmentedCB_fixeds)
++		*(.createAugmentedVec_fixed16s)
++		*(.iCBSearch_scal_bufs)
++		*(.filteredCBvecs_fixed16s)
++		__ILBCENC_IMEM_end = .;
++
++		/* . = ALIGN(ZZ_IRAMSIZE_ZZ); */
++#ifdef CONFIG_IMEM_SIZE
++		. = ALIGN(CONFIG_IMEM_SIZE);
++#endif
++		__ILBCDEC_IMEM_start = .;
++		*(.doThePLC_fixed16s)
++		*(.enhancerInterface_fixed16s)
++		*(.smath_fixed16s)
++		*(.ilbcdec_oper_32bs)
++		*(.compCorr_fixed16s)
++		*(.hpOutput_fixed16s)
++		*(.xCorrCoef_fixed16s)
++		*(.iLBC_Iirs)
++		*(.iLBC_Syn_filts)
++		*(.mycorr1_fixed16s)
++		*(.mycorr2_fixed16s)
++		*(.refiner_fixed16)
++		*(.enh_upsample_fixed16)
++		*(.iLBC_decode)
++		__ILBCDEC_IMEM_end = .;
++
++#ifdef CONFIG_RTL8672
++		/* g729 codec */
++		*(.Pre_Process2s)
++		*(.Cor_hs)
++		*(.D4i40_17_fasts)
++		*(.Corr_xy2s)
++		*(.imem8K)
++		*(.imem16K)
++		*(.imem32K)
++		*(.utility)
++		*(.memset)
++		*(.g729_utils)
++		*(.dspfuncs)
++		*(.Decod_ACELPs)
++		*(.Decod_ld8a_sub1s)
++		*(.Decod_ld8a_sub2s)
++		*(.bit2parm)
++		*(.Post_Processs)
++		*(.Post_Filters)
++		*(.Int_qlpcs)
++#endif
++#ifdef CONFIG_IMEM_SIZE
++		. = ALIGN(CONFIG_IMEM_SIZE);
++#endif
++		__iram = . ;
++		*(.iram)
++		__imem_G729_START = .;
++		*(.Cor_h_Xs)		/* G.729enc only start*/
++		*(.g729_crossconvs)
++		*(.Chebps_1xs)		/* G.729enc only end*/
++		*(.agcs)		/* G.729dec only start*/
++		*(.preemphasiss)	/* G.729dec only end*/
++		*(.g729_crosscorrs)	/* G.729 comm start*/
++		*(.Pred_lt_3s)
++		*(.filters)		/* G.729 comm end*/
++		__imem_G729_END = .;
++
++		__imem_common_start = .;
++		*(.basic_ops)
++		*(.oper_32bs)
++		__imem_common_end = .;
++		*(.iram*)
++		__iram_end = . ;
++#endif
+ 		SCHED_TEXT
+ 		CPUIDLE_TEXT
+ 		LOCK_TEXT
+@@ -84,6 +178,32 @@ SECTIONS
+ 	_sdata = .;			/* Start of data section */
+ 	RO_DATA(4096)
+ 
++	. = ALIGN(4);
++	.nand_spif_probe_func : {
++		LS_start_of_nand_spif_probe_func = .;
++		KEEP(*(.nand_spif_probe_func));
++		LS_end_of_nand_spif_probe_func = .;
++	}
++
++	. = ALIGN(4);
++	.snaf_init_rest_func : {
++		LS_start_of_snaf_init_rest_func = .;
++		KEEP(*(.snaf_init_rest_func));
++		LS_end_of_snaf_init_rest_func = .;
++	}
++
++	.onfi_probe_func : {
++		LS_start_of_nand_onfi_probe_func = .;
++		KEEP(*(.onfi_probe_func));
++		LS_end_of_nand_onfi_probe_func = .;
++	}
++
++	.nor_spif_probe_func : {
++	 LS_start_of_nor_spif_probe_func = .;
++	 KEEP(*(.nor_spif_probe_func));
++	 LS_end_of_nor_spif_probe_func = .;
++	}
++
+ 	/* writeable */
+ 	.data : {	/* Data */
+ 		. = . + DATAOFFSET;		/* for CONFIG_MAPPED_KERNEL */
+@@ -116,7 +236,38 @@ SECTIONS
+ 	. = ALIGN(PAGE_SIZE);		/* Init code and data */
+ 	__init_begin = .;
+ 	INIT_TEXT_SECTION(PAGE_SIZE)
++#ifndef CONFIG_RTK_VOIP
+ 	INIT_DATA_SECTION(16)
++#else
++        .init.data : AT(ADDR(.init.data) - LOAD_OFFSET) {
++                INIT_DATA
++                INIT_SETUP(16)
++                __initcall_start = .;
++                KEEP(*(.initcallearly.init))
++                INIT_CALLS_LEVEL(0)
++                INIT_CALLS_LEVEL(1)
++                INIT_CALLS_LEVEL(2)
++                INIT_CALLS_LEVEL(3)
++                INIT_CALLS_LEVEL(4)
++                INIT_CALLS_LEVEL(5)
++                INIT_CALLS_LEVEL(rootfs)
++                INIT_CALLS_LEVEL(6)
++                INIT_CALLS_LEVEL(7)
++                KEEP(*(.initcall98.init))
++                KEEP(*(.initcall98a.init)) KEEP(*(.initcall98b.init)) KEEP(*(.initcall98c.init)) KEEP(*(.initcall98d.init)) KEEP(*(.initcall98e.init))
++                KEEP(*(.initcall98f.init)) KEEP(*(.initcall98g.init)) KEEP(*(.initcall98h.init)) KEEP(*(.initcall98i.init)) KEEP(*(.initcall98j.init))
++                KEEP(*(.initcall99.init))
++                KEEP(*(.initcall99a.init)) KEEP(*(.initcall99b.init)) KEEP(*(.initcall99c.init)) KEEP(*(.initcall99d.init)) KEEP(*(.initcall99e.init))
++                KEEP(*(.initcall99f.init)) KEEP(*(.initcall99g.init))
++                KEEP(*(.initcall99s.init))
++                __initcall_end = .;
++
++                CON_INITCALL
++                INIT_RAM_FS
++        }
++
++#endif
++
+ 
+ 	. = ALIGN(4);
+ 	.mips.machines.init : AT(ADDR(.mips.machines.init) - LOAD_OFFSET) {
+@@ -180,6 +331,100 @@ SECTIONS
+ 	__init_end = .;
+ 	/* freed after init ends here */
+ 
++#if defined(CONFIG_RTK_VOIP) && defined(CONFIG_RTK_VOIP_STANDALONE_ARCH)
++	/* VoIP DMEM start */
++	. = . + 2k; /* reserve 2k avoid voip stack grow to here. */
++	/*. = ALIGN( MAX(8k, ZZ_DRAMSIZE_ZZ) );*/
++	__dmem_start = .;
++	/*__gsmfr_dmem_start = .;*/
++	/* rtk_voip start*/
++	/*.DMEM_GSMFR	:
++	  {
++	 *//* *(.gsmfr_dummy_topstack) */
++	/*. = . + 4k;
++	  . = ALIGN(4k);
++	 *(.gsmfr_dmem_stack1K)
++	 . = ALIGN(8);
++	 *(.gsmfr_dmem_bss)
++	 __gsmfr_dmem_end = .;
++	 }
++	 */
++	. = ALIGN( MAX(8k, ZZ_DRAMSIZE_ZZ) );
++	__g729_dmem_start = .;
++	.DMEM_G729	:
++	{
++		/* *(.g729_dummy_topstack) */
++		. = . + 4k;
++		. = ALIGN(4k);
++		*(.g729_dmem_stack1K)
++		. = ALIGN(8);
++		*(.g729_dmem_bss.0)
++		*(.g729_dmem_bss.1)
++		__g729_dmem_end = .;
++	}
++
++	/*. = ALIGN( MAX(8k, ZZ_DRAMSIZE_ZZ) );
++	  __g726_dmem_start = .;
++	  .DMEM_G726	:
++	  {
++	*//* *(.g726_dummy_topstack) */
++	/*. = . + 4k;
++	. = ALIGN(4k);
++	 *(.g726_dmem_stack1K)
++	 *(.dmem_g726)
++	 __g726_dmem_end = .;
++	 }
++	 */
++
++	. = ALIGN( MAX(8k, ZZ_DRAMSIZE_ZZ) );
++	__lec_dmem_start = .;
++	.DMEM_LEC	:
++	{
++		. = . + 4k;
++		. = ALIGN(4k);
++		/* *(.lec_dummy_topstack) */
++		*(.lec_dmem_stack1K)
++		. = ALIGN(8);
++		*(.dmem_lec)
++		__lec_dmem_end = .;
++	}
++	. = ALIGN( MAX(8k, ZZ_DRAMSIZE_ZZ) );
++	__sys_dmem_start = .;
++	.DMEM_SYS	:
++	{
++		. = . + 4k;
++		. = ALIGN(4k);
++		/* *(.sys_dummy_topstack) */
++		*(.sys_dmem_stack)
++		__sys_dmem_end = .;
++	}
++	/* . = ALIGN(ZZ_DRAMSIZE_ZZ);*/
++	. = ALIGN( MAX(8k, ZZ_DRAMSIZE_ZZ) );
++	__codec_dmem_start = .;
++	.DMEM_CODEC	:
++	{
++		. = . + 4k;
++		. = ALIGN( MIN(4k, ZZ_DRAMSIZE_ZZ));
++		__codec_dmem_4k_start = .;
++		*(.codec_dmem_area)
++		__codec_dmem_end = .;
++	}
++
++	. = ALIGN( 4k );
++	__g7231_dmem_start = .;
++	.DMEM_G7231 :
++	{
++		*(.g7231_dmem_stack1K)
++		. = ALIGN(8);
++		*(.g7231_dmem_bss.0)
++		__g7231_dmem_end = .;
++	}
++	. = ADDR(.DMEM_CODEC) + MAX(8k, ZZ_DRAMSIZE_ZZ) + 4k; /* skip overlays address*/
++	. = . + 6k; /* reserve 6k avoid ilbc iLBCTmpVct grow here. */
++	__voip_dmem_end = .;
++	/* VoIP DMEM end */
++#endif
++
+ 	/*
+ 	 * Force .bss to 64K alignment so that .bss..swapper_pg_dir
+ 	 * gets that alignment.	 .sbss should be empty, so there will be
+Index: linux-5.10.138/drivers/char/Kconfig
+===================================================================
+--- linux-5.10.138.orig/drivers/char/Kconfig
++++ linux-5.10.138/drivers/char/Kconfig
+@@ -508,4 +508,53 @@ config RANDOM_TRUST_BOOTLOADER
+ 	  believe its RNG facilities may be faulty. This may also be configured
+ 	  at boot time with "random.trust_bootloader=on/off".
+ 
++source "drivers/char/aipc/Kconfig"
++
++config VOIP_IPC_DSP_ARCHITECTURE
++	bool "VoIP IPC DSP Architecture"
++	default y
++
++comment "RTL8686 IPC Shared Memory Setting"
++	depends on VOIP_IPC_DSP_ARCHITECTURE
++
++menu "RTL8686 SHM Setting"
++	depends on VOIP_IPC_DSP_ARCHITECTURE
++
++config RTL8686_SHM_SETTING
++	bool "RTL8686 SHM Setting"
++	depends on VOIP_IPC_DSP_ARCHITECTURE
++	default y
++
++config RTL8686_CPU_MEM_BASE
++	hex  "RTL8686 CPU MEM Base"
++	depends on RTL8686_SHM_SETTING
++	default 0x00000000
++
++config RTL8686_CPU_MEM_SIZE
++	hex  "RTL8686 CPU MEM Size"
++	depends on RTL8686_SHM_SETTING && VOIP_IPC_DSP_ARCHITECTURE
++	default 0x03800000
++
++config RTL8686_IPC_MEM_BASE
++	hex  "RTL8686 IPC MEM Base"
++	depends on RTL8686_SHM_SETTING && VOIP_IPC_DSP_ARCHITECTURE
++	default 0x03800000
++
++config RTL8686_IPC_MEM_SIZE
++	hex  "RTL8686 IPC MEM Size"
++	depends on RTL8686_SHM_SETTING && VOIP_IPC_DSP_ARCHITECTURE
++	default 0x00100000
++
++config RTL8686_DSP_MEM_BASE
++	hex  "RTL8686 DSP MEM Base"
++	depends on RTL8686_SHM_SETTING && VOIP_IPC_DSP_ARCHITECTURE
++	default 0x03900000
++
++config RTL8686_DSP_MEM_SIZE
++	hex  "RTL8686 DSP MEM Size"
++	depends on RTL8686_SHM_SETTING && VOIP_IPC_DSP_ARCHITECTURE
++	default 0x00700000
++
++endmenu
++
+ endmenu
+Index: linux-5.10.138/drivers/char/Makefile
+===================================================================
+--- linux-5.10.138.orig/drivers/char/Makefile
++++ linux-5.10.138/drivers/char/Makefile
+@@ -47,3 +47,4 @@ obj-$(CONFIG_PS3_FLASH)		+= ps3flash.o
+ obj-$(CONFIG_XILLYBUS)		+= xillybus/
+ obj-$(CONFIG_POWERNV_OP_PANEL)	+= powernv-op-panel.o
+ obj-$(CONFIG_ADI)		+= adi.o
++obj-$(CONFIG_RTL8686_IPC_DEV) += aipc/

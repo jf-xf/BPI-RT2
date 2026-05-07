@@ -1,0 +1,36 @@
+{
+        "realtek/advance/qos/qospolicy": {
+                "title": "IP QoS Configuration",
+                "order": 10,
+                "action": {
+                        "type": "view",
+                        "path": "rtk/advance/qos/qospolicy"
+                },
+                "depends": {
+                        "uci": { "qos": true }
+                }
+        },
+
+        "realtek/advance/qos/qosclassification": {
+                "title": "QoS Classification",
+                "order": 20,
+                "action": {
+                        "type": "view",
+                        "path": "rtk/advance/qos/qosclassification"
+                },
+                "depends": {
+                        "uci": { "qos": true }
+                }
+        },
+        "realtek/advance/qos/qostrafficshaping": {
+                "title": "IP QoS Traffic Shaping",
+                "order": 30,
+                "action": {
+                        "type": "view",
+                        "path": "rtk/advance/qos/qostrafficshaping"
+                },
+                "depends": {
+                        "uci": { "qos": true }
+                }
+        }
+}

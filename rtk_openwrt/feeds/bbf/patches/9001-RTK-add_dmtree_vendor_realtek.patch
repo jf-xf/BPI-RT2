@@ -1,0 +1,47 @@
+Index: libbbfdm-6.8.21/dmtree/vendor/vendor.c
+===================================================================
+--- libbbfdm-6.8.21.orig/dmtree/vendor/vendor.c
++++ libbbfdm-6.8.21/dmtree/vendor/vendor.c
+@@ -23,6 +23,10 @@
+ #include "test/tr181/vendor.h"
+ #endif
+ 
++#ifdef BBF_VENDOR_REALTEK
++#include "realtek/tr181/vendor.h"
++#endif
++
+ /** This table is defined to add a new custom obj/param in the tree **/
+ DM_MAP_VENDOR tVendorExtension[] = {
+ /* customer, tableobject */
+@@ -35,6 +39,10 @@ DM_MAP_VENDOR tVendorExtension[] = {
+ {"test", tVendorExtensionTEST},
+ #endif
+ 
++#ifdef BBF_VENDOR_REALTEK
++{"realtek", tVendorExtensionREALTEK},
++#endif
++
+ {0}
+ };
+ 
+@@ -50,6 +58,10 @@ DM_MAP_VENDOR tVendorExtensionOverwrite[
+ {"test", tVendorExtensionOverwriteTEST},
+ #endif
+ 
++#ifdef BBF_VENDOR_REALTEK
++{"realtek", tVendorExtensionOverwriteREALTEK},
++#endif
++
+ {0}
+ };
+ 
+@@ -65,6 +77,9 @@ DM_MAP_VENDOR_EXCLUDE tVendorExtensionEx
+ {"test", VendorExtensionExcludeTEST},
+ #endif
+ 
++#ifdef BBF_VENDOR_REALTEK
++{"realtek", VendorExtensionExcludeREALTEK},
++#endif
+ 
+ {0}
+ };

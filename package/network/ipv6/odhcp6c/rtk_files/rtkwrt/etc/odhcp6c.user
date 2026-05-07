@@ -1,0 +1,109 @@
+#!/bin/sh 
+
+. /lib/functions.sh
+. /lib/netifd/netifd-proto.sh
+
+save_ipv6_gateway_info(){
+	local device="$1"
+
+	for entry in $RA_ROUTES; do
+		local duplicate=$NOSOURCEFILTER
+		local addr="${entry%%/*}"
+		entry="${entry#*/}"
+		local mask="${entry%%,*}"
+		entry="${entry#*,}"
+		local gw="${entry%%,*}"
+		entry="${entry#*,}"
+		local valid="${entry%%,*}"
+		entry="${entry#*,}"
+		local metric="${entry%%,*}"
+
+		#RTK add for saving IPv6 gateway
+		[ -n "$gw" ] && echo "$gw" > $RTK_MER_GWINFO_V6"."$1
+	done
+}
+
+save_ipv6_dns_info()
+{
+	rm $RTK_DNS6_RESOLV_FILE"."$1 2>/dev/null
+	# Merge RA-DNS
+	for radns in $RA_DNS; do
+		local duplicate=0
+		for dns in $RDNSS; do
+			[ "$radns" = "$dns" ] && duplicate=1
+		done
+		[ "$duplicate" = 0 ] && RDNSS="$RDNSS $radns"
+	done
+
+	for i in $RDNSS; do
+		echo $i >> $RTK_DNS6_RESOLV_FILE"."$1
+	done
+
+	rm $RTK_DNS6_DOMAIN_SEARCH_FILE"."$1 2>/dev/null
+	for radomain in $RA_DOMAINS; do
+		local duplicate=0
+		for domain in $DOMAINS; do
+			[ "$radomain" = "$domain" ] && duplicate=1
+		done
+		[ "$duplicate" = 0 ] && DOMAINS="$DOMAINS $radomain"
+	done
+
+	for domain in $DOMAINS; do
+		echo $domain >> $RTK_DNS6_DOMAIN_SEARCH_FILE"."$1
+	done
+}
+
+restart_dnsrelay()
+{
+	op=0
+	json_init
+	json_add_string wan_inf "$1"
+	json_add_int op "$op"
+	ubus call rtk-usock do_restart_dnsrelay "$(json_dump)"
+}
+
+restart_ipv6_lan_server()
+{
+	eval `mib get LAN_DNSV6_MODE`
+	if [ $LAN_DNSV6_MODE -eq 1 ]; then
+		json_init
+		json_add_string action "restart"
+		ubus call rtk-usock do_LanV6Server "$(json_dump)"
+	fi
+}
+
+case "$2" in
+	bound)
+		save_ipv6_gateway_info "$1"
+		#save DNS info and restart dnsrelay
+		save_ipv6_dns_info "$1"
+		restart_dnsrelay "$1"
+		#update lan dhcpv6 server dns option
+		restart_ipv6_lan_server
+		#Add IPv6 policy route
+		## [ -f /lib/netifd/rtk_v6_policy_route.sh ] && . /lib/netifd/rtk_v6_policy_route.sh "$INTERFACE" "add"
+	;;
+	informed|updated|rebound)
+		#save DNS info and restart dnsrelay
+		save_ipv6_dns_info "$1"
+		restart_dnsrelay "$1"
+		#update lan dhcpv6 server dns option
+		restart_ipv6_lan_server
+		## [ -f /lib/netifd/rtk_v6_policy_route.sh ] && . /lib/netifd/rtk_v6_policy_route.sh "$INTERFACE" "add"
+	;;
+	ra-updated)
+		## [ -f /lib/netifd/rtk_v6_policy_route.sh ] && . /lib/netifd/rtk_v6_policy_route.sh "$INTERFACE" "add"
+	;;
+	started|stopped|unbound)
+		if [ ! -z "$PROTO" -a  "$PROTO" = "static" ]; then
+			: # do nothing
+		else
+			#Remove IPv6 gateway record
+			rm $RTK_MER_GWINFO_V6"."$1 2>/dev/null
+			#Remove IPv6 dns file
+			rm $RTK_DNS6_RESOLV_FILE"."$1 2>/dev/null
+			#Delete IPv6 policy rule
+			## [ -f /lib/netifd/rtk_v6_policy_route.sh ] && . /lib/netifd/rtk_v6_policy_route.sh "$INTERFACE" "del"
+		fi
+	;;
+esac

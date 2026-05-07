@@ -1,0 +1,436 @@
+Index: linux-5.10.125/include/uapi/linux/netfilter/xt_string.h
+===================================================================
+--- linux-5.10.125.orig/include/uapi/linux/netfilter/xt_string.h
++++ linux-5.10.125/include/uapi/linux/netfilter/xt_string.h
+@@ -12,12 +12,23 @@ enum {
+ 	XT_STRING_FLAG_IGNORECASE	= 0x02
+ };
+ 
++// Magician: Extended to URL, Domain, and URLALW
++enum {
++       XT_STRING_FLAG_STRING = 1,
++       XT_STRING_FLAG_HEX_STRING,
++       XT_STRING_FLAG_URL,
++       XT_STRING_FLAG_DOMAIN,
++       XT_STRING_FLAG_URLALW
++};
++
+ struct xt_string_info {
+ 	__u16 from_offset;
+ 	__u16 to_offset;
+ 	char	  algo[XT_STRING_MAX_ALGO_NAME_SIZE];
+ 	char 	  pattern[XT_STRING_MAX_PATTERN_SIZE];
+ 	__u8  patlen;
++	__u8 str_flag; // Magician: Extended to URL, Domain, and URLALW
++
+ 	union {
+ 		struct {
+ 			__u8  invert;
+Index: linux-5.10.125/net/netfilter/xt_string.c
+===================================================================
+--- linux-5.10.125.orig/net/netfilter/xt_string.c
++++ linux-5.10.125/net/netfilter/xt_string.c
+@@ -12,6 +12,7 @@
+ #include <linux/netfilter/x_tables.h>
+ #include <linux/netfilter/xt_string.h>
+ #include <linux/textsearch.h>
++#include <net/tcp.h>
+ 
+ MODULE_AUTHOR("Pablo Neira Ayuso <pablo@eurodev.net>");
+ MODULE_DESCRIPTION("Xtables: string-based matching");
+@@ -20,17 +21,381 @@ MODULE_ALIAS("ipt_string");
+ MODULE_ALIAS("ip6t_string");
+ MODULE_ALIAS("ebt_string");
+ 
++/* QL 20110629: url filter fail in some special circumstance, we should match more key words. */
++#define http_get_len   4
++#define http_host_len  6
++#define http_refer_len 9
++const char * method[] = {
++       "GET ",
++       "HEAD ",
++       "POST ",
++       "PUT ",
++       "OPTIONS ",
++       "DELETE ",
++       "TRACE ",
++       "CONNECT ",
++       0
++};
++
++/* Linear string search based on memcmp() */
++static char *search_linear (char *needle, char *haystack, int needle_len, int haystack_len)
++{
++       char *k = haystack + (haystack_len-needle_len);
++       char *t = haystack;
++
++       while ( t <= k ) {
++               if (memcmp(t, needle, needle_len) == 0)
++                       return t;
++               t++;
++       }
++
++       return NULL;
++}
++
++/* Backward Linear string search based on memcmp() */
++static char *backward_search_linear (char *needle, char *haystack, int needle_len, int haystack_len)
++{
++       char *t = haystack + haystack_len -needle_len -5;
++
++       if (memcmp(t, needle, needle_len) == 0)
++               return t;
++
++       return NULL;
++}
++
++#define http_start_len 4
++#define http_end_len 9
++#define TCP_HEADER_LENTH 20
++
++static int match_HTTP_GET(char **haystack,int *hlen, char *needle, int nlen)
++{
++    char http_start[]="GET ";
++    //char http_end[]="\r\nAccept:";
++    /*QL 20110629 start*/
++       char http_refer[]="Referer: ";
++       char http_host[]="Host: ";
++       char *pchkStart=NULL;//point to the check start place
++       int chkLen;//check len
++       int idx;
++       char *pUri;
++       int uriLen;
++       /*QL 20110629 end */
++    char *ptend;
++
++    //alex
++    int tcp_datalen;
++       char *ptstart;
++       int datalen;
++
++    tcp_datalen = (((struct tcphdr*)(*haystack))->doff)*4;
++    //point to the HTTP Header
++    ptstart=(*haystack)+tcp_datalen;
++    datalen=*hlen-tcp_datalen;
++
++       /*QL 20110629 start*/
++#if 0
++    // Check if the packet is HTTT GET packet.
++    if(memcmp(ptstart,http_start,http_start_len)!= 0) {
++       //printk("match_HTTP: Not Find the HTTP GET\n");
++       return 0;
++    }
++
++
++    //Check if the packet match the URL string of the rules
++    //if((ptend=search_linear(http_end,*haystack,http_end_len,datalen))== NULL){
++    if((ptend=search_linear(needle,ptstart,nlen,datalen))== NULL){
++       //printk("match_HTTP: URL string not match rule\n");
++       return 0;
++    }
++#else
++       for (idx=0; method[idx]; idx++)
++       {
++               if (memcmp(ptstart, method[idx], strlen(method[idx]))==0) {
++                       pchkStart = ptstart + strlen(method[idx]);
++                       break;
++               }
++       }
++       if (!pchkStart)//didn't find method, pass it.
++               return 0;
++
++       for (chkLen=0; pchkStart[chkLen]; chkLen++)
++       {
++               if ((pchkStart[chkLen] == ' ') ||
++                       ((pchkStart[chkLen]=='\r') && (pchkStart[chkLen+1]=='\n')))
++                       break;
++       }
++       if ((1==chkLen) && (pchkStart[0]==0x2f))
++       {//first request packet, uri is null, then just check host string only.
++               if ((pchkStart=strstr(ptstart, http_host)) != NULL) {
++                       pchkStart = pchkStart + http_host_len;
++                       for (chkLen=0; pchkStart[chkLen]; chkLen++)
++                       {
++                               if ((pchkStart[chkLen] == '\r') && (pchkStart[chkLen+1]=='\n'))
++                                       break;
++                       }
++                       if ((ptend=search_linear(needle, pchkStart, nlen, chkLen)) == NULL)
++                               return 0;
++               }
++       }
++       else
++       {//first check referer string, if start with "http://", then just only check it, else check host; if referer string not exists, then check uri.
++               pUri = pchkStart;
++               uriLen = chkLen;
++
++               if ((pchkStart=strstr(ptstart, http_start)) != NULL) {
++                       pchkStart=pchkStart + http_get_len;
++                       for(chkLen=0; pchkStart[chkLen]; chkLen++)
++                       {
++                               if ((pchkStart[chkLen] == ' ') ||
++                                       ((pchkStart[chkLen]=='\r') && (pchkStart[chkLen+1]=='\n')))
++                                       break;
++                       }
++                       if ((ptend=search_linear(needle, pchkStart, nlen, chkLen)) != NULL)
++                               return 1;
++               }
++               if ((pchkStart=strstr(ptstart, http_refer)) != NULL) {
++                       pchkStart = pchkStart + http_refer_len;
++                       if (memcmp(pchkStart, "http://", strlen("http://")) == 0) {
++                               for (chkLen=0; pchkStart[chkLen]; chkLen++)
++                               {
++                                       if ((pchkStart[chkLen] == '\r') && (pchkStart[chkLen+1]=='\n'))
++                                               break;
++                               }
++                               if ((ptend=search_linear(needle, pchkStart, nlen, chkLen)) == NULL)
++                                       return 0;
++                               return 1;
++                       }
++               }
++
++               //go to check host string, if not find, go to check uri.
++               if ((pchkStart=strstr(ptstart, http_host)) != NULL) {
++                       pchkStart = pchkStart + http_host_len;
++                       for (chkLen=0; pchkStart[chkLen]; chkLen++)
++                       {
++                               if ((pchkStart[chkLen] == '\r') && (pchkStart[chkLen+1]=='\n'))
++                                       break;
++                       }
++                       if ((ptend=search_linear(needle, pchkStart, nlen, chkLen)) == NULL)
++                               return 0;
++               } else {//only in http 1.0
++                       if ((ptend=search_linear(needle, pUri, nlen, uriLen)) == NULL)
++                               return 0;
++               }
++       }
++#endif
++       /*QL 20110629 end */
++
++    return 1;
++
++}
++
++static int match_HTTP_GET_URL_ALLOW(char **haystack,int *hlen, char *needle, int nlen)
++{
++    char http_start[]="GET ";
++    //char http_end[]="\r\nAccept:";
++    char *ptend;
++	/*QL 20110629 start*/
++	char http_refer[]="Referer: ";
++	char http_host[]="Host: ";
++	char *pchkStart=NULL;//point to the check start place
++	int chkLen;//check len
++	int idx;
++	char *pUri;
++	int uriLen;
++	/*QL 20110629 end */
++
++    //point to the HTTP Header
++    //char *ptstart=(*haystack)+TCP_HEADER_LENTH;
++    //int datalen=*hlen-TCP_HEADER_LENTH;
++    char *ptstart;
++    int datalen;
++    //alex
++    int tcp_datalen;
++    tcp_datalen = (((struct tcphdr*)(*haystack))->doff)*4;
++    //point to the HTTP Header
++    ptstart=(*haystack)+tcp_datalen;
++    datalen=*hlen-tcp_datalen;
++
++	/*QL 20110629 start*/
++#if 0
++    // Check if the packet is HTTT GET packet.
++    if(memcmp(ptstart,http_start,http_start_len)!= 0) {
++       //printk("match_HTTP: Not Find the HTTP GET\n");
++       return 2;
++    }
++
++
++    //Check if the packet match the URL string of the rules
++    //if((ptend=search_linear(http_end,*haystack,http_end_len,datalen))== NULL){
++    if((ptend=search_linear(needle,ptstart,nlen,datalen))== NULL){
++       //printk("match_HTTP: URL string not match rule\n");
++       return 0;
++    }
++    //printk("match_HTTP: URL string  match rule\n");
++#else
++       for (idx=0; method[idx]; idx++)
++       {
++               if (memcmp(ptstart, method[idx], strlen(method[idx]))==0) {
++                       pchkStart = ptstart + strlen(method[idx]);
++                       break;
++               }
++       }
++       if (!pchkStart)//didn't find method
++               return 2;
++
++       for (chkLen=0; pchkStart[chkLen]; chkLen++)
++       {
++               if ((pchkStart[chkLen] == ' ') ||
++                       ((pchkStart[chkLen]=='\r') && (pchkStart[chkLen+1]=='\n')))
++                       break;
++       }
++
++       if ((1==chkLen) && (pchkStart[0]==0x2f))
++       {//first request packet, uri is null, then just check host string only.
++               if ((pchkStart=strstr(ptstart, http_host)) != NULL) {
++                       pchkStart = pchkStart + http_host_len;
++                       for (chkLen=0; pchkStart[chkLen]; chkLen++)
++                       {
++                               if ((pchkStart[chkLen] == '\r') && (pchkStart[chkLen+1]=='\n'))
++                                       break;
++                       }
++                       if ((ptend=search_linear(needle, pchkStart, nlen, chkLen)) == NULL)
++                               return 0;
++               }
++       }
++       else
++       {//first check referer string, if start with "http://", then just only check it, else check host; if referer string not exists, then check uri.
++               pUri = pchkStart;
++               uriLen = chkLen;
++               if ((pchkStart=strstr(ptstart, http_start)) != NULL) {
++                       pchkStart=pchkStart + http_get_len;
++                       for(chkLen=0; pchkStart[chkLen]; chkLen++)
++                       {
++                               if ((pchkStart[chkLen] == ' ') ||
++                                       ((pchkStart[chkLen]=='\r') && (pchkStart[chkLen+1]=='\n')))
++                                       break;
++                       }
++                       if ((ptend=search_linear(needle, pchkStart, nlen, chkLen)) != NULL)
++                               return 1;
++               }
++               if ((pchkStart=strstr(ptstart, http_refer)) != NULL) {
++                       pchkStart = pchkStart + http_refer_len;
++                       if (memcmp(pchkStart, "http://", strlen("http://")) == 0) {
++                               for (chkLen=0; pchkStart[chkLen]; chkLen++)
++                               {
++                                       if ((pchkStart[chkLen] == '\r') && (pchkStart[chkLen+1]=='\n'))
++                                               break;
++                               }
++                               if ((ptend=search_linear(needle, pchkStart, nlen, chkLen)) == NULL)
++                                       return 0;
++                               return 1;
++                       }
++               }
++
++               //go to check host string, if not find, go to check uri.
++               if ((pchkStart=strstr(ptstart, http_host)) != NULL) {
++                       pchkStart = pchkStart + http_host_len;
++                       for (chkLen=0; pchkStart[chkLen]; chkLen++)
++                       {
++                               if ((pchkStart[chkLen] == '\r') && (pchkStart[chkLen+1]=='\n'))
++                                       break;
++                       }
++                       if ((ptend=search_linear(needle, pchkStart, nlen, chkLen)) == NULL)
++                               return 0;
++               } else {//only in http 1.0
++                       if ((ptend=search_linear(needle, pUri, nlen, uriLen)) == NULL)
++                               return 0;
++               }
++       }
++#endif
++       /*QL 20110629 end */
++
++    return 1;
++
++}
++
++
++#define UDP_HEADER_LENTH 8
++static int match_DNS_QUERY(char **haystack,int *hlen, char *needle, int nlen)
++{
++       char *ptend;
++
++       //point to the DNS Header
++       char *ptstart=(*haystack)+UDP_HEADER_LENTH;
++       int datalen=*hlen-UDP_HEADER_LENTH;
++
++       //Check if the packet match the URL string of the rules
++       //if((ptend=search_linear(needle,ptstart,nlen,datalen))== NULL){
++       //if((ptend=search_linear(cmpStr,ptstart,strlen(cmpStr),datalen))== NULL){
++       if((ptend=backward_search_linear(needle,ptstart,nlen,datalen))== NULL){
++               //printk("match_DNS_QUERY: Domain name string Not match rule\n");
++               return 0;
++       }
++
++       //printk("match_DNS_QUERY: Domain name string match rule\n");
++       return 1;
++
++}
++
++
+ static bool
+ string_mt(const struct sk_buff *skb, struct xt_action_param *par)
+ {
+ 	const struct xt_string_info *conf = par->matchinfo;
+ 	bool invert;
+ 
++	const struct iphdr *ip = ip_hdr(skb);
++	int hlen, nlen;
++	char *needle, *haystack;
++
+ 	invert = conf->u.v1.flags & XT_STRING_FLAG_INVERT;
+ 
+-	return (skb_find_text((struct sk_buff *)skb, conf->from_offset,
+-			     conf->to_offset, conf->config)
+-			     != UINT_MAX) ^ invert;
++	if (!ip)//process ip packet only
++		return 0;
++	nlen = conf->patlen;
++	hlen = ntohs(ip->tot_len) - (ip->ihl*4);
++	if (nlen > hlen)
++		return 0;
++
++	needle = (char *)&conf->pattern;
++	haystack = (char *)ip + (ip->ihl*4);
++
++	switch (conf->str_flag) {
++		case XT_STRING_FLAG_STRING:
++
++			return (skb_find_text((struct sk_buff *)skb, conf->from_offset,
++				conf->to_offset, conf->config)
++				!= UINT_MAX) ^ invert;
++		case XT_STRING_FLAG_URL:
++			if (IPPROTO_TCP==ip->protocol) {
++				return match_HTTP_GET(&haystack, &hlen, needle, nlen) ^ invert;
++			}
++			break;
++		case XT_STRING_FLAG_DOMAIN:
++			if (IPPROTO_UDP==ip->protocol) {
++				return match_DNS_QUERY(&haystack,&hlen,needle,nlen) ^ invert;
++			}
++			break;
++		case XT_STRING_FLAG_URLALW:
++			if (IPPROTO_TCP==ip->protocol) {
++				int ret;
++				ret = match_HTTP_GET_URL_ALLOW(&haystack, &hlen, needle, nlen);
++				switch (ret) {
++					case 0:
++						if (!strncmp(needle, "&endofurl&", 10))
++							return 1;
++							break;
++					case 1:
++						return ret;
++					case 2:
++						if (!strncmp(needle, "&endofurl&", 10))
++							return 0;
++						break;
++				}
++			}
++			break;
++	}
++	return false;
+ }
+ 
+ #define STRING_TEXT_PRIV(m) ((struct xt_string_info *)(m))
+@@ -51,6 +416,10 @@ static int string_mt_check(const struct
+ 	if (conf->u.v1.flags &
+ 	    ~(XT_STRING_FLAG_IGNORECASE | XT_STRING_FLAG_INVERT))
+ 		return -EINVAL;
++	if ((conf->str_flag<XT_STRING_FLAG_STRING) || \
++		(conf->str_flag>XT_STRING_FLAG_URLALW) || \
++		(conf->str_flag==XT_STRING_FLAG_HEX_STRING))
++			return -EINVAL;
+ 	if (conf->u.v1.flags & XT_STRING_FLAG_IGNORECASE)
+ 		flags |= TS_IGNORECASE;
+ 	ts_conf = textsearch_prepare(conf->algo, conf->pattern, conf->patlen,

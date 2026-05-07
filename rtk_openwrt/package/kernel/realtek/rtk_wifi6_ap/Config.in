@@ -1,0 +1,46 @@
+menu "Realtek PCIE WiFi6 AP"
+	depends on PACKAGE_kmod-rtk_wifi6_ap
+
+config RTLWIFI6
+	tristate
+	default m
+	select WIRELESS_EXT
+	select WEXT_PRIV
+
+source "Kconfig.openwrt"
+
+config DMA_NONCOHERENT
+     bool "Realtek WiFi non-cherent DMA"
+     default n
+     help
+       Realtek Wlan device support non-cherent DMA.
+
+config RTW_EFEM_IDENTIFY_WITH_FLASH
+        bool "Enable WiFi-EFEM Identify With Flash Setting"
+        default n
+        help
+            Help message of RTLWIFI6
+
+config RTW_SW_LED_SHARED
+	bool "Wifi shared LED support"
+	default n
+	help
+		Help message of RTLWIFI6
+
+choice SHARE_WHICH_WIFI_LED_CHOICE
+	prompt "Share which Wi-Fi LED"
+	depends on RTW_SW_LED_SHARED
+	default RTW_SW_LED_SHARED_USING_2G
+	help
+		Help message of RTLWIFI6
+
+config RTW_SW_LED_SHARED_USING_2G
+	bool "Shared Wi-Fi 2.4G LED"
+
+config RTW_SW_LED_SHARED_USING_5G
+	bool "Shared Wi-Fi 5G LED"
+
+endchoice
+
+endmenu
+

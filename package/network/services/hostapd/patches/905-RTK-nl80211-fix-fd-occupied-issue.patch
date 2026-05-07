@@ -1,0 +1,41 @@
+From 39bb32f726a67f41e78f80b237e789baf7381235 Mon Sep 17 00:00:00 2001
+From: "lucien.zhliu" <lucien.zhliu@realtek.com>
+Date: Mon, 8 Aug 2022 19:45:23 +0800
+Subject: [PATCH] [hostapd] Apply patch from SD9
+ 20201006_hostapd_fix_fd_occupied_issue.7z
+
+---
+ src/drivers/driver_nl80211.c | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+ mode change 100644 => 100755 src/drivers/driver_nl80211.c
+
+diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
+old mode 100644
+new mode 100755
+index bf4fda7..05c9475
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -8399,11 +8399,18 @@ static int wpa_driver_nl80211_cancel_remain_on_channel(void *priv)
+ static int wpa_driver_nl80211_probe_req_report(struct i802_bss *bss, int report)
+ {
+ 	struct wpa_driver_nl80211_data *drv = bss->drv;
++	/*
++	 * [RTK] VAP dynamically REMOVE:
++	 *       now we don't consider P2P case
++	 *       in order to destroy eloop handler successfully
++	 */
++	int is_ap_p2p_net_interface =
++		(is_ap_interface(drv->nlmode) && is_p2p_net_interface(drv->nlmode));
+ 
+ 	if (!report) {
+ 		if (bss->nl_preq && drv->device_ap_sme &&
+-		    is_ap_interface(drv->nlmode) && !bss->in_deinit &&
+-		    !bss->static_ap) {
++		    is_ap_p2p_net_interface &&
++		    !bss->in_deinit && !bss->static_ap) {
+ 			/*
+ 			 * Do not disable Probe Request reporting that was
+ 			 * enabled in nl80211_setup_ap().
+-- 
+2.37.1
+

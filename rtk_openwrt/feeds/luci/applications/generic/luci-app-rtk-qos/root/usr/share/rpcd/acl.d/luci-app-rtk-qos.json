@@ -1,0 +1,15 @@
+{
+	"luci-app-rtk-qos": {
+		"description": "Grant access to qos procedures",
+		"read": {
+			"file": {
+			},
+			"uci": [ "qos" ]
+		},
+		"write": {
+			"file": {
+			},
+			"uci": [ "qos" ]
+		}
+	}
+}

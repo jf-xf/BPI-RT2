@@ -1,0 +1,12 @@
+#
+# RLX Linux Platform BSP
+#
+platform-$(CONFIG_RTK_SOC_RTL8198D)	+= rtl9607c/
+cflags-$(CONFIG_RTK_SOC_RTL8198D)	+= -I$(srctree)/arch/mips/rtl9607c -I$(srctree)/arch/mips/include/asm/mach-rtl960xc/ \
+	-Idrivers/net/ethernet/realtek/rtl86900/sdk/include -Idrivers/net/ethernet/realtek/rtl86900/sdk/system/include
+load-$(CONFIG_RTK_SOC_RTL8198D)		= 0xffffffff80000000
+
+platform-$(CONFIG_RTK_SOC_RTL9607C)	+= rtl9607c/
+cflags-$(CONFIG_RTK_SOC_RTL9607C)	+= -I$(srctree)/arch/mips/rtl9607c -I$(srctree)/arch/mips/include/asm/mach-rtl960xc/ \
+	-Idrivers/net/ethernet/realtek/rtl86900/sdk/include -Idrivers/net/ethernet/realtek/rtl86900/sdk/system/include
+load-$(CONFIG_RTK_SOC_RTL9607C)		= 0xffffffff80000000

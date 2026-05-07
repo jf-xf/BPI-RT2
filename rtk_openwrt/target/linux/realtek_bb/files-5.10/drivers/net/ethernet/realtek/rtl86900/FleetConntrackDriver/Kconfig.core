@@ -1,0 +1,153 @@
+if RTK_L34_FLEETCONNTRACK_ENABLE
+
+menu "Realtek FC core module (Internal Configuration)"
+
+choice
+	prompt "Realtek Platform Selection"
+	default RTK_L34_XPON_PLATFORM
+config RTK_L34_XPON_PLATFORM
+	bool "Realtek L34 xPON/2.5G platform"
+config RTK_L34_G3_PLATFORM
+	bool "Realtek L34 G3/10G platform"
+endchoice #Realtek platform selection
+
+if RTK_L34_XPON_PLATFORM
+
+choice 
+	prompt "xPON chip series selection"
+	default FC_RTL9607C_RTL9603CVD_HYBRID if RTL9607C_SERIES && RTL9603CVD_SERIES
+	default FC_RTL9607C_SERIES if RTL9607C_SERIES
+	default FC_RTL9603CVD_SERIES if RTL9603CVD_SERIES
+config FC_RTL9607C_RTL9603CVD_HYBRID
+	bool "FC RTL9607C and RTL9603CVD hybrid image"
+	depends on RTL9607C_SERIES && RTL9603CVD_SERIES
+config FC_RTL9607C_SERIES
+	bool "FC RTL9607C series support "
+config FC_RTL9603CVD_SERIES
+	bool "FC RTL9603CVD series support "
+endchoice
+
+choice
+	prompt "Realtek FC FLOW Mode Selection"
+        default RTK_L34_FLOWBASED_DYN_MODE
+config RTK_L34_FLOWBASED_DYN_MODE
+	bool "Support dynamic switch between 4K/8K/16K/32K Mode"
+endchoice # Realtek RG FLOW Mode Selection
+
+if RTK_L34_FLOWBASED_DYN_MODE
+choice
+	prompt "-- Realtek FC Max hw flow entry"
+	default FC_FLOWBASED_DYN_MAX_32K
+config FC_FLOWBASED_DYN_MAX_32K
+	bool "Support 4K/8K/16K/32K mode"
+config FC_FLOWBASED_DYN_MAX_16K
+	bool "Support 4K/8K/16K mode"
+config FC_FLOWBASED_DYN_MAX_8K
+	bool "Support 4K/8K mode"
+config FC_FLOWBASED_DYN_MAX_4K
+	bool "Support 4K(1K if 03D) mode only"
+endchoice
+endif
+
+
+endif
+
+if RTK_L34_G3_PLATFORM
+choice
+    prompt "CA G3 Chip series selection"
+	default FC_CA8277B_RTL8277C_HYBRID if CONFIG_ARCH_CORTINA_VENUS && CONFIG_ARCH_REALTEK_TAURUS
+	default FC_RTL8277C_SERIES if RTL8277C_SERIES
+	default FC_RTL9607F_SERIES if RTL9607F_SERIES
+config FC_CAG3_SERIES
+	bool "FC for CA G3"
+config FC_RTL8198F_SERIES
+	bool "FC for RTL8198F"
+config FC_CA8277B_SERIES
+	bool "FC for CA 8277B"
+config FC_RTL8277C_SERIES
+	bool "FC for RTL8277C"
+config FC_RTL9607F_SERIES
+	bool "FC for RTL9607F"
+config FC_CA8277B_RTL8277C_HYBRID
+	bool "FC CA8277B and RTL8277C dual module"
+endchoice
+
+endif # RTK_L34_G3_PLATFORM
+
+if FC_CAG3_SERIES || FC_CA8277B_SERIES || FC_RTL8277C_SERIES || FC_RTL9607F_SERIES || FC_RTL8198F_SERIES || FC_CA8277B_RTL8277C_HYBRID
+
+config RG_G3_WAN_PORT_INDEX
+        int "treat which port idx as default wan port"
+        default 7
+
+endif # FC_CAG3_SERIES
+
+config RTK_L34_MODULE_STRING
+	string "fc driver module naming"
+	default 8198f if FC_RTL8198F_SERIES
+	default 8277 if FC_CAG3_SERIES
+	default 8277b if FC_CA8277B_SERIES || FC_CA8277B_RTL8277C_HYBRID
+	default 8277c if FC_RTL8277C_SERIES
+	default 9607f if FC_RTL9607F_SERIES
+	default 8198d if RTK_SOC_RTL8198D
+	default openwrt if RTK_OPENWRT
+	default 9603cvd_s if FC_RTL9603CVD_SERIES
+	default 9603cvd if FC_RTL9607C_RTL9603CVD_HYBRID
+	default drv
+
+config RTK_L34_SHORTCUT
+	bool "Realtek L34 shortcut"
+	default y
+
+config RTK_FC_SW_FLOW_SHRINK
+	bool "FC SW Flow SHRINK (to 8K)"
+	depends on RTK_SOC_RTL8198D
+	default y
+
+config RTK_FC_SW_FLOW_ENTRY_BITS
+	int "FC SW flow entries (2^N)"
+	range 10 16
+	default 15 if !RTK_FC_SW_FLOW_SHRINK
+	default 13 if RTK_FC_SW_FLOW_SHRINK
+	help
+	  Support how many software flow entries. default is 2^15 = 32K.
+	  Range 10 ~ 16 is valied. (1K ~ 64K)
+
+config RTK_FC_SW_INTF_ENTRY_BITS
+        int "FC SW netif entries (2^N)"
+        range 6 7
+        default 6
+        help
+          Support how many software interface entries. default is 2^6 = 64.
+          Range 6 ~ 7 is valied. (64 ~ 128)
+
+config RTK_L34_CANDIDATE_FLOW
+	bool "Realtek L34 candidate pool for flow acceleration"
+	default y
+
+config RTK_DPI_SUPPORT
+	bool "Realtek DPI hook support"
+	default n
+
+config RTK_AP_FC_IGMPV3_SUPPORT
+	bool "Realtek AP fc igmpv3 support"
+	default n
+
+config RTK_FC_IGMPV3_SUPPORT
+	bool "Realtek fc igmpv3 support"
+	depends on BRIDGE_RTK_IGMPV3_SNOOPING && RTK_AP_FC_IGMPV3_SUPPORT
+	default n
+
+config RTK_8367_RELAY
+        bool "Realtek 8367 relay Mcast support"
+        depends on FC_RTL8198F_SERIES
+        default n
+endmenu
+
+if EXTERNAL_SWITCH
+config RTK_FC_EXTERNAL_SWITCH_PORT
+        int "external switch port num"
+        default 4
+endif
+
+endif #endif RTK_L34_FLEETCONNTRACK_ENABLE

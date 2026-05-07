@@ -1,0 +1,146 @@
+commit d9b08ca2501c065fcf78c27829a08528da34723e
+Author: kevin.su <kevin.su@6205ae0b-4059-46eb-a33d-b14f343f8a53>
+Date:   Wed Apr 19 10:43:56 2017 +0800
+
+    sync from luna yueme branch
+    
+    
+    git-svn-id: http://cadinfo.realtek.com/svn/CN/cnsd5/trunk/adsl/SDK/uClinux-dist/user/samba@82776 6205ae0b-4059-46eb-a33d-b14f343f8a53
+
+diff --git a/lib/util/debug.h b/lib/util/debug.h
+index 8449e569..ca2aeb3c 100755
+--- a/lib/util/debug.h
++++ b/lib/util/debug.h
+@@ -155,6 +155,28 @@ extern int  *DEBUGLEVEL_CLASS;
+ #endif
+ #endif
+ 
++#if 1 /* AR7 */
++
++#define DEBUGLVL( level ) (0)
++#define DEBUGLVLC( dbgc_class, level ) (0)
++#ifndef SAMBA_DEBUG
++#define DEBUG( level, body ) (0)
++#define Log(x) (0)
++#else
++void _fDebug(char *fmt, ...);
++#define DEBUG( level, body ) _fDebug  body
++#define Log(x) _fLog x
++void _fLog(char *fmt, ...);
++#endif
++
++#define DEBUGC( dbgc_class, level, body ) (0)
++#define DEBUGADD( level, body ) (0)
++#define DEBUGADDC( dbgc_class, level, body ) (0)
++
++#define CHECK_DEBUGLVL(level) (0)
++#define DEBUGSEP(level) (0)
++#else
++
+ #define CHECK_DEBUGLVL( level ) \
+   ( ((level) <= MAX_DEBUG_LEVEL) && \
+     unlikely(DEBUGLEVEL_CLASS[ DBGC_CLASS ] >= (level)))
+@@ -189,6 +211,7 @@ extern int  *DEBUGLEVEL_CLASS;
+ /* Print a separator to the debug log. */
+ #define DEBUGSEP(level)\
+ 	DEBUG((level),("===============================================================\n"))
++#endif
+ 
+ /* The following definitions come from lib/debug.c  */
+ 
+diff --git a/lib/util/system.c b/lib/util/system.c
+index 17c05531..194352c8 100755
+--- a/lib/util/system.c
++++ b/lib/util/system.c
+@@ -21,6 +21,65 @@
+ #include "includes.h"
+ #include "system/network.h"
+ #include "system/filesys.h"
++#ifdef CONFIG_RTK_LIB_MIB
++#include <rtk/options.h>
++#endif
++
++#ifdef CONFIG_CGROUPS
++void setLimit(pid_t pid);
++#endif
++
++#ifdef CONFIG_CGROUPS
++#define CMDBUF_SIZE 128
++void setLimit(pid_t pid){
++	unsigned char cmd_buff[CMDBUF_SIZE];
++
++	memset(cmd_buff, 0x0, sizeof(cmd_buff));
++
++//	snprintf(cmd_buff, 32, "cpulimit -p %d -l 80 &\n", pid);
++//	system(cmd_buff);
++
++	// memory limit
++	snprintf(cmd_buff, CMDBUF_SIZE, "mkdir /sys/fs/cgroup/memory/smbd\n");
++	system(cmd_buff);
++
++	memset(cmd_buff, 0x0, sizeof(cmd_buff));
++	snprintf(cmd_buff, CMDBUF_SIZE, "echo %d > /sys/fs/cgroup/memory/smbd/tasks\n", pid);
++	system(cmd_buff);
++
++	memset(cmd_buff, 0x0, sizeof(cmd_buff));
++	snprintf(cmd_buff, CMDBUF_SIZE, "echo 1 > /sys/fs/cgroup/memory/smbd/cgroup.clone_children\n");
++	system(cmd_buff);
++
++	memset(cmd_buff, 0x0, sizeof(cmd_buff));
++	snprintf(cmd_buff, CMDBUF_SIZE, "echo 83886080 > /sys/fs/cgroup/memory/smbd/cgroup.clone_children\n"); // 80*1024*1024 = 80MBytes
++	system(cmd_buff);
++
++
++	// cpulimit
++	snprintf(cmd_buff, CMDBUF_SIZE, "mkdir /sys/fs/cgroup/cpu/smbd\n");
++	system(cmd_buff);
++
++	memset(cmd_buff, 0x0, sizeof(cmd_buff));
++	snprintf(cmd_buff, CMDBUF_SIZE, "echo %d > /sys/fs/cgroup/cpu/smbd/tasks\n", pid);
++	system(cmd_buff);
++
++	memset(cmd_buff, 0x0, sizeof(cmd_buff));
++	snprintf(cmd_buff, CMDBUF_SIZE, "echo 1 > /sys/fs/cgroup/cpu/smbd/cgroup.clone_children\n");
++	system(cmd_buff);
++
++	memset(cmd_buff, 0x0, sizeof(cmd_buff));
++	snprintf(cmd_buff, CMDBUF_SIZE, "echo 1000000 > /sys/fs/cgroup/cpu/smbd/cpu.rt_period_us\n");
++	system(cmd_buff);
++
++	memset(cmd_buff, 0x0, sizeof(cmd_buff));
++	snprintf(cmd_buff, CMDBUF_SIZE, "echo 700000 > /sys/fs/cgroup/cpu/smbd/cpu.rt_runtime_us\n");
++	system(cmd_buff);
++
++	DEBUG(0,("cmd_buff = [%s]\n", cmd_buff));	
++}
++#endif
++
+ 
+ /*
+    The idea is that this file will eventually have wrappers around all
+@@ -97,6 +156,11 @@ static pid_t mypid = (pid_t)-1;
+ _PUBLIC_ pid_t sys_fork(void)
+ {
+ 	pid_t forkret = fork();
++	DEBUG( 0, ( "forkret %d.\n", forkret ) );
++
++#if defined(CONFIG_YUEME) && defined(CONFIG_CGROUPS)	
++	setLimit(forkret);
++#endif
+ 
+ 	if (forkret == (pid_t)0) {
+ 		/* Child - reset mypid so sys_getpid does a system call. */
+diff --git a/source3/smbd/trans2.c b/source3/smbd/trans2.c
+index 26b65234..41e115c9 100755
+--- a/source3/smbd/trans2.c
++++ b/source3/smbd/trans2.c
+@@ -5756,6 +5756,9 @@ static NTSTATUS smb_set_file_size(connection_struct *conn,
+ 	DEBUG(10,("smb_set_file_size: file %s : setting new size to %.0f\n",
+ 		  smb_fname_str_dbg(smb_fname), (double)size));
+ 
++	// fix upload file problem
++	smb_fname_str_dbg(smb_fname);
++
+ 	if (fsp && fsp->fh->fd != -1) {
+ 		/* Handle based call. */
+ 		if (vfs_set_filelen(fsp, size) == -1) {

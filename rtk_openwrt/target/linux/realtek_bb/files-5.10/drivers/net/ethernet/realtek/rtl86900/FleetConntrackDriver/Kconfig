@@ -1,0 +1,223 @@
+if RTK_L34_FLEETCONNTRACK_ENABLE
+
+#
+# Fleet Conntrack Driver configuration
+#
+
+
+config RTK_L34_FC_KERNEL_MODULE
+	tristate "FC driver kernel module"
+	default y
+	help
+	   To compile FC driver as build-in or module 
+
+menu "FC driver smp dispatch"
+config RTK_L34_FC_IPI_NIC_RX
+	bool "smp ipi dispatch for nic rx process"
+	default y if SMP
+config RTK_L34_FC_IPI_NIC_TX
+	bool "smp ipi dispatch for nic tx process"
+	default y if SMP
+config RTK_L34_FC_IPI_WIFI_RX
+	bool "smp ipi dispatch for wifi rx process"
+	default y if SMP
+config RTK_L34_FC_IPI_WIFI_TX
+	bool "smp ipi dispatch for wifi tx process"
+	default y if SMP
+config RTK_FC_IPI_NIC_RX_RING_BITS
+	int "smp ipi ring size (2^N) for nic rx"
+	depends on RTK_L34_FC_IPI_NIC_RX
+	range 6 14
+	default 10
+config RTK_FC_IPI_NIC_TX_RING_BITS
+	int "smp ipi ring size (2^N) for nic tx"
+	depends on RTK_L34_FC_IPI_NIC_TX
+	range 6 14
+	default 10
+config RTK_FC_IPI_WIFI_RX_RING_BITS
+	int "smp ipi ring size (2^N) for wifi rx"
+	depends on RTK_L34_FC_IPI_WIFI_RX
+	range 6 14
+	default 12
+config RTK_FC_IPI_WIFI_TX_RING_BITS
+	int "smp ipi ring size (2^N) for wifi tx"
+	depends on RTK_L34_FC_IPI_WIFI_TX
+	range 6 14
+	default 12
+endmenu
+
+config RTK_FC_PER_SW_FLOW_MIB
+	bool "FC per SW flow mib (support in SW_only mode)"
+	default n
+
+config RTK_FC_WLAN_HWNAT_ACCELERATION
+	bool "FC WLAN HWNAT acceleration"
+	default y
+
+config RTK_FC_ADSL_HWNAT_ACCELERATION
+        depends on RTK_REMOTE_ADSL
+        bool "FC ATM HWNAT accelerate"
+	default n
+
+config RTK_L34_NETFILTER_HOOK
+	bool "FC netfilter hook registration"
+	default y
+	help
+	   it helps FC to cache forwarding info
+
+config RTK_FC_TCP_SPI_SUPPORT
+	bool "FC TCP SPI support"
+	depends on RTK_SOC_RTL8198D || FC_RTL8198F_SERIES || RTL8198X_SERIES
+	default y
+
+if FC_CAG3_SERIES
+config RG_G3_L2FE_POL_OFFLOAD
+        bool "loop-back mode for host-policing & meter"
+        default n
+endif
+
+menu "FC WIFI Aceleration and Offload"
+
+choice 
+	prompt "WIFI Tx load balance"
+	default FC_WIFI_TX_NONE
+	depends on RTK_L34_XPON_PLATFORM
+config FC_WIFI_TX_NONE
+	bool "GMAC offload is disabled"
+config FC_WIFI_TRAP_HASH_SUPPORT
+	bool "wifi tx with switch TRAP hash"
+	help
+	   hw hash to decide using GMAC 0 or 1
+config FC_WIFI_TX_GMAC_AUTO_SEL_SUPPORT
+	bool "wifi tx with GMAC auto-selection"
+	help
+	   flow entry to decide used GMAC
+endchoice
+config FC_WIFI_TX_GMAC_RR_SUPPORT
+	bool "wifi tx with GMAC Round-Robin
+	depends on FC_WIFI_TX_GMAC_AUTO_SEL_SUPPORT
+	help
+	   software round-robin to decide used GMAC, This will overwrite
+	   FC_WIFI_TX_GMAC_AUTO_SEL_SUPPORT setting.
+
+choice 
+	prompt "WIFI Rx load balance"
+	default FC_WIFI_RX_NONE
+	depends on RTK_L34_XPON_PLATFORM
+config FC_WIFI_RX_NONE
+	bool "GMAC offload is disabled"
+config FC_WIFI_RX_HASH_SUPPORT
+	bool "wifi rx to GMAC tx with RR"
+	help
+	   Round-Robin to select GMAC 0 or 1 Tx
+config FC_WIFI_RX_GMAC_AUTO_SEL_SUPPORT
+	bool "wifi rx to GMAC tx with auto-selection"
+	help
+	   Detect DMAC to select single or multiple GMAC Tx
+endchoice
+
+choice 
+	prompt "GMAC trunking number for AUTO_SEL mode"
+	default FC_WIFI_GMAC_TRUNKING_NUM_2
+	depends on RTK_L34_XPON_PLATFORM && FC_WIFI_TX_GMAC_AUTO_SEL_SUPPORT
+config FC_WIFI_GMAC_TRUNKING_NUM_2
+	bool "WIFI 5G use GMAC 0&1 to achieve load balance"
+config FC_WIFI_GMAC_TRUNKING_NUM_3
+	bool "WIFI 5G use GMAC 0&1&2 to achieve load balance"
+	depends on GMAC2_USABLE
+endchoice
+
+config RTK_FC_WIFI_AMSDU_OFFLOAD_BY_PE
+	bool "wifi tx amsdu offload by PE"
+	default n
+	depends on RTK_L34_G3_PLATFORM && RTK_FC_WLAN_HWNAT_ACCELERATION
+	help
+		Take PE as middleware to offload packet aggregation.
+
+config RTK_FC_WIFI_TX_PRI_AMSDU_OFFLOAD_BY_PE
+	bool "wifi tx amsdu pri offload by PE"
+	default n
+	help
+		Choose wifi tx amsdu pri offload pe bin.
+
+config RTK_FC_WIFI_DRIVER_OFFLOAD_BY_PE
+        bool "wifi driver offload by PE"
+        default n
+        depends on RTK_L34_G3_PLATFORM && RTK_FC_WLAN_HWNAT_ACCELERATION
+        help
+            Take PE as processing cpu to handle Rx and Tx packets.			
+
+config FC_QTNA_WIFI_AX
+	bool "data path of Quantenna wifi ax"
+	depends on RTK_L34_G3_PLATFORM
+	default n	
+	
+config FC_CELENO_WIFI
+	bool "data path of Celeno wifi"
+	depends on RTK_L34_G3_PLATFORM
+	default n			
+	
+endmenu
+
+config RTK_FC_HTTP_OFFLOAD_BY_PE
+	bool "http/ftp local in/out offload by PE"
+	default n
+	depends on RTK_L34_G3_PLATFORM
+	help
+		PE runs http/ftp local in/out offload function.	
+
+config RTK_FC_CRYPTO_OFFLOAD_BY_PE
+	bool "crypto offload by PE"
+	default n
+	depends on RTK_L34_G3_PLATFORM
+	help
+		PE runs crypto offload function.
+
+config RTK_CPU_PORT_FLOW_CONTROL
+	bool "Enable CPU port flow control"
+	depends on RTK_L34_XPON_PLATFORM
+	default n
+	
+config FC_SPECIAL_FAST_FORWARD
+	bool "special fast-forward for VXLAN and NPTv6"
+	depends on RTK_L34_XPON_PLATFORM
+	default n
+
+config RTK_FC_IPSEC_FASTFWD
+	bool "fast-forward for IPSEC"
+	depends on FC_RTL8277C_SERIES || FC_RTL9607F_SERIES
+	default n if XFRM_USER && XFRM 
+
+
+
+config FC_SPECIAL_FAST_FORWARD
+	bool "special fast-forward for VXLAN and NPTv6"
+	depends on FC_CA8277B_SERIES
+	default n
+
+
+config RTK_FC_MEMLEAK_DEBUG
+	bool "memory leak debug for FC driver"
+	default n
+
+config RTK_FC_PTOOL_CPU_PERF
+	bool "Enable ptool to measure cpu cycle"
+	depends on RTK_PTOOL_CPU_PERF
+	default n
+
+config RTK_FC_DRV_EVENT_RECORD_VERSION
+	int "FC driver event record with different version"
+	default 0
+	help
+		Default 0 is disable. 1 is reserve to FC, 2 is for CMDC.
+
+
+config RTK_FC_SW_ACK_DELAY_WIDTH
+	int "FC driver software ack delay witdh"
+	default 0
+	help
+		Default 0 is disable, if enable, value should > 5. Example: value 16 is 32K sw entry and use 2K hash list.
+
+source "drivers/net/ethernet/realtek/rtl86900/FleetConntrackDriver/Kconfig.core"
+
+endif #endif RTK_L34_FLEETCONNTRACK_ENABLE

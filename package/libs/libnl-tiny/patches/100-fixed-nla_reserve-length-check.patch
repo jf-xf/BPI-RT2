@@ -1,0 +1,12 @@
+diff -ru a/attr.c b/attr.c
+--- a/attr.c	2021-12-15 05:11:05.000000000 +0800
++++ b/attr.c	2022-08-31 15:15:15.697058100 +0800
+@@ -618,7 +618,7 @@
+ 	
+ 	tlen = NLMSG_ALIGN(msg->nm_nlh->nlmsg_len) + nla_total_size(attrlen);
+ 
+-	if ((tlen + msg->nm_nlh->nlmsg_len) > msg->nm_size)
++	if (tlen > (int)msg->nm_size)
+ 		return NULL;
+ 
+ 	nla = (struct nlattr *) nlmsg_tail(msg->nm_nlh);

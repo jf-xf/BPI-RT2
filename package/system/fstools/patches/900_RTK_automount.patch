@@ -1,0 +1,60 @@
+Index: fstools-2020-05-12-84269037/block.c
+===================================================================
+--- fstools-2020-05-12-84269037.orig/block.c
++++ fstools-2020-05-12-84269037/block.c
+@@ -648,6 +648,8 @@ static char* find_mount_point(char *bloc
+ 	return point;
+ }
+ 
++#define CT_USB_DEV_MOUNT_PATH_MAX_LEN (256)
++
+ static int print_block_uci(struct probe_info *pr)
+ {
+ 	if (!strcmp(pr->type, "swap")) {
+@@ -660,14 +662,25 @@ static int print_block_uci(struct probe_
+ 			printf("\toption\ttarget\t'%s'\n", mp);
+ 			free(mp);
+ 		} else {
++#if 0
+ 			printf("\toption\ttarget\t'/mnt/%s'\n", basename(pr->dev));
++#else
++			unsigned int name_i;
++			char tmp_buf[64] = "";
++			char mountPath[CT_USB_DEV_MOUNT_PATH_MAX_LEN] = "";
++			
++			snprintf(tmp_buf, sizeof(tmp_buf),"%s", basename(pr->dev));
++			name_i = tmp_buf[2] - 'a' + 1;
++			sprintf(mountPath, "/mnt/usb%u_%u", name_i, tmp_buf[3]-'0');
++			printf("\toption\ttarget\t'%s'\n", mountPath);//default use usb%d_%d
++#endif
+ 		}
+ 	}
+ 	if (pr->uuid)
+ 		printf("\toption\tuuid\t'%s'\n", pr->uuid);
+ 	else
+ 		printf("\toption\tdevice\t'%s'\n", pr->dev);
+-	printf("\toption\tenabled\t'0'\n\n");
++	printf("\toption\tenabled\t'1'\n\n"); //default enable uci block to automount
+ 
+ 	return 0;
+ }
+@@ -892,9 +905,18 @@ static int handle_mount(const char *sour
+ 	int i, err;
+ 	size_t mount_opts_len;
+ 	char *mount_opts = NULL, *ptr;
++	char _target_str[128];
+ 
+-	err = mount(source, target, fstype, m ? m->flags : 0,
++	if (strcmp(fstype, "ntfs")) //if not ntfs
++	{
++		err = mount(source, target, fstype, m ? m->flags : 0,
+ 	            (m && m->options) ? m->options : "");
++	}
++	else //ntfs
++	{
++		snprintf(_target_str, sizeof(_target_str), "/usr/bin/ntfs-3g -o noatime,big_writes,umask=0 %s %s", source, target);
++		err = system(_target_str);
++	}
+ 
+ 	/* Requested file system type is not available in kernel,
+ 	   attempt to call mount helper. */

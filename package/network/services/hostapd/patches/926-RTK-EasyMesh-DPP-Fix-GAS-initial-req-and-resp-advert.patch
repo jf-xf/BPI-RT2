@@ -1,0 +1,733 @@
+From af23b92323f94650b514ca2132766a7dbaf03e65 Mon Sep 17 00:00:00 2001
+From: "ryan.kuo" <ryan.kuo@realtek.com>
+Date: Fri, 10 Feb 2023 18:36:49 +0800
+Subject: [PATCH] [All][EasyMesh-DPP] Fix GAS initial req and resp
+ advertisement protocol element based on spec.
+
+[All][Easymesh-dpp] Process multi_ap in dpp chirp cmd to differentiate normal dpp and dpp_multi_ap.
+---
+ src/ap/dpp_hostapd.c              |   4 +-
+ src/common/dpp.c                  | 139 ++++++++++++++++++++----------
+ src/common/dpp.h                  |   7 +-
+ src/common/dpp_i.h                |   2 +-
+ src/common/dpp_tcp.c              |   8 +-
+ src/common/wpa_ctrl.h             |   9 ++
+ wpa_supplicant/dpp_supplicant.c   | 137 +++++++++++++++++++++--------
+ wpa_supplicant/dpp_supplicant.h   |   9 ++
+ wpa_supplicant/wpa_cli.c          |  20 ++++-
+ wpa_supplicant/wpa_supplicant_i.h |   1 +
+ 10 files changed, 245 insertions(+), 91 deletions(-)
+ mode change 100644 => 100755 src/common/dpp_i.h
+ mode change 100644 => 100755 wpa_supplicant/dpp_supplicant.c
+ mode change 100644 => 100755 wpa_supplicant/dpp_supplicant.h
+ mode change 100644 => 100755 wpa_supplicant/wpa_cli.c
+ mode change 100644 => 100755 wpa_supplicant/wpa_supplicant_i.h
+
+Index: hostapd-2022-01-16-cff80b4f/src/ap/dpp_hostapd.c
+===================================================================
+--- hostapd-2022-01-16-cff80b4f.orig/src/ap/dpp_hostapd.c
++++ hostapd-2022-01-16-cff80b4f/src/ap/dpp_hostapd.c
+@@ -940,7 +940,7 @@ static void hostapd_dpp_gas_resp_cb(void
+ 		goto fail;
+ 	}
+ 
+-	if (dpp_conf_resp_rx(auth, resp) < 0) {
++	if (dpp_conf_resp_rx(auth, resp, 0) < 0) {
+ 		wpa_printf(MSG_DEBUG, "DPP: Configuration attempt failed");
+ 		goto fail;
+ 	}
+@@ -996,7 +996,7 @@ static void hostapd_dpp_start_gas_client
+ 	int res;
+ 
+ 	buf = dpp_build_conf_req_helper(auth, hapd->conf->dpp_name,
+-					DPP_NETROLE_AP,
++					DPP_NETROLE_AP, 0,
+ 					hapd->conf->dpp_mud_url, NULL);
+ 	if (!buf) {
+ 		wpa_printf(MSG_DEBUG,
+Index: hostapd-2022-01-16-cff80b4f/src/common/dpp.c
+===================================================================
+--- hostapd-2022-01-16-cff80b4f.orig/src/common/dpp.c
++++ hostapd-2022-01-16-cff80b4f/src/common/dpp.c
+@@ -759,12 +759,16 @@ fail:
+ }
+ 
+ 
+-void dpp_write_adv_proto(struct wpabuf *buf)
++void dpp_write_adv_proto(struct wpabuf *buf, int gas_type)
+ {
+ 	/* Advertisement Protocol IE */
+ 	wpabuf_put_u8(buf, WLAN_EID_ADV_PROTO);
+ 	wpabuf_put_u8(buf, 8); /* Length */
+-	wpabuf_put_u8(buf, 0x7f);
++	if (IS_GAS_INITIAL_REQ == gas_type) {
++		wpabuf_put_u8(buf, 0x00);
++	} else if (IS_GAS_INITIAL_RESP == gas_type) {
++		wpabuf_put_u8(buf, 0x7f);
++	}
+ 	wpabuf_put_u8(buf, WLAN_EID_VENDOR_SPECIFIC);
+ 	wpabuf_put_u8(buf, 5);
+ 	wpabuf_put_be24(buf, OUI_WFA);
+@@ -799,7 +803,7 @@ struct wpabuf * dpp_build_conf_req(struc
+ 		return NULL;
+ 	}
+ 
+-	dpp_write_adv_proto(buf);
++	dpp_write_adv_proto(buf, IS_GAS_INITIAL_REQ);
+ 	dpp_write_gas_query(buf, conf_req);
+ 	wpabuf_free(conf_req);
+ 	wpa_hexdump_buf(MSG_MSGDUMP, "DPP: GAS Config Request", buf);
+@@ -811,10 +815,16 @@ struct wpabuf * dpp_build_conf_req(struc
+ struct wpabuf * dpp_build_conf_req_helper(struct dpp_authentication *auth,
+ 					  const char *name,
+ 					  enum dpp_netrole netrole,
++					  int dpp_multiap_flag,
+ 					  const char *mud_url, int *opclasses)
+ {
+ 	size_t len, name_len;
+ 	const char *tech = "infra";
++
++	if (dpp_multiap_flag == 1) {
++		tech = "map";
++	}
++	
+ 	const char *dpp_name;
+ 	struct wpabuf *buf, *json;
+ 	char *csr = NULL;
+@@ -831,7 +841,7 @@ struct wpabuf * dpp_build_conf_req_helpe
+ 	dpp_name = name ? name : "Test";
+ 	name_len = os_strlen(dpp_name);
+ 
+-	len = 100 + name_len * 6 + 1 + int_array_len(opclasses) * 4;
++	len = 300 + name_len * 6 + 1 + int_array_len(opclasses) * 4;
+ 	if (mud_url && mud_url[0])
+ 		len += 10 + os_strlen(mud_url);
+ #ifdef CONFIG_DPP2
+@@ -857,7 +867,19 @@ struct wpabuf * dpp_build_conf_req_helpe
+ 	json_value_sep(json);
+ 	json_add_string(json, "wi-fi_tech", tech);
+ 	json_value_sep(json);
+-	json_add_string(json, "netRole", dpp_netrole_str(netrole));
++	if (dpp_multiap_flag == 1 && DPP_NETROLE_STA == netrole) {
++		json_add_string(json, "netRole", "mapAgent");
++	} else if (dpp_multiap_flag == 1 && DPP_NETROLE_AP == netrole) {
++		json_add_string(json, "netRole", "mapController");
++	} else {
++		json_add_string(json, "netRole", dpp_netrole_str(netrole));
++	}
++	if (dpp_multiap_flag == 1 && DPP_NETROLE_STA == netrole) {
++		json_value_sep(json);
++		json_start_array(json, "bSTAList");
++		wpabuf_printf(json, "{\"netRole\":\"mapBackhaulSta\",\"akm\":\"dpp+psk+sae\"}");
++		json_end_array(json);
++	}
+ 	if (mud_url && mud_url[0]) {
+ 		json_value_sep(json);
+ 		json_add_string(json, "mudurl", mud_url);
+@@ -2340,6 +2362,11 @@ static int dpp_parse_connector(struct dp
+ 		if (!role || role->type != JSON_STRING) {
+ 			wpa_printf(MSG_DEBUG, "DPP: Missing netRole string");
+ 			goto fail;
++		} else {
++			wpa_printf(MSG_DEBUG, "DPP: %s connector processed", role->string);
++			if (!strcmp(role->string, "mapAgent")) {
++				conf->is_1905_conn = 1;
++			}
+ 		}
+ 		wpa_printf(MSG_DEBUG,
+ 			   "DPP: connector group: groupId='%s' netRole='%s'",
+@@ -2487,6 +2514,13 @@ static int dpp_parse_cred_dpp(struct dpp
+ 	}
+ 	dpp_debug_print_key("DPP: Received C-sign-key", csign_pub);
+ 
++	token = json_get_member(cred, "pass");
++	if (!token || token->type != JSON_STRING) {
++		wpa_printf(MSG_DEBUG, "DPP: No passphrase string found");
++	} else {
++		os_memcpy(conf->passphrase, token->string, os_strlen(token->string));
++	}
++
+ 	ppkey = json_get_member(cred, "ppKey");
+ 	if (ppkey && ppkey->type == JSON_OBJECT) {
+ 		pp_pub = dpp_parse_jwk(ppkey, &pp_curve);
+@@ -2706,9 +2740,10 @@ static enum dpp_akm dpp_akm_from_str(con
+ 
+ 
+ static int dpp_parse_conf_obj(struct dpp_authentication *auth,
+-			      const u8 *conf_obj, u16 conf_obj_len)
++			      const u8 *conf_obj, u16 conf_obj_len, int dpp_multiap_flag)
+ {
+ 	int ret = -1;
++	int discovery_present = 1;
+ 	struct json_token *root, *token, *discovery, *cred;
+ 	struct dpp_config_obj *conf;
+ 	struct wpabuf *ssid64 = NULL;
+@@ -2727,40 +2762,52 @@ static int dpp_parse_conf_obj(struct dpp
+ 		dpp_auth_fail(auth, "No wi-fi_tech string value found");
+ 		goto fail;
+ 	}
+-	if (os_strcmp(token->string, "infra") != 0) {
++	const char *tech_name = "infra";
++	if (dpp_multiap_flag == 1) {
++		tech_name = "map";
++	}
++
++	if (os_strcmp(token->string, tech_name) != 0) {
+ 		wpa_printf(MSG_DEBUG, "DPP: Unsupported wi-fi_tech value: '%s'",
+ 			   token->string);
+ 		dpp_auth_fail(auth, "Unsupported wi-fi_tech value");
+ 		goto fail;
+ 	}
+ 
++	// QCA board 1905 connector does not contain discovery object, which does not comply with easy connect spec.
++	// Nevertheless, code below supports parsing without discovery object.
+ 	discovery = json_get_member(root, "discovery");
+ 	if (!discovery || discovery->type != JSON_OBJECT) {
+-		dpp_auth_fail(auth, "No discovery object in JSON");
+-		goto fail;
+-	}
+-
+-	ssid64 = json_get_member_base64url(discovery, "ssid64");
+-	if (ssid64) {
+-		wpa_hexdump_ascii(MSG_DEBUG, "DPP: discovery::ssid64",
+-				  wpabuf_head(ssid64), wpabuf_len(ssid64));
+-		if (wpabuf_len(ssid64) > SSID_MAX_LEN) {
+-			dpp_auth_fail(auth, "Too long discovery::ssid64 value");
+-			goto fail;
+-		}
+-	} else {
+-		token = json_get_member(discovery, "ssid");
+-		if (!token || token->type != JSON_STRING) {
+-			dpp_auth_fail(auth,
+-				      "No discovery::ssid string value found");
++		if (dpp_multiap_flag == 1) {
++			discovery_present = 0;
++		} else {
++			dpp_auth_fail(auth, "No discovery object in JSON");
+ 			goto fail;
+ 		}
+-		wpa_hexdump_ascii(MSG_DEBUG, "DPP: discovery::ssid",
+-				  token->string, os_strlen(token->string));
+-		if (os_strlen(token->string) > SSID_MAX_LEN) {
+-			dpp_auth_fail(auth,
+-				      "Too long discovery::ssid string value");
+-			goto fail;
++	}
++	if (discovery_present) {
++		ssid64 = json_get_member_base64url(discovery, "ssid64");
++		if (ssid64) {
++			wpa_hexdump_ascii(MSG_DEBUG, "DPP: discovery::ssid64",
++					wpabuf_head(ssid64), wpabuf_len(ssid64));
++			if (wpabuf_len(ssid64) > SSID_MAX_LEN) {
++				dpp_auth_fail(auth, "Too long discovery::ssid64 value");
++				goto fail;
++			}
++		} else {
++			token = json_get_member(discovery, "ssid");
++			if (!token || token->type != JSON_STRING) {
++				dpp_auth_fail(auth,
++						"No discovery::ssid string value found");
++				goto fail;
++			}
++			wpa_hexdump_ascii(MSG_DEBUG, "DPP: discovery::ssid",
++					token->string, os_strlen(token->string));
++			if (os_strlen(token->string) > SSID_MAX_LEN) {
++				dpp_auth_fail(auth,
++						"Too long discovery::ssid string value");
++				goto fail;
++			}
+ 		}
+ 	}
+ 
+@@ -2772,19 +2819,20 @@ static int dpp_parse_conf_obj(struct dpp
+ 	}
+ 	conf = &auth->conf_obj[auth->num_conf_obj++];
+ 
+-	if (ssid64) {
+-		conf->ssid_len = wpabuf_len(ssid64);
+-		os_memcpy(conf->ssid, wpabuf_head(ssid64), conf->ssid_len);
+-	} else {
+-		conf->ssid_len = os_strlen(token->string);
+-		os_memcpy(conf->ssid, token->string, conf->ssid_len);
+-	}
+-
+-	token = json_get_member(discovery, "ssid_charset");
+-	if (token && token->type == JSON_NUMBER) {
+-		conf->ssid_charset = token->number;
+-		wpa_printf(MSG_DEBUG, "DPP: ssid_charset=%d",
+-			   conf->ssid_charset);
++	if (discovery_present) {
++		if (ssid64) {
++			conf->ssid_len = wpabuf_len(ssid64);
++			os_memcpy(conf->ssid, wpabuf_head(ssid64), conf->ssid_len);
++		} else {
++			conf->ssid_len = (u8)os_strlen(token->string);
++			os_memcpy(conf->ssid, token->string, (size_t)conf->ssid_len);
++		}
++		token = json_get_member(discovery, "ssid_charset");
++		if (token && token->type == JSON_NUMBER) {
++			conf->ssid_charset = token->number;
++			wpa_printf(MSG_DEBUG, "DPP: ssid_charset=%d",
++				conf->ssid_charset);
++		}
+ 	}
+ 
+ 	cred = json_get_member(root, "cred");
+@@ -2854,7 +2902,7 @@ static u8 * dpp_get_csr_attrs(const u8 *
+ 
+ 
+ int dpp_conf_resp_rx(struct dpp_authentication *auth,
+-		     const struct wpabuf *resp)
++		     const struct wpabuf *resp, int dpp_multiap_flag)
+ {
+ 	const u8 *wrapped_data, *e_nonce, *status, *conf_obj;
+ 	u16 wrapped_data_len, e_nonce_len, status_len, conf_obj_len;
+@@ -2975,7 +3023,7 @@ int dpp_conf_resp_rx(struct dpp_authenti
+ 	while (conf_obj) {
+ 		wpa_hexdump_ascii(MSG_DEBUG, "DPP: configurationObject JSON",
+ 				  conf_obj, conf_obj_len);
+-		if (dpp_parse_conf_obj(auth, conf_obj, conf_obj_len) < 0)
++		if (dpp_parse_conf_obj(auth, conf_obj, conf_obj_len, dpp_multiap_flag) < 0)
+ 			goto fail;
+ 		conf_obj = dpp_get_attr_next(conf_obj, unwrapped, unwrapped_len,
+ 					     DPP_ATTR_CONFIG_OBJ,
+@@ -3507,7 +3555,7 @@ int dpp_configurator_own_config(struct d
+ 		goto fail;
+ 	}
+ 	ret = dpp_parse_conf_obj(auth, wpabuf_head(conf_obj),
+-				 wpabuf_len(conf_obj));
++				 wpabuf_len(conf_obj), 0);
+ fail:
+ 	wpabuf_free(conf_obj);
+ 	auth->peer_protocol_key = NULL;
+Index: hostapd-2022-01-16-cff80b4f/src/common/dpp.h
+===================================================================
+--- hostapd-2022-01-16-cff80b4f.orig/src/common/dpp.h
++++ hostapd-2022-01-16-cff80b4f/src/common/dpp.h
+@@ -37,6 +37,9 @@ extern int dpp_version_override;
+ #define DPP_HDR_LEN (4 + 2) /* OUI, OUI Type, Crypto Suite, DPP frame type */
+ #define DPP_TCP_PORT 8908
+ 
++#define IS_GAS_INITIAL_REQ 0
++#define IS_GAS_INITIAL_RESP 1
++
+ enum dpp_public_action_frame_type {
+ 	DPP_PA_AUTHENTICATION_REQ = 0,
+ 	DPP_PA_AUTHENTICATION_RESP = 1,
+@@ -318,6 +321,7 @@ struct dpp_authentication {
+ 	struct dpp_configurator *conf;
+ 	struct dpp_config_obj {
+ 		char *connector; /* received signedConnector */
++		u8 is_1905_conn;
+ 		u8 ssid[SSID_MAX_LEN];
+ 		u8 ssid_len;
+ 		int ssid_charset;
+@@ -544,6 +548,7 @@ struct wpabuf * dpp_build_conf_req(struc
+ struct wpabuf * dpp_build_conf_req_helper(struct dpp_authentication *auth,
+ 					  const char *name,
+ 					  enum dpp_netrole netrole,
++					  int dpp_multiap_flag,
+ 					  const char *mud_url, int *opclasses);
+ int dpp_auth_conf_rx(struct dpp_authentication *auth, const u8 *hdr,
+ 		     const u8 *attr_start, size_t attr_len);
+@@ -567,7 +572,7 @@ struct wpabuf *
+ dpp_conf_req_rx(struct dpp_authentication *auth, const u8 *attr_start,
+ 		size_t attr_len);
+ int dpp_conf_resp_rx(struct dpp_authentication *auth,
+-		     const struct wpabuf *resp);
++		     const struct wpabuf *resp, int dpp_multiap_flag);
+ enum dpp_status_error dpp_conf_result_rx(struct dpp_authentication *auth,
+ 					 const u8 *hdr,
+ 					 const u8 *attr_start, size_t attr_len);
+Index: hostapd-2022-01-16-cff80b4f/src/common/dpp_i.h
+===================================================================
+--- hostapd-2022-01-16-cff80b4f.orig/src/common/dpp_i.h
++++ hostapd-2022-01-16-cff80b4f/src/common/dpp_i.h
+@@ -47,7 +47,7 @@ int dpp_prepare_channel_list(struct dpp_
+ 			     struct hostapd_hw_modes *own_modes, u16 num_modes);
+ void dpp_auth_fail(struct dpp_authentication *auth, const char *txt);
+ int dpp_gen_uri(struct dpp_bootstrap_info *bi);
+-void dpp_write_adv_proto(struct wpabuf *buf);
++void dpp_write_adv_proto(struct wpabuf *buf, int gas_type);
+ void dpp_write_gas_query(struct wpabuf *buf, struct wpabuf *query);
+ 
+ /* dpp_backup.c */
+Index: hostapd-2022-01-16-cff80b4f/src/common/dpp_tcp.c
+===================================================================
+--- hostapd-2022-01-16-cff80b4f.orig/src/common/dpp_tcp.c
++++ hostapd-2022-01-16-cff80b4f/src/common/dpp_tcp.c
+@@ -285,7 +285,7 @@ static void dpp_controller_start_gas_cli
+ 	const char *dpp_name;
+ 
+ 	dpp_name = conn->name ? conn->name : "Test";
+-	buf = dpp_build_conf_req_helper(auth, dpp_name, conn->netrole, NULL,
++	buf = dpp_build_conf_req_helper(auth, dpp_name, conn->netrole, 0, NULL,
+ 					NULL);
+ 	if (!buf) {
+ 		wpa_printf(MSG_DEBUG,
+@@ -1047,7 +1047,7 @@ static int dpp_tcp_send_comeback_delay(s
+ 		wpabuf_put_u8(buf, 0);
+ 	wpabuf_put_le16(buf, 500); /* GAS Comeback Delay */
+ 
+-	dpp_write_adv_proto(buf);
++	dpp_write_adv_proto(buf, IS_GAS_INITIAL_RESP);
+ 	wpabuf_put_le16(buf, 0); /* Query Response Length */
+ 
+ 	/* Send Config Response over TCP */
+@@ -1088,7 +1088,7 @@ static int dpp_tcp_send_gas_resp(struct
+ 		wpabuf_put_u8(buf, 0);
+ 	wpabuf_put_le16(buf, 0); /* GAS Comeback Delay */
+ 
+-	dpp_write_adv_proto(buf);
++	dpp_write_adv_proto(buf, IS_GAS_INITIAL_RESP);
+ 	dpp_write_gas_query(buf, resp);
+ 	wpabuf_free(resp);
+ 
+@@ -1237,7 +1237,7 @@ static int dpp_tcp_rx_gas_resp(struct dp
+ 		   "DPP: Configuration Response for local stack from TCP");
+ 
+ 	if (auth)
+-		res = dpp_conf_resp_rx(auth, resp);
++		res = dpp_conf_resp_rx(auth, resp, 0);
+ 	else
+ 		res = -1;
+ 	wpabuf_free(resp);
+Index: hostapd-2022-01-16-cff80b4f/src/common/wpa_ctrl.h
+===================================================================
+--- hostapd-2022-01-16-cff80b4f.orig/src/common/wpa_ctrl.h
++++ hostapd-2022-01-16-cff80b4f/src/common/wpa_ctrl.h
+@@ -188,14 +188,23 @@ extern "C" {
+ #define DPP_EVENT_CONF_FAILED "DPP-CONF-FAILED "
+ #define DPP_EVENT_CONN_STATUS_RESULT "DPP-CONN-STATUS-RESULT "
+ #define DPP_EVENT_CONFOBJ_AKM "DPP-CONFOBJ-AKM "
++#define DPP_EVENT_CONFOBJ_AKM_STORE "DPP-CONFOBJ-AKM-STORE "
+ #define DPP_EVENT_CONFOBJ_SSID "DPP-CONFOBJ-SSID "
++#define DPP_EVENT_CONFOBJ_SSID_STORE "DPP-CONFOBJ-SSID-STORE "
+ #define DPP_EVENT_CONFOBJ_SSID_CHARSET "DPP-CONFOBJ-SSID-CHARSET "
++#define DPP_EVENT_CONFOBJ_PARSE_SUCCESS "DPP-CONFOBJ-PARSE_SUCCESS "
+ #define DPP_EVENT_CONFOBJ_PASS "DPP-CONFOBJ-PASS "
++#define DPP_EVENT_CONFOBJ_PASS_STORE "DPP-CONFOBJ-PASS-STORE "
+ #define DPP_EVENT_CONFOBJ_PSK "DPP-CONFOBJ-PSK "
+ #define DPP_EVENT_CONNECTOR "DPP-CONNECTOR "
++#define DPP_EVENT_CONNECTOR_STORE "DPP-CONNECTOR-STORE "
++#define DPP_EVENT_CONNECTOR_1905 "DPP-CONNECTOR-1905 "
++#define DPP_EVENT_CONNECTOR_1905_STORE "DPP-CONNECTOR-1905-STORE "
+ #define DPP_EVENT_C_SIGN_KEY "DPP-C-SIGN-KEY "
++#define DPP_EVENT_C_SIGN_KEY_STORE "DPP-C-SIGN-KEY-STORE "
+ #define DPP_EVENT_PP_KEY "DPP-PP-KEY "
+ #define DPP_EVENT_NET_ACCESS_KEY "DPP-NET-ACCESS-KEY "
++#define DPP_EVENT_NET_ACCESS_KEY_STORE "DPP-NET-ACCESS-KEY-STORE "
+ #define DPP_EVENT_SERVER_NAME "DPP-SERVER-NAME "
+ #define DPP_EVENT_CERTBAG "DPP-CERTBAG "
+ #define DPP_EVENT_CACERT "DPP-CACERT "
+Index: hostapd-2022-01-16-cff80b4f/wpa_supplicant/dpp_supplicant.c
+===================================================================
+--- hostapd-2022-01-16-cff80b4f.orig/wpa_supplicant/dpp_supplicant.c
++++ hostapd-2022-01-16-cff80b4f/wpa_supplicant/dpp_supplicant.c
+@@ -1441,40 +1441,75 @@ static void wpas_dpp_post_process_config
+ 
+ static int wpas_dpp_handle_config_obj(struct wpa_supplicant *wpa_s,
+ 				      struct dpp_authentication *auth,
+-				      struct dpp_config_obj *conf)
++				      struct dpp_config_obj *conf, int handle_mode)
+ {
+ 	wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONF_RECEIVED);
+-	wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONFOBJ_AKM "%s",
+-		dpp_akm_str(conf->akm));
+-	if (conf->ssid_len)
+-		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONFOBJ_SSID "%s",
+-			wpa_ssid_txt(conf->ssid, conf->ssid_len));
+-	if (conf->ssid_charset)
+-		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONFOBJ_SSID_CHARSET "%d",
+-			conf->ssid_charset);
++	if (!conf->is_1905_conn) {
++		if (conf->ssid_len) {
++			if (handle_mode == DPP_CONFIG_STORE) {
++				wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONFOBJ_SSID_STORE "%s",
++				wpa_ssid_txt(conf->ssid, conf->ssid_len));
++			} else {
++				wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONFOBJ_SSID "%s",
++				wpa_ssid_txt(conf->ssid, conf->ssid_len));
++			}
++		}
++		if (conf->ssid_charset)
++			wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONFOBJ_SSID_CHARSET "%d",
++				conf->ssid_charset);
++		if (conf->passphrase[0]) {
++			char hex[64 * 2 + 1];
++
++			wpa_snprintf_hex(hex, sizeof(hex),
++					(const u8 *) conf->passphrase,
++					os_strlen(conf->passphrase));
++			if (handle_mode == DPP_CONFIG_STORE) {
++				wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONFOBJ_PASS_STORE "%s",
++				conf->passphrase);
++			} else {
++				wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONFOBJ_PASS "%s",
++				hex);
++			}
++		} else if (conf->psk_set) {
++			char hex[PMK_LEN * 2 + 1];
++
++			wpa_snprintf_hex(hex, sizeof(hex), conf->psk, PMK_LEN);
++			wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONFOBJ_PSK "%s",
++				hex);
++		}
++		if (conf->akm) {
++			if (handle_mode == DPP_CONFIG_STORE) {
++				wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONFOBJ_AKM_STORE "%d",
++				conf->akm);
++			} else {
++				wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONFOBJ_AKM "%s",
++				dpp_akm_str(conf->akm));
++			}
++		}
++	}
+ 	if (conf->connector) {
+ 		/* TODO: Save the Connector and consider using a command
+ 		 * to fetch the value instead of sending an event with
+ 		 * it. The Connector could end up being larger than what
+ 		 * most clients are ready to receive as an event
+ 		 * message. */
+-		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONNECTOR "%s",
+-			conf->connector);
+-	}
+-	if (conf->passphrase[0]) {
+-		char hex[64 * 2 + 1];
+-
+-		wpa_snprintf_hex(hex, sizeof(hex),
+-				 (const u8 *) conf->passphrase,
+-				 os_strlen(conf->passphrase));
+-		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONFOBJ_PASS "%s",
+-			hex);
+-	} else if (conf->psk_set) {
+-		char hex[PMK_LEN * 2 + 1];
+-
+-		wpa_snprintf_hex(hex, sizeof(hex), conf->psk, PMK_LEN);
+-		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONFOBJ_PSK "%s",
+-			hex);
++		if (conf->is_1905_conn == 1) {
++			if (handle_mode == DPP_CONFIG_STORE) {
++				wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONNECTOR_1905_STORE "%s",
++					conf->connector);
++			} else {
++				wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONNECTOR_1905 "%s",
++					conf->connector);
++			}
++		} else {
++			if (handle_mode == DPP_CONFIG_STORE) {
++				wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONNECTOR_STORE "%s",
++					conf->connector);
++			} else {
++				wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONNECTOR "%s",
++					conf->connector);
++			}
++		}
+ 	}
+ 	if (conf->c_sign_key) {
+ 		char *hex;
+@@ -1486,8 +1521,13 @@ static int wpas_dpp_handle_config_obj(st
+ 			wpa_snprintf_hex(hex, hexlen,
+ 					 wpabuf_head(conf->c_sign_key),
+ 					 wpabuf_len(conf->c_sign_key));
+-			wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_C_SIGN_KEY "%s",
++			if (handle_mode == DPP_CONFIG_STORE) {
++				wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_C_SIGN_KEY_STORE "%s",
++				hex);
++			} else {
++				wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_C_SIGN_KEY "%s",
+ 				hex);
++			}
+ 			os_free(hex);
+ 		}
+ 	}
+@@ -1515,14 +1555,20 @@ static int wpas_dpp_handle_config_obj(st
+ 			wpa_snprintf_hex(hex, hexlen,
+ 					 wpabuf_head(auth->net_access_key),
+ 					 wpabuf_len(auth->net_access_key));
+-			if (auth->net_access_key_expiry)
++			if (auth->net_access_key_expiry) {
+ 				wpa_msg(wpa_s, MSG_INFO,
+ 					DPP_EVENT_NET_ACCESS_KEY "%s %lu", hex,
+ 					(long unsigned)
+ 					auth->net_access_key_expiry);
+-			else
+-				wpa_msg(wpa_s, MSG_INFO,
+-					DPP_EVENT_NET_ACCESS_KEY "%s", hex);
++			} else {
++				if (handle_mode == DPP_CONFIG_STORE) {
++					wpa_msg(wpa_s, MSG_INFO,
++						DPP_EVENT_NET_ACCESS_KEY_STORE "%s", hex);
++				} else {
++					wpa_msg(wpa_s, MSG_INFO,
++						DPP_EVENT_NET_ACCESS_KEY "%s", hex);
++				}
++			}
+ 			os_free(hex);
+ 		}
+ 	}
+@@ -1652,8 +1698,8 @@ static void wpas_dpp_gas_resp_cb(void *c
+ 			   "DPP: Not a DPP Advertisement Protocol ID");
+ 		goto fail;
+ 	}
+-
+-	res = dpp_conf_resp_rx(auth, resp);
++	wpa_printf(MSG_DEBUG, "DPP: Check dpp multi_ap flag: dpp_multi_ap = [%d]", wpa_s->dpp_multi_ap);
++	res = dpp_conf_resp_rx(auth, resp, wpa_s->dpp_multi_ap);
+ #ifdef CONFIG_DPP2
+ 	if (res == -2) {
+ 		wpa_printf(MSG_DEBUG, "DPP: CSR needed");
+@@ -1669,7 +1715,7 @@ static void wpas_dpp_gas_resp_cb(void *c
+ 	wpa_s->dpp_conf_backup_received = false;
+ 	for (i = 0; i < auth->num_conf_obj; i++) {
+ 		res = wpas_dpp_handle_config_obj(wpa_s, auth,
+-						 &auth->conf_obj[i]);
++						 &auth->conf_obj[i], DPP_CONFIG_STORE);
+ 		if (res < 0)
+ 			goto fail;
+ 	}
+@@ -1710,6 +1756,7 @@ fail:
+ 		wpabuf_free(msg);
+ 
+ 		/* This exchange will be terminated in the TX status handler */
++		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONFOBJ_PARSE_SUCCESS);
+ 		if (wpa_s->conf->dpp_config_processing < 2 ||
+ 		    wpa_s->dpp_conf_backup_received)
+ 			auth->remove_on_tx_status = 1;
+@@ -1734,8 +1781,9 @@ static void wpas_dpp_start_gas_client(st
+ 	wpas_dpp_listen_stop(wpa_s);
+ 
+ 	supp_op_classes = wpas_supp_op_classes(wpa_s);
++	wpa_printf(MSG_DEBUG, "DPP: check before GAS req forging: dpp_multi_ap = [%d]", wpa_s->dpp_multi_ap);
+ 	buf = dpp_build_conf_req_helper(auth, wpa_s->conf->dpp_name,
+-					wpa_s->dpp_netrole,
++					wpa_s->dpp_netrole, wpa_s->dpp_multi_ap,
+ 					wpa_s->conf->dpp_mud_url,
+ 					supp_op_classes);
+ 	os_free(supp_op_classes);
+@@ -2017,7 +2065,7 @@ static int wpas_dpp_process_conf_obj(voi
+ 
+ 	for (i = 0; i < auth->num_conf_obj; i++) {
+ 		res = wpas_dpp_handle_config_obj(wpa_s, auth,
+-						 &auth->conf_obj[i]);
++						 &auth->conf_obj[i], DPP_CONFIG_HANDLE);
+ 		if (res)
+ 			break;
+ 	}
+@@ -3084,7 +3132,7 @@ int wpas_dpp_configurator_sign(struct wp
+ 	if (dpp_set_configurator(auth, cmd) == 0 &&
+ 	    dpp_configurator_own_config(auth, curve, 0) == 0)
+ 		ret = wpas_dpp_handle_config_obj(wpa_s, auth,
+-						 &auth->conf_obj[0]);
++						 &auth->conf_obj[0], DPP_CONFIG_HANDLE);
+ 	if (!ret)
+ 		wpas_dpp_post_process_config(wpa_s, auth);
+ 
+@@ -3762,6 +3810,7 @@ int wpas_dpp_chirp(struct wpa_supplicant
+ 	const char *pos;
+ 	int iter = 1, listen_freq = 0;
+ 	struct dpp_bootstrap_info *bi;
++	int dpp_multi_ap = 0;
+ 
+ 	pos = os_strstr(cmd, " own=");
+ 	if (!pos)
+@@ -3788,6 +3837,14 @@ int wpas_dpp_chirp(struct wpa_supplicant
+ 			return -1;
+ 	}
+ 
++	pos = os_strstr(cmd, " multi_ap=");
++	if (pos) {
++		dpp_multi_ap = atoi(pos + 10);
++		wpa_printf(MSG_DEBUG, "DPP: chirp command initiates dpp multi_ap process");
++	} else {
++		wpa_printf(MSG_DEBUG, "DPP: chirp command initiates normal dpp process");
++	}
++	
+ 	wpas_dpp_chirp_stop(wpa_s);
+ 	wpa_s->dpp_allowed_roles = DPP_CAPAB_ENROLLEE;
+ 	wpa_s->dpp_qr_mutual = 0;
+@@ -3800,6 +3857,12 @@ int wpas_dpp_chirp(struct wpa_supplicant
+ 	wpa_s->dpp_chirp_scan_done = 0;
+ 	wpa_s->dpp_chirp_listen = listen_freq;
+ 
++	if (dpp_multi_ap == 1) {
++		wpa_s->dpp_multi_ap = 1;
++	} else {
++		wpa_s->dpp_multi_ap = 0;
++	}
++	
+ 	return eloop_register_timeout(0, 0, wpas_dpp_chirp_next, wpa_s, NULL);
+ }
+ 
+Index: hostapd-2022-01-16-cff80b4f/wpa_supplicant/dpp_supplicant.h
+===================================================================
+--- hostapd-2022-01-16-cff80b4f.orig/wpa_supplicant/dpp_supplicant.h
++++ hostapd-2022-01-16-cff80b4f/wpa_supplicant/dpp_supplicant.h
+@@ -12,6 +12,15 @@
+ 
+ enum dpp_status_error;
+ 
++/*
++	Only store when processing config obj in dpp config response in function wpas_dpp_handle_config_obj.
++	Other place may call wpas_dpp_handle_config_obj as well, but we do not wish to overwrite tmp cred files.
++*/
++enum {
++	DPP_CONFIG_HANDLE,
++	DPP_CONFIG_STORE,
++};
++
+ int wpas_dpp_qr_code(struct wpa_supplicant *wpa_s, const char *cmd);
+ int wpas_dpp_nfc_uri(struct wpa_supplicant *wpa_s, const char *cmd);
+ int wpas_dpp_nfc_handover_req(struct wpa_supplicant *wpa_s, const char *cmd);
+Index: hostapd-2022-01-16-cff80b4f/wpa_supplicant/wpa_cli.c
+===================================================================
+--- hostapd-2022-01-16-cff80b4f.orig/wpa_supplicant/wpa_cli.c
++++ hostapd-2022-01-16-cff80b4f/wpa_supplicant/wpa_cli.c
+@@ -4331,8 +4331,26 @@ static void wpa_cli_action_process(const
+ 		wpa_cli_exec(action_file, ifname, pos);
+ 	} else if (str_starts(pos, DPP_EVENT_CONFOBJ_SSID)) {
+ 		wpa_cli_exec(action_file, ifname, pos);
++	} else if (str_starts(pos, DPP_EVENT_CONFOBJ_PARSE_SUCCESS)) {
++		wpa_cli_exec(action_file, ifname, pos);
++	} else if (str_starts(pos, DPP_EVENT_CONFOBJ_AKM_STORE)) {
++		wpa_cli_exec(action_file, ifname, pos);
++	} else if (str_starts(pos, DPP_EVENT_CONFOBJ_SSID_STORE)) {
++		wpa_cli_exec(action_file, ifname, pos);
++	} else if (str_starts(pos, DPP_EVENT_CONFOBJ_PASS_STORE)) {
++		wpa_cli_exec(action_file, ifname, pos);
++	} else if (str_starts(pos, DPP_EVENT_CONNECTOR_STORE)) {
++		wpa_cli_exec(action_file, ifname, pos);
++	} else if (str_starts(pos, DPP_EVENT_CONNECTOR_1905_STORE)) {
++		wpa_cli_exec(action_file, ifname, pos);
++	} else if (str_starts(pos, DPP_EVENT_C_SIGN_KEY_STORE)) {
++		wpa_cli_exec(action_file, ifname, pos);
++	} else if (str_starts(pos, DPP_EVENT_NET_ACCESS_KEY_STORE)) {
++		wpa_cli_exec(action_file, ifname, pos);
+ 	} else if (str_starts(pos, DPP_EVENT_CONNECTOR)) {
+ 		wpa_cli_exec(action_file, ifname, pos);
++	} else if (str_starts(pos, DPP_EVENT_CONNECTOR_1905)) {
++		wpa_cli_exec(action_file, ifname, pos);
+ 	} else if (str_starts(pos, DPP_EVENT_CONFOBJ_PASS)) {
+ 		wpa_cli_exec(action_file, ifname, pos);
+ 	} else if (str_starts(pos, DPP_EVENT_CONFOBJ_PSK)) {
+@@ -4830,7 +4848,7 @@ static void wpa_cli_interactive(void)
+ static void wpa_cli_action_ping(void *eloop_ctx, void *timeout_ctx)
+ {
+ 	struct wpa_ctrl *ctrl = eloop_ctx;
+-	char buf[256];
++	char buf[1024];
+ 	size_t len;
+ 
+ 	/* verify that connection is still working */
+Index: hostapd-2022-01-16-cff80b4f/wpa_supplicant/wpa_supplicant_i.h
+===================================================================
+--- hostapd-2022-01-16-cff80b4f.orig/wpa_supplicant/wpa_supplicant_i.h
++++ hostapd-2022-01-16-cff80b4f/wpa_supplicant/wpa_supplicant_i.h
+@@ -1489,6 +1489,7 @@ struct wpa_supplicant {
+ 	int dpp_chirp_round;
+ 	int dpp_chirp_scan_done;
+ 	int dpp_chirp_listen;
++	int dpp_multi_ap;
+ 	struct wpa_ssid *dpp_reconfig_ssid;
+ 	int dpp_reconfig_ssid_id;
+ 	struct dpp_reconfig_id *dpp_reconfig_id;

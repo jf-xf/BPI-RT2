@@ -1,0 +1,118 @@
+Index: linux-5.10.125/include/uapi/linux/netfilter/xt_mac.h
+===================================================================
+--- linux-5.10.125.orig/include/uapi/linux/netfilter/xt_mac.h
++++ linux-5.10.125/include/uapi/linux/netfilter/xt_mac.h
+@@ -4,8 +4,43 @@
+ 
+ #include <linux/if_ether.h>
+ 
++/*
++oringinal version
++*/
++/*
+ struct xt_mac_info {
+     unsigned char srcaddr[ETH_ALEN];
+     int invert;
+ };
++*/
++
++////////////////////////////////////////
++
++/*
++hack version
++*/
++/*linux-2.6.19*/
++#define MAC_SRC                 0x01    /* Match source MAC address */
++#define SRC_MASK                0x02    /* Source MAC mask */
++#define MAC_DST                 0x04    /* Match destination MAC address */
++#define DST_MASK                0x08    /* Destination MAC mask */
++#define MAC_SRC_INV             0x10    /* Negate the condition */
++#define SRC_MASK_INV            0x20    /* Negate the condition */
++#define MAC_DST_INV             0x40    /* Negate the condition */
++#define DST_MASK_INV            0x80    /* Negate the condition */
++
++struct xt_mac_info {
++    unsigned char srcaddr[ETH_ALEN];
++    /*linux-2.6.19*/
++    // Kaohj -- add mac mask
++    unsigned char srcmask[ETH_ALEN];
++    // Added by Mason Yu for dst MAC
++    unsigned char dstaddr[ETH_ALEN];
++    // Kaohj -- add mac mask
++    unsigned char dstmask[ETH_ALEN];
++    //int invert;
++    /* Flags from above */
++    u_int8_t flags;
++};
++
+ #endif /*_XT_MAC_H*/
+Index: linux-5.10.125/net/netfilter/xt_mac.c
+===================================================================
+--- linux-5.10.125.orig/net/netfilter/xt_mac.c
++++ linux-5.10.125/net/netfilter/xt_mac.c
+@@ -25,7 +25,56 @@ MODULE_ALIAS("ip6t_mac");
+ static bool mac_mt(const struct sk_buff *skb, struct xt_action_param *par)
+ {
+ 	const struct xt_mac_info *info = par->matchinfo;
+-	bool ret;
++	//bool ret;
++	int i, invert;
++	unsigned char info_addr[ETH_ALEN];
++	unsigned char pkt_addr[ETH_ALEN];
++#if 1
++   if (info->flags & MAC_SRC) {
++		   invert = !!(info->flags & MAC_SRC_INV);
++		   if (info->flags & SRC_MASK) {
++				   for (i=0; i<ETH_ALEN; i++) {
++						   info_addr[i] = (info->srcaddr[i] & info->srcmask[i]);
++						   pkt_addr[i] = (eth_hdr(skb)->h_source[i] & info->srcmask[i]);
++				   }
++				   if (skb_mac_header(skb) < skb->head
++						   || (skb_mac_header(skb) + ETH_HLEN) > skb->data
++						   || ((!ether_addr_equal(pkt_addr, info_addr))
++							^ invert))
++						   return 0;
++		   }
++		   else {
++				   if (skb_mac_header(skb) < skb->head
++						   || (skb_mac_header(skb) + ETH_HLEN) > skb->data
++						   || ((!ether_addr_equal(eth_hdr(skb)->h_source, info->srcaddr))
++							^ invert))
++						   return 0;
++		   }
++   }
++   if (info->flags & MAC_DST) {
++		   invert = !!(info->flags & MAC_DST_INV);
++		   if (info->flags & DST_MASK) {
++				   for (i=0; i<ETH_ALEN; i++) {
++						   info_addr[i] = (info->dstaddr[i] & info->dstmask[i]);
++						   pkt_addr[i] = (eth_hdr(skb)->h_dest[i] & info->dstmask[i]);
++				   }
++				   if (skb_mac_header(skb) < skb->head
++						   || (skb_mac_header(skb) + ETH_HLEN) > skb->data
++						   || ((!ether_addr_equal(pkt_addr, info_addr))
++							^ invert))
++						   return 0;
++		   }
++		   else {
++				   if (skb_mac_header(skb) < skb->head
++						   || (skb_mac_header(skb) + ETH_HLEN) > skb->data
++						   || ((!ether_addr_equal(eth_hdr(skb)->h_dest, info->dstaddr))
++							^ invert))
++						   return 0;
++		   }
++   }
++
++   return 1;
++#else
+ 
+ 	if (skb->dev == NULL || skb->dev->type != ARPHRD_ETHER)
+ 		return false;
+@@ -36,6 +85,7 @@ static bool mac_mt(const struct sk_buff
+ 	ret  = ether_addr_equal(eth_hdr(skb)->h_source, info->srcaddr);
+ 	ret ^= info->invert;
+ 	return ret;
++#endif
+ }
+ 
+ static struct xt_match mac_mt_reg __read_mostly = {

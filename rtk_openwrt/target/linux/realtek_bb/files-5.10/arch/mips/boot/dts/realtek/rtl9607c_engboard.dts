@@ -1,0 +1,162 @@
+/*
+ * Realtek Semiconductor Corp.
+ *
+ * Device Tree Structure
+ *
+ * Tony Wu (tonywu@realtek.com)
+ */
+
+/dts-v1/;
+
+#include "rtl9607c_soc.dtsi"
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
+#ifndef CONFIG_LUNA_MEMORY_AUTO_DETECTION
+/*#include "memory.dts"*/
+#endif
+/ {
+	compatible = "rtk,9607c";
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	leds {
+		compatible = "gpio-leds";
+		led_pwr_g {
+			label = "LED_PWR_G";
+			gpios = <&gpio0 15 GPIO_ACTIVE_LOW>;
+			default-state = "on";
+		};
+		led_wps_g {
+			label = "LED_WPS_G";
+			gpios = <&gpio1 24 GPIO_ACTIVE_HIGH>;
+		};
+		led_ppp_g {
+			label = "LED_PPP_G";
+			gpios = <&gpio1 25 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+		led_fxs {
+			label = "LED_FXS";
+			gpios = <&gpio1 6 GPIO_ACTIVE_LOW>;
+		};
+		led_usb0 {
+			label = "LED_USB0";
+			gpios = <&gpio0 20 GPIO_ACTIVE_LOW>;
+			linux,default-trigger = "usbdev";
+		};
+		led_usb1 {
+			label = "LED_USB1";
+			gpios = <&gpio1 1 GPIO_ACTIVE_LOW>;
+			linux,default-trigger = "usbdev";
+		};
+	};
+
+	leds_gpio_number {
+		LED_EPHY0 {
+			linux,led_gpio = "8";
+		};
+		LED_EPHY1 {
+			linux,led_gpio = "9";
+		};
+		LED_EPHY2 {
+			linux,led_gpio = "35";
+		};
+		LED_EPHY3 {
+			linux,led_gpio = "12";
+		};
+		LED_PON {
+			linux,led_gpio = "10";
+		};
+		LED_LOS {
+			linux,led_gpio = "21";
+		};
+	};
+
+	gpio-keys {
+		/*compatible = "gpio-keys-polled";
+		poll-interval = <100>;*/
+		compatible = "gpio-keys";
+                autorepeat;
+
+		btn_reset {
+			label = "btn,reset";
+			gpios = <&gpio1 5 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_RESTART>;
+		};
+
+		btn_wps {
+			label = "btn,wps";
+			gpios = <&gpio1 2 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_WPS_BUTTON>;
+		};
+
+		btn_wifi {
+			label = "btn,wifi";
+			gpios = <&gpio1 4 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_WLAN>;
+		};
+	};
+
+	board_setting {
+		pci0_gpio_rst = <&gpio1 8 GPIO_ACTIVE_HIGH>;
+		pci1_gpio_rst = <&gpio1 7 GPIO_ACTIVE_HIGH>;
+	};
+
+	gpio-reset {
+		compatible = "linux,gpio-reset";
+		pcie0_pwr_reset: pcie0_pwr_reset {
+			#reset-cells = <0>;
+			gpios = <&gpio1 28 0>;
+			asserted-state = <0>;
+			duration-ms = <100>;
+		};
+	};
+};
+
+&gic {
+	timer {
+		compatible = "mti,gic-timer";
+		interrupts = <GIC_LOCAL 1 IRQ_TYPE_NONE>;
+		clocks = <&apro_soc_clk 0>;
+		clock-frequency = <900000000>;
+	};
+};
+
+&uart0 {
+	interrupt-parent = <&gic>;
+	interrupts = <GIC_SHARED GIC_EXT_UART0 IRQ_TYPE_LEVEL_HIGH>;
+};
+
+/*
+&uart1 {
+	interrupt-parent = <&gic>;
+	interrupts = <GIC_SHARED GIC_EXT_UART1 IRQ_TYPE_LEVEL_HIGH>;
+};
+
+&uart2 {
+	interrupt-parent = <&gic>;
+	interrupts = <GIC_SHARED GIC_EXT_UART2 IRQ_TYPE_LEVEL_HIGH>;
+};
+*/
+
+/* FIXME Disable for early development
+&eth0 {
+	interrupt-parent = <&gic>;
+	interrupts = <GIC_SHARED 9 IRQ_TYPE_LEVEL_HIGH>;
+};
+
+&gmac {
+	interrupt-parent = <&gic>;
+	interrupts = <GIC_SHARED 9 IRQ_TYPE_LEVEL_HIGH>;
+};
+
+&usb {
+	interrupt-parent = <&gic>;
+	interrupts = <GIC_SHARED 8 IRQ_TYPE_LEVEL_HIGH>;
+};
+
+&hdmi0 {
+	interrupt-parent = <&gic>;
+	interrupts = <GIC_SHARED 13 IRQ_TYPE_LEVEL_HIGH>;
+};
+*/

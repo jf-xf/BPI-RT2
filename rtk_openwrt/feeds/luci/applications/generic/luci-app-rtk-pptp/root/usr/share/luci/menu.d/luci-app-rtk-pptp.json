@@ -1,0 +1,14 @@
+{
+	"realtek/wan/vpn/pptp": {
+		"title": "PPTP",
+		"action": {
+			"type": "view",
+			"path": "rtk/wan/vpn/pptp"
+		},
+		"depends": {
+			"uci": { "pptpd": true },
+			"uci": { "network": true },
+			"acl": [ "luci-mod-rtk-wan-config" ]
+		}
+	}
+}

@@ -1,0 +1,9 @@
+#!/bin/sh
+
+uci -q batch <<-EOT
+	set luci.main.lang='en'
+        commit luci
+EOT
+
+exit 0
+

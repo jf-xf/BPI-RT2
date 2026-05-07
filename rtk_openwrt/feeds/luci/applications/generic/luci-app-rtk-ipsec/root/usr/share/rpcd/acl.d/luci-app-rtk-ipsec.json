@@ -1,0 +1,16 @@
+{
+	"luci-app-rtk-ipsec-cert": {
+		"description": "Grant access to IPSec operations",
+		"write": {
+			"cgi-io": [ "upload" ],
+			"file": {
+				"/etc/swanctl/x509/local.cacert.pem": [ "write" ],
+				"/etc/swanctl/x509ca/remote.cacert.pem": [ "write" ],
+				"/etc/swanctl/private/local.priv.pem": [ "write" ]
+			},
+			"ubus": {
+				"file": [ "exec", "remove", "write" ]
+			}
+		}
+	}
+}

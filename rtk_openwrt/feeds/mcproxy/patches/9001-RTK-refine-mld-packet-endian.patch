@@ -1,0 +1,13 @@
+Index: mcproxy-2017-08-24-93b5ace4/mcproxy/src/proxy/mld_sender.cpp
+===================================================================
+--- mcproxy-2017-08-24-93b5ace4.orig/mcproxy/src/proxy/mld_sender.cpp
++++ mcproxy-2017-08-24-93b5ace4/mcproxy/src/proxy/mld_sender.cpp
+@@ -196,7 +196,7 @@ bool mld_sender::add_hbh_opt_header() co
+     opt_Hdr->ip6or_len = sizeof(opt_Hdr->ip6or_value);
+     *(u_int16_t*)&opt_Hdr->ip6or_value[0] = IP6_ALERT_MLD;
+ 
+-    *pad_Hdr = IP6OPT_PADN;
++    *pad_Hdr = htons(IP6OPT_PADN << 8);
+ 
+     if (!m_sock.add_ipv6_extension_header((unsigned char*)hbh_Hdr, sizeof(struct ip6_hbh) + sizeof(struct ip6_opt_router) + sizeof(pad2))) {
+         return false;

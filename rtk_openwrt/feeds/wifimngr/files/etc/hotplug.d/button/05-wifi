@@ -1,0 +1,137 @@
+#!/bin/sh
+
+. /lib/functions.sh
+. /usr/share/libubox/jshn.sh
+
+MAPFILE="/tmp/multiap.backhaul"
+
+wifi_onoff() {
+	local devices="$(uci show wireless | grep '=wifi-device' | awk -F'[.,=]' '{print$2}')"
+	local wldisabled="0"
+
+	for dev in $devices; do
+		wldisabled="$(uci -q get wireless.$dev.disabled)"
+		wldisabled=${wldisabled:-0}
+		if [ "$wldisabled" == "1" ]; then
+			uci -q set wireless.$dev.disabled=0
+		else
+			uci -q set wireless.$dev.disabled=1
+		fi
+	done
+	uci commit wireless
+	killall -9 wifi 2>/dev/null
+	/sbin/wifi reload &
+}
+
+start_ap_wps() {
+	for ap in $(ubus list |grep hostapd.)
+	do
+		logger -t button "start WPS PBC on $ap"
+		ubus call $ap wps_start
+	done
+}
+
+supp_status() {
+	wpasupp=$1
+	ul_type=""
+
+	ifname="$(echo $wpasupp | cut -d . -f 2)"
+
+        # First check if bsta already configured
+	for idx in $(seq 0 10)
+	do
+		sec_ifname=$(uci get wireless.@wifi-iface[$idx].ifname 2>/dev/null)
+		if [ "$sec_ifname" = "$ifname" ]; then
+			logger -t button "found wifi-iface idx $idx"
+			sec_ssid=$(uci get wireless.@wifi-iface[$idx].ssid 2>/dev/null)
+			sec_key=$(uci get wireless.@wifi-iface[$idx].key 2>/dev/null)
+			if [ -n "$sec_key" ]; then
+				echo "CONFIGURED"
+				return
+			fi
+		fi
+	done
+
+	# not configured, but could be still connected
+	status=$(wpa_cli -i $ifname status |grep wpa_state |cut -d = -f2 2>/dev/null)
+	logger -t button "$ifname status $status"
+
+	if [ "$status" = "COMPLETED" ]; then
+		echo "CONFIGURED"
+		return
+	fi
+
+	if [ -f $MAPFILE ]; then
+		# check if uplink is eth
+		json_load "$(cat $MAPFILE)"
+		json_get_var ul_type "type"
+		json_cleanup
+	fi
+
+	if [ "$ul_type" = "eth" ]; then
+		echo "CONFIGURED"
+		return
+	fi
+
+	echo "UNCONFIGURED"
+}
+
+supp_configured() {
+	wpasupp=$1
+
+	for wpa in $wpasupp
+	do
+		logger -t button "WPS $wpa check if configured"
+		status=$(supp_status $wpa)
+		if [ "$status" = "CONFIGURED" ]; then
+			logger -t button "WPS $wpa CONFIGURED"
+			echo "CONFIGURED"
+			return
+		fi
+	done
+
+	echo "UNCONFIGURED"
+}
+
+supp_wps() {
+	wpasupp=$1
+
+	for wpa in $wpasupp
+	do
+		logger -t button "WPS $wpa start"
+		ubus -t 1 call $wpa wps_start '{"multi_ap":true}'
+	done
+}
+
+wps_button() {
+	logger -t button "WPS button is pressed"
+	wpasupp="$(ubus list wpa_supplicant.* 2>/dev/null)"
+
+	logger -t button "WPS checking: $wpasupp"
+	if [ -n "$wpasupp" ]; then
+		status=$(supp_configured "$wpasupp")
+		logger -t button "status $status"
+		if [ "$status" = "CONFIGURED" ]; then
+			start_ap_wps
+		else
+			supp_wps "$wpasupp"
+		fi
+	else
+		start_ap_wps
+	fi
+}
+
+case "$ACTION" in
+        add|register)
+		[ "wifibutton" == "$INTERFACE" ] && {
+			[ -e "/tmp/wps_active" ] && return
+			echo "WiFi button is pressed" > /dev/console
+			wifi_onoff
+		}
+		[ "wpsbutton" == "$INTERFACE" ] && {
+			[ -e "/tmp/wps_active" ] && return
+			wps_button
+		}
+        ;;
+esac
+

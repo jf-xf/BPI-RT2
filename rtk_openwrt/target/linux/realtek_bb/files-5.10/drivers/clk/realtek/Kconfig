@@ -1,0 +1,12 @@
+config COMMON_CLK_RTK_APRO
+	bool "RTK ApolloPro Clock Driver"
+	depends on (CLKSRC_MIPS_GIC)
+	help
+	  Build the RTK ApolloPro clock driver based on the common clock framework.
+
+config COMMON_CLK_RTK_9607F
+	bool "RTK 9607F Clock Driver"
+	depends on ARCH_REALTEK_9607F
+	default y if REALTEK_BOARD_9607F_ENG
+	help
+	  Build the RTK 9607F clock driver based on the common clock framework.

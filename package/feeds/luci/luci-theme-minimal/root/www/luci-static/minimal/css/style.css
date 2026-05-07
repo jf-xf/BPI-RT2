@@ -1,0 +1,75 @@
+/* 基础重置 */
+body { margin: 0; padding: 0; background: #f0f2f5; font-family: sans-serif; }
+
+/* 1 & 2 行的统一背景色区块 */
+.main-header {
+    background-color: #2c3e50; /* 这里的颜色你可以自定 */
+    color: white;
+    padding: 10px 40px;
+}
+
+/* 第一行布局 */
+.top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 50px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.logo-area { display: flex; align-items: center; font-size: 1.2rem; }
+.divider { margin: 0 15px; color: #7f8c8d; }
+
+.user-tools span, .user-tools a {
+    margin-left: 20px;
+    color: #bdc3c7;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* 第二行图标导航 */
+.main-nav {
+    display: flex;
+    justify-content: center;
+    padding: 15px 0;
+}
+
+.nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 30px;
+    text-decoration: none;
+    color: #95a5a6;
+    transition: 0.3s;
+}
+
+.nav-item i { font-size: 24px; margin-bottom: 5px; } /* 这里需引入图标库如 FontAwesome */
+.nav-item.active, .nav-item:hover { color: #3498db; }
+
+/* 第三行内容区 */
+.content-container {
+    padding: 30px;
+    min-height: 60vh;
+}
+
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.status-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* 底部居中 */
+.main-footer {
+    text-align: center;
+    padding: 20px;
+    color: #7f8c8d;
+    font-size: 12px;
+}

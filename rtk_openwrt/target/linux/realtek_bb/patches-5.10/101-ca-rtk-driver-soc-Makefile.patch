@@ -1,0 +1,10 @@
+Index: linux-5.10.125/drivers/soc/Makefile
+===================================================================
+--- linux-5.10.125.orig/drivers/soc/Makefile
++++ linux-5.10.125/drivers/soc/Makefile
+@@ -29,3 +29,5 @@ obj-$(CONFIG_PLAT_VERSATILE)	+= versatil
+ obj-y				+= xilinx/
+ obj-$(CONFIG_ARCH_ZX)		+= zte/
+ obj-$(CONFIG_SOC_KENDRYTE)	+= kendryte/
++obj-$(CONFIG_ARCH_CORTINA)      += cortina/
++obj-$(CONFIG_RTK_SOC)           += realtek/

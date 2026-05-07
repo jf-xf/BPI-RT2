@@ -1,0 +1,29 @@
+From a5ffdbd55480b37808228cd62cbb5064cea08403 Mon Sep 17 00:00:00 2001
+From: knightness_peng <knightness_peng@realsil.com.cn>
+Date: Wed, 24 Aug 2022 10:30:48 +0800
+Subject: [PATCH] fix wlan mac acl issue
+
+Change-Id: I24e3ab8f16b7af2eb39e1c6b45fd368d281424b7
+(cherry picked from commit 93e24fc8ad338f504cb4f379e9052eff7fa5135c)
+---
+
+diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
+old mode 100644
+new mode 100755
+index d02eef9..7bdeab4
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -4214,11 +4214,12 @@
+ 	/*
+ 	 * genetlink message header (Length of user header is 0) +
+ 	 * u32 attr: NL80211_ATTR_IFINDEX +
++	 * u32 attr: NL80211_ATTR_WDEV +
+ 	 * u32 attr: NL80211_ATTR_ACL_POLICY +
+ 	 * nested acl attr
+ 	 */
+ 	nla_sz = GENL_HDRLEN +
+-		nla_total_size(4) * 2 +
++		nla_total_size(4) * 3 +
+ 		nla_total_size(acl_nla_sz);
+ 	nlmsg_sz = nlmsg_total_size(nla_sz);
+ 	if (!(msg = nl80211_ifindex_msg_build(drv, nlmsg_alloc_size(nlmsg_sz),

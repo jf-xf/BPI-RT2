@@ -1,0 +1,66 @@
+# Detail UCI Description, check here: https://openwrt.org/docs/guide-user/services/vpn/strongswan/configuration
+
+config ipsec 'main'
+        option debug '1'
+
+# Windows default proposals
+config crypto_proposal '3des_sha1_modp2048'
+        option encryption_algorithm '3des'
+        option hash_algorithm 'sha'
+        option dh_group 'modp2048'
+
+config crypto_proposal 'aes256_sha1_modp768'
+        option encryption_algorithm 'aes256'
+        option hash_algorithm 'sha'
+        option dh_group 'modp768'
+
+config crypto_proposal 'aes256_sha1_modp2048'
+        option encryption_algorithm 'aes256'
+        option hash_algorithm 'sha'
+        option dh_group 'modp2048'
+
+config crypto_proposal 'aes128_sha1_modp1024'
+        option encryption_algorithm 'aes128'
+        option hash_algorithm 'sha'
+        option dh_group 'modp1024'
+
+# Windows default esp_proposals
+config crypto_proposal '3des_sha1'
+        option encryption_algorithm '3des'
+        option hash_algorithm 'sha'
+
+config crypto_proposal '3des_md5'
+        option encryption_algorithm '3des'
+        option hash_algorithm 'md5'
+
+config crypto_proposal 'des_sha1'
+        option encryption_algorithm 'des'
+        option hash_algorithm 'sha'
+
+config crypto_proposal 'des_md5'
+        option encryption_algorithm 'des'
+        option hash_algorithm 'md5'
+
+config crypto_proposal 'aes128_sha1'
+        option encryption_algorithm 'aes128'
+        option hash_algorithm 'sha'
+
+config crypto_proposal 'aes128_md5'
+        option encryption_algorithm 'aes128'
+        option hash_algorithm 'md5'
+
+config crypto_proposal 'aes192_sha1'
+        option encryption_algorithm 'aes192'
+        option hash_algorithm 'sha'
+
+config crypto_proposal 'aes192_md5'
+        option encryption_algorithm 'aes192'
+        option hash_algorithm 'md5'
+
+config crypto_proposal 'aes256_sha1'
+        option encryption_algorithm 'aes256'
+        option hash_algorithm 'sha'
+
+config crypto_proposal 'aes256_md5'
+        option encryption_algorithm 'aes256'
+        option hash_algorithm 'md5'

@@ -1,0 +1,3681 @@
+Source-Makefile: feeds/custom/avahi/Makefile
+
+Package: libavahi-client
+Version: 0.8-7
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +avahi-dbus-daemon
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Build-Variant: dbus
+Section: libs
+Category: Libraries
+Repository: base
+Title: An mDNS/DNS-SD implementation (libavahi-client library)
+Maintainer: Ted Hess <thess@kitschensync.net>
+Source: avahi-0.8.tar.gz
+License: LGPL-2.1-or-later
+LicenseFiles: LICENSE
+Type: ipkg
+Description:  Avahi is an mDNS/DNS-SD (aka RendezVous/Bonjour/ZeroConf)
+ implementation (library). It facilitates
+ service discovery on a local network -- this means that
+ you can plug your laptop or computer into a network and
+ instantly be able to view other people who you can chat with,
+ find printers to print to or find files being shared.
+ This kind of technology is already found in MacOS X
+ (branded 'Rendezvous', 'Bonjour' and sometimes 'ZeroConf')
+ and is very convenient.
+ .
+ This packages adds the libavahi-client library.
+ It also automatically adds the required
+ libavahi-dbus-support and the avahi-dbus-daemon packages.
+ For more information please see the avahi documentation.
+http://www.avahi.org/
+Ted Hess <thess@kitschensync.net>
+@@
+
+Package: libavahi-compat-libdnssd
+Version: 0.8-7
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libavahi-client
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Build-Variant: dbus
+Section: libs
+Category: Libraries
+Repository: base
+Title: An mDNS/DNS-SD implementation (libdnssd)
+Maintainer: Ted Hess <thess@kitschensync.net>
+Source: avahi-0.8.tar.gz
+License: LGPL-2.1-or-later
+LicenseFiles: LICENSE
+Type: ipkg
+Description:  Avahi is an mDNS/DNS-SD (aka RendezVous/Bonjour/ZeroConf)
+ implementation (library). It facilitates
+ service discovery on a local network -- this means that
+ you can plug your laptop or computer into a network and
+ instantly be able to view other people who you can chat with,
+ find printers to print to or find files being shared.
+ This kind of technology is already found in MacOS X
+ (branded 'Rendezvous', 'Bonjour' and sometimes 'ZeroConf')
+ and is very convenient.
+ .
+ This packages adds the libavahi-compat-libdnssd library.
+ It also automatically adds the required libavahi-client package.
+ For more information please see the avahi documentation.
+http://www.avahi.org/
+Ted Hess <thess@kitschensync.net>
+@@
+
+Package: avahi-utils
+Submenu: IP Addresses and Names
+Version: 0.8-7
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libavahi-client +libgdbm
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Build-Variant: dbus
+Section: net
+Category: Network
+Repository: base
+Title: An mDNS/DNS-SD implementation (utilities)
+Maintainer: Ted Hess <thess@kitschensync.net>
+Source: avahi-0.8.tar.gz
+License: LGPL-2.1-or-later
+LicenseFiles: LICENSE
+Type: ipkg
+Description:  Avahi is an mDNS/DNS-SD (aka RendezVous/Bonjour/ZeroConf)
+ implementation (library). It facilitates
+ service discovery on a local network -- this means that
+ you can plug your laptop or computer into a network and
+ instantly be able to view other people who you can chat with,
+ find printers to print to or find files being shared.
+ This kind of technology is already found in MacOS X
+ (branded 'Rendezvous', 'Bonjour' and sometimes 'ZeroConf')
+ and is very convenient.
+ .
+ This packages installs the following avahi utility programs:
+ avahi-browse, avahi-publish, avahi-resolve, avahi-set-host-name.
+ It also automatically adds the required libavahi-client package.
+ For more information please see the avahi documentation.
+http://www.avahi.org/
+Ted Hess <thess@kitschensync.net>
+@@
+
+Package: libavahi-dbus-support
+Version: 0.8-7
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +dbus
+Conflicts: 
+Menu-Depends: 
+Provides: libavahi
+Build-Variant: dbus
+Section: libs
+Category: Libraries
+Repository: base
+Title: An mDNS/DNS-SD implementation (D-Bus support)
+Maintainer: Ted Hess <thess@kitschensync.net>
+Source: avahi-0.8.tar.gz
+License: LGPL-2.1-or-later
+LicenseFiles: LICENSE
+Type: ipkg
+Description:  Avahi is an mDNS/DNS-SD (aka RendezVous/Bonjour/ZeroConf)
+ implementation (library). It facilitates
+ service discovery on a local network -- this means that
+ you can plug your laptop or computer into a network and
+ instantly be able to view other people who you can chat with,
+ find printers to print to or find files being shared.
+ This kind of technology is already found in MacOS X
+ (branded 'Rendezvous', 'Bonjour' and sometimes 'ZeroConf')
+ and is very convenient.
+ .
+ The libavahi package contains the mDNS/DNS-SD shared libraries,
+ used by other programs. Specifically, it provides
+ libavahi-core and libavahi-common libraries.
+ .
+ The libavahi-dbus-support package enables
+ D-Bus support in avahi, needed to support
+ the libavahi-client library and avahi-utils.
+ .
+ Selecting this package modifies the build configuration
+ so that avahi packages are built with support for D-BUS enabled;
+ it does not generate a separate binary of its own.
+ It also automatically adds the D-Bus package to the build.
+ libavahi-dbus-support is selected automatically if you select
+ libavahi-client or avahi-utils.
+http://www.avahi.org/
+Ted Hess <thess@kitschensync.net>
+@@
+
+Package: libavahi-nodbus-support
+Version: 0.8-7
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libpthread
+Conflicts: 
+Menu-Depends: 
+Provides: libavahi
+Build-Variant: nodbus
+Section: libs
+Category: Libraries
+Repository: base
+Title: An mDNS/DNS-SD implementation (No D-Bus)
+Maintainer: Ted Hess <thess@kitschensync.net>
+Source: avahi-0.8.tar.gz
+License: LGPL-2.1-or-later
+LicenseFiles: LICENSE
+Type: ipkg
+Description:  Avahi is an mDNS/DNS-SD (aka RendezVous/Bonjour/ZeroConf)
+ implementation (library). It facilitates
+ service discovery on a local network -- this means that
+ you can plug your laptop or computer into a network and
+ instantly be able to view other people who you can chat with,
+ find printers to print to or find files being shared.
+ This kind of technology is already found in MacOS X
+ (branded 'Rendezvous', 'Bonjour' and sometimes 'ZeroConf')
+ and is very convenient.
+ .
+ The libavahi package contains the mDNS/DNS-SD shared libraries,
+ used by other programs. Specifically, it provides
+ libavahi-core and libavahi-common libraries.
+ .
+ Selecting this package modifies the build configuration
+ so that avahi packages are built without support for D-BUS enabled;
+ it does not generate a separate binary of its own.
+http://www.avahi.org/
+Ted Hess <thess@kitschensync.net>
+@@
+
+Package: avahi-autoipd
+Submenu: IP Addresses and Names
+Version: 0.8-7
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libdaemon
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: IPv4LL network address configuration daemon
+Maintainer: Ted Hess <thess@kitschensync.net>
+Source: avahi-0.8.tar.gz
+License: LGPL-2.1-or-later
+LicenseFiles: LICENSE
+Type: ipkg
+Description:  Avahi is an mDNS/DNS-SD (aka RendezVous/Bonjour/ZeroConf)
+ implementation (library). It facilitates
+ service discovery on a local network -- this means that
+ you can plug your laptop or computer into a network and
+ instantly be able to view other people who you can chat with,
+ find printers to print to or find files being shared.
+ This kind of technology is already found in MacOS X
+ (branded 'Rendezvous', 'Bonjour' and sometimes 'ZeroConf')
+ and is very convenient.
+ .
+ This package implements IPv4LL, "Dynamic Configuration of IPv4 Link-Local
+ Addresses" (IETF RFC3927), a protocol for automatic IP address configuration
+ from the link-local 169.254.0.0/16 range without the need for a central
+ server. It is primarily intended to be used in ad-hoc networks which lack a
+ DHCP server.
+http://www.avahi.org/
+Ted Hess <thess@kitschensync.net>
+@@
+
+Package: avahi-dbus-daemon
+Submenu: IP Addresses and Names
+Version: 0.8-7
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libavahi-dbus-support +libexpat +librt +libdaemon
+Conflicts: 
+Menu-Depends: 
+Provides: avahi-daemon
+Build-Variant: dbus
+Section: net
+Category: Network
+Repository: base
+Title: An mDNS/DNS-SD implementation (daemon)
+Maintainer: Ted Hess <thess@kitschensync.net>
+Source: avahi-0.8.tar.gz
+License: LGPL-2.1-or-later
+LicenseFiles: LICENSE
+Type: ipkg
+Description:  Avahi is an mDNS/DNS-SD (aka RendezVous/Bonjour/ZeroConf)
+ implementation (library). It facilitates
+ service discovery on a local network -- this means that
+ you can plug your laptop or computer into a network and
+ instantly be able to view other people who you can chat with,
+ find printers to print to or find files being shared.
+ This kind of technology is already found in MacOS X
+ (branded 'Rendezvous', 'Bonjour' and sometimes 'ZeroConf')
+ and is very convenient.
+ .
+ This package contains an mDNS/DNS-SD daemon.
+http://www.avahi.org/
+Ted Hess <thess@kitschensync.net>
+@@
+
+Package: avahi-nodbus-daemon
+Submenu: IP Addresses and Names
+Version: 0.8-7
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libavahi-nodbus-support +libexpat +librt +libdaemon
+Conflicts: 
+Menu-Depends: 
+Provides: avahi-daemon
+Build-Variant: nodbus
+Section: net
+Category: Network
+Repository: base
+Title: An mDNS/DNS-SD implementation (daemon)
+Maintainer: Ted Hess <thess@kitschensync.net>
+Require-User: avahi=105:avahi=105
+Source: avahi-0.8.tar.gz
+License: LGPL-2.1-or-later
+LicenseFiles: LICENSE
+Type: ipkg
+Description:  Avahi is an mDNS/DNS-SD (aka RendezVous/Bonjour/ZeroConf)
+ implementation (library). It facilitates
+ service discovery on a local network -- this means that
+ you can plug your laptop or computer into a network and
+ instantly be able to view other people who you can chat with,
+ find printers to print to or find files being shared.
+ This kind of technology is already found in MacOS X
+ (branded 'Rendezvous', 'Bonjour' and sometimes 'ZeroConf')
+ and is very convenient.
+ .
+ This package contains an mDNS/DNS-SD daemon.
+http://www.avahi.org/
+Ted Hess <thess@kitschensync.net>
+@@
+
+Package: avahi-daemon-service-http
+Submenu: IP Addresses and Names
+Version: 0.8-7
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +avahi-daemon
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: Announce HTTP service
+Maintainer: Ted Hess <thess@kitschensync.net>
+Source: avahi-0.8.tar.gz
+License: LGPL-2.1-or-later
+LicenseFiles: LICENSE
+Type: ipkg
+Description:  Avahi is an mDNS/DNS-SD (aka RendezVous/Bonjour/ZeroConf)
+ implementation (library). It facilitates
+ service discovery on a local network -- this means that
+ you can plug your laptop or computer into a network and
+ instantly be able to view other people who you can chat with,
+ find printers to print to or find files being shared.
+ This kind of technology is already found in MacOS X
+ (branded 'Rendezvous', 'Bonjour' and sometimes 'ZeroConf')
+ and is very convenient.
+ .
+ This package contains the service definition for announcing HTTP service.
+http://www.avahi.org/
+Ted Hess <thess@kitschensync.net>
+@@
+
+Package: avahi-daemon-service-ssh
+Submenu: IP Addresses and Names
+Version: 0.8-7
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +avahi-daemon
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: Announce SSH service
+Maintainer: Ted Hess <thess@kitschensync.net>
+Source: avahi-0.8.tar.gz
+License: LGPL-2.1-or-later
+LicenseFiles: LICENSE
+Type: ipkg
+Description:  Avahi is an mDNS/DNS-SD (aka RendezVous/Bonjour/ZeroConf)
+ implementation (library). It facilitates
+ service discovery on a local network -- this means that
+ you can plug your laptop or computer into a network and
+ instantly be able to view other people who you can chat with,
+ find printers to print to or find files being shared.
+ This kind of technology is already found in MacOS X
+ (branded 'Rendezvous', 'Bonjour' and sometimes 'ZeroConf')
+ and is very convenient.
+ .
+ This package contains the service definition for announcing SSH service.
+http://www.avahi.org/
+Ted Hess <thess@kitschensync.net>
+@@
+
+Package: avahi-dnsconfd
+Submenu: IP Addresses and Names
+Version: 0.8-7
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libavahi +libdaemon +libpthread
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: A Unicast DNS server using avahi-daemon
+Maintainer: Ted Hess <thess@kitschensync.net>
+Source: avahi-0.8.tar.gz
+License: LGPL-2.1-or-later
+LicenseFiles: LICENSE
+Type: ipkg
+Description:  Avahi is an mDNS/DNS-SD (aka RendezVous/Bonjour/ZeroConf)
+ implementation (library). It facilitates
+ service discovery on a local network -- this means that
+ you can plug your laptop or computer into a network and
+ instantly be able to view other people who you can chat with,
+ find printers to print to or find files being shared.
+ This kind of technology is already found in MacOS X
+ (branded 'Rendezvous', 'Bonjour' and sometimes 'ZeroConf')
+ and is very convenient.
+ .
+ This package contains a Unicast DNS server from mDNS/DNS-SD configuration
+ daemon, which may be used to configure conventional DNS servers using mDNS
+ in a DHCP-like fashion. Especially useful on IPv6.
+http://www.avahi.org/
+Ted Hess <thess@kitschensync.net>
+@@
+
+
+Source-Makefile: feeds/custom/bbf/Makefile
+
+Package: libbbf_api
+Submenu: TRx69
+Version: 6.8.21-ace24d82fcbf47d9437f21a1a96fa821e87a473f
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread 
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: utils
+Category: Utilities
+Repository: base
+Title: Library for libbbfdm API
+Maintainer: 
+Source: libbbfdm-6.8.21-ace24d82fcbf47d9437f21a1a96fa821e87a473f.tar.gz
+License: LGPL-2.1
+LicenseFiles: LICENSE
+Type: ipkg
+Description:  Library contains the API(UCI, UBUS, JSON, CLI and Browse) of libbbfdm
+
+@@
+
+Package: libbbfdm
+Submenu: TRx69
+Version: 6.8.21-ace24d82fcbf47d9437f21a1a96fa821e87a473f
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libuci +libubox +libubus +libblobmsg-json +libjson-c +libtrace +libcurl +map-topology +wifimngr +port-management
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Build-Variant: internal
+Section: utils
+Category: Utilities
+Repository: base
+Title: Library for broadband forum data model support (internal)
+Maintainer: 
+Source: libbbfdm-6.8.21-ace24d82fcbf47d9437f21a1a96fa821e87a473f.tar.gz
+License: LGPL-2.1
+LicenseFiles: LICENSE
+Type: ipkg
+Description:  Library contains the data model tree. It includes TR181, TR104 and TR143 data models
+
+@@
+Config:
+	source "rtk_openwrt/feeds/bbf/Config_bbfdm.in"
+@@
+
+Package: libbbfdm-openssl
+Submenu: TRx69
+Version: 6.8.21-ace24d82fcbf47d9437f21a1a96fa821e87a473f
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libuci +libubox +libubus +libblobmsg-json +libjson-c +libtrace +libcurl +map-topology +wifimngr +port-management +PACKAGE_libbbfdm-openssl:libopenssl
+Conflicts: libbbfdm-mbedtls
+Menu-Depends: 
+Provides: 
+Build-Variant: openssl
+Section: utils
+Category: Utilities
+Repository: base
+Title: Library for broadband forum data model support (openssl)
+Maintainer: 
+Source: libbbfdm-6.8.21-ace24d82fcbf47d9437f21a1a96fa821e87a473f.tar.gz
+License: LGPL-2.1
+LicenseFiles: LICENSE
+Type: ipkg
+Description: Library for broadband forum data model support (openssl)
+
+@@
+
+Package: libbbfdm-wolfssl
+Submenu: TRx69
+Version: 6.8.21-ace24d82fcbf47d9437f21a1a96fa821e87a473f
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libuci +libubox +libubus +libblobmsg-json +libjson-c +libtrace +libcurl +map-topology +wifimngr +port-management +PACKAGE_libbbfdm-wolfssl:libwolfssl
+Conflicts: libbbfdm-mbedtls libbbfdm-openssl
+Menu-Depends: 
+Provides: 
+Build-Variant: wolfssl
+Section: utils
+Category: Utilities
+Repository: base
+Title: Library for broadband forum data model support (wolfssl)
+Maintainer: 
+Source: libbbfdm-6.8.21-ace24d82fcbf47d9437f21a1a96fa821e87a473f.tar.gz
+License: LGPL-2.1
+LicenseFiles: LICENSE
+Type: ipkg
+Description: Library for broadband forum data model support (wolfssl)
+
+@@
+
+Package: libbbfdm-mbedtls
+Submenu: TRx69
+Version: 6.8.21-ace24d82fcbf47d9437f21a1a96fa821e87a473f
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libuci +libubox +libubus +libblobmsg-json +libjson-c +libtrace +libcurl +map-topology +wifimngr +port-management +PACKAGE_libbbfdm-mbedtls:libmbedtls
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Build-Variant: mbedtls
+Default-Variant: mbedtls
+Section: utils
+Category: Utilities
+Repository: base
+Title: Library for broadband forum data model support (mbedtls)
+Maintainer: 
+Source: libbbfdm-6.8.21-ace24d82fcbf47d9437f21a1a96fa821e87a473f.tar.gz
+License: LGPL-2.1
+LicenseFiles: LICENSE
+Type: ipkg
+Description: Library for broadband forum data model support (mbedtls)
+
+@@
+
+
+Source-Makefile: feeds/custom/bulkdata/Makefile
+Build-Depends: bbf
+
+Package: bulkdata
+Submenu: TRx69
+Version: 2.0.3.1
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libubus +libuci +libubox +libjson-c +libcurl +libblobmsg-json +zlib
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: utils
+Category: Utilities
+Repository: base
+Title: BBF BulkData Collection
+Maintainer: 
+Source: bulkdata-2.0.3.1-33a6648de9ee0af33c44518656b56b0a30b6c1ab.tar.gz
+License: GPL-2.0-only
+LicenseFiles: LICENSE
+Type: ipkg
+Description: BBF BulkData Collection
+
+@@
+
+
+Source-Makefile: feeds/custom/easy-soc-libs/Makefile
+Unexpected CONFIG_TARGET, use default MAC80211
+
+Package: libeasy
+Menu: 1
+Submenu: IOPSYS Easy SoC libraries
+Version: 6.5.57-1
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libopenssl +libnl +libnl-route
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: libs
+Category: Libraries
+Repository: base
+Title: Common helper functions library (libeasy)
+Maintainer: Anjan Chanda <anjan.chanda@iopsys.eu>
+Source: easy-soc-libs-6.5.57_3b07e800c1f27b5bf65946339e94a86dfd96a95d.tar.xz
+License: GPLv2
+LicenseFiles: LICENSE
+Type: ipkg
+Description: Common helper functions library (libeasy)
+Anjan Chanda <anjan.chanda@iopsys.eu>
+@@
+Config:
+    source "rtk_openwrt/feeds/easy-soc-libs/Config.in"
+@@
+
+
+Package: libwifi
+Menu: 1
+Submenu: IOPSYS Easy SoC libraries
+Version: 6.5.57-1
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libopenssl +libnl +libnl-route +libeasy
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: libs
+Category: Libraries
+Repository: base
+Title: WiFi library (libwifi)
+Maintainer: Anjan Chanda <anjan.chanda@iopsys.eu>
+Source: easy-soc-libs-6.5.57_3b07e800c1f27b5bf65946339e94a86dfd96a95d.tar.xz
+License: GPLv2
+LicenseFiles: LICENSE
+Type: ipkg
+Description: WiFi library (libwifi)
+Anjan Chanda <anjan.chanda@iopsys.eu>
+@@
+Config:
+  if PACKAGE_libdsl
+	  config LIBWIFI_DEBUG
+		depends on PACKAGE_libwifi
+		bool "Enable wifi debugging"
+		default n
+
+  endif
+@@
+
+
+Package: libdsl
+Menu: 1
+Submenu: IOPSYS Easy SoC libraries
+Version: 6.5.57-1
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libopenssl
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: libs
+Category: Libraries
+Repository: base
+Title: xDSL library (libdsl)
+Maintainer: Anjan Chanda <anjan.chanda@iopsys.eu>
+Source: easy-soc-libs-6.5.57_3b07e800c1f27b5bf65946339e94a86dfd96a95d.tar.xz
+License: GPLv2
+LicenseFiles: LICENSE
+Type: ipkg
+Description: xDSL library (libdsl)
+Anjan Chanda <anjan.chanda@iopsys.eu>
+@@
+Config:
+  if PACKAGE_libdsl
+	  config LIBDSL_DEBUG
+		depends on PACKAGE_libdsl
+		bool "Enable dsl debugging"
+		default n
+
+	  config LIBDSL_TEST
+		depends on PACKAGE_libdsl
+		bool "Enable dsl test program"
+		default n
+
+  endif
+@@
+
+
+Package: libethernet
+Menu: 1
+Submenu: IOPSYS Easy SoC libraries
+Version: 6.5.57-1
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libopenssl +libnl +libnl-route +libeasy +TARGET_iopsys_ramips:swconfig
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: libs
+Category: Libraries
+Repository: base
+Title: Ethernet library (libethernet)
+Maintainer: Anjan Chanda <anjan.chanda@iopsys.eu>
+Source: easy-soc-libs-6.5.57_3b07e800c1f27b5bf65946339e94a86dfd96a95d.tar.xz
+License: GPLv2
+LicenseFiles: LICENSE
+Type: ipkg
+Description: Ethernet library (libethernet)
+Anjan Chanda <anjan.chanda@iopsys.eu>
+@@
+Config:
+  config LIBETHERNET_DEBUG
+	depends on PACKAGE_libethernet
+	bool "Enable ethernet debugging"
+	default n
+
+@@
+
+
+Package: libqos
+Menu: 1
+Submenu: IOPSYS Easy SoC libraries
+Version: 6.5.57-1
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libopenssl +libnl +libnl-route +libeasy
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: libs
+Category: Libraries
+Repository: base
+Title: QoS library (libqos)
+Maintainer: Anjan Chanda <anjan.chanda@iopsys.eu>
+Source: easy-soc-libs-6.5.57_3b07e800c1f27b5bf65946339e94a86dfd96a95d.tar.xz
+License: GPLv2
+LicenseFiles: LICENSE
+Type: ipkg
+Description: QoS library (libqos)
+Anjan Chanda <anjan.chanda@iopsys.eu>
+@@
+Config:
+  config LIBQOS_DEBUG
+	depends on PACKAGE_libqos
+	bool "Enable qos debugging"
+	default n
+
+@@
+
+
+Source-Makefile: feeds/custom/gsl/Makefile
+
+Package: libgsl
+Version: 2.7-1
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread @!TARGET_avr32
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: libs
+Category: Libraries
+Repository: base
+Title: GNU Scientific Library
+Maintainer: 
+Source: gsl-2.7.tar.gz
+Type: ipkg
+Description: 	The library provides a wide range of mathematical routines such as
+	random number generators, special functions and least-squares fitting.
+	There are over 1000 functions in total with an extensive test suite.
+http://www.gnu.org/software/gsl/
+
+@@
+
+
+Source-Makefile: feeds/custom/icwmp/Makefile
+
+Package: icwmp-openssl
+Submenu: TRx69
+Version: 8.5.9-5553a890ae29692d8e3c7e1b1734adb0722b020a
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libuci +libubox +libblobmsg-json +libubus +libjson-c +libcurl +mxml +@LIBCURL_CRYPTO_AUTH +PACKAGE_icwmp-openssl:libopenssl
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Build-Variant: openssl
+Section: utils
+Category: Utilities
+Repository: base
+Title: TR069 CWMP client (openssl)
+Maintainer: 
+Source: icwmp-8.5.9-5553a890ae29692d8e3c7e1b1734adb0722b020a.tar.gz
+License: GPLv2
+LicenseFiles: LICENSE
+Type: ipkg
+Description: TR069 CWMP client (openssl)
+
+@@
+
+Package: icwmp-wolfssl
+Submenu: TRx69
+Version: 8.5.9-5553a890ae29692d8e3c7e1b1734adb0722b020a
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libuci +libubox +libblobmsg-json +libubus +libjson-c +libcurl +mxml +@LIBCURL_CRYPTO_AUTH +PACKAGE_icwmp-wolfssl:libwolfssl
+Conflicts: icwmp-openssl
+Menu-Depends: 
+Provides: 
+Build-Variant: wolfssl
+Section: utils
+Category: Utilities
+Repository: base
+Title: TR069 CWMP client (wolfssl)
+Maintainer: 
+Source: icwmp-8.5.9-5553a890ae29692d8e3c7e1b1734adb0722b020a.tar.gz
+License: GPLv2
+LicenseFiles: LICENSE
+Type: ipkg
+Description: TR069 CWMP client (wolfssl)
+
+@@
+
+Package: icwmp-mbedtls
+Submenu: TRx69
+Version: 8.5.9-5553a890ae29692d8e3c7e1b1734adb0722b020a
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libuci +libubox +libblobmsg-json +libubus +libjson-c +libcurl +mxml +@LIBCURL_CRYPTO_AUTH +PACKAGE_icwmp-mbedtls:libmbedtls
+Conflicts: icwmp-openssl icwmp-wolfssl
+Menu-Depends: 
+Provides: 
+Build-Variant: mbedtls
+Default-Variant: mbedtls
+Section: utils
+Category: Utilities
+Repository: base
+Title: TR069 CWMP client (mbedtls)
+Maintainer: 
+Source: icwmp-8.5.9-5553a890ae29692d8e3c7e1b1734adb0722b020a.tar.gz
+License: GPLv2
+LicenseFiles: LICENSE
+Type: ipkg
+Description: TR069 CWMP client (mbedtls)
+
+@@
+
+
+Source-Makefile: feeds/custom/ieee1905/Makefile
+
+Package: ieee1905
+Submenu: IEEE-1905.1 stack
+Version: 4.10.33
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libubox +libuci +libubus +libeasy +libnl-genl +libjson-c +libblobmsg-json +ubus +libpthread +libieee1905 +IEEE1905_PLATFORM_HAS_WIFI:libwifi
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: utils
+Category: Utilities
+Repository: base
+Title: ieee1905d (daemon implementing 1905.1 and provides cli)
+Maintainer: Anjan Chanda <anjan.chanda@iopsys.eu>
+Source: ieee1905-4.10.33_a989b025e85bb74c0f5f56350745eef21eda487b.tar.xz
+License: BSD-3-Clause
+LicenseFiles: LICENSE
+Type: ipkg
+Description:  This package provides IEEE Std 1905.1 stack.
+Anjan Chanda <anjan.chanda@iopsys.eu>
+@@
+Config:
+  source "rtk_openwrt/feeds/ieee1905/Config.in"
+@@
+
+Package: libieee1905
+Submenu: IEEE-1905.1 stack
+Version: 4.10.33
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libubox +libuci +libubus +libeasy +libnl-genl +libjson-c +libblobmsg-json
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: utils
+Category: Utilities
+Repository: base
+Title: (library for CMDU and TLV handling)
+Maintainer: Anjan Chanda <anjan.chanda@iopsys.eu>
+Source: ieee1905-4.10.33_a989b025e85bb74c0f5f56350745eef21eda487b.tar.xz
+License: BSD-3-Clause
+LicenseFiles: LICENSE
+Type: ipkg
+Description:  This package provides library functions for IEEE Std 1905.1 stack.
+Anjan Chanda <anjan.chanda@iopsys.eu>
+@@
+
+Package: map-plugin
+Submenu: IEEE-1905.1 stack
+Version: 4.10.33
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libubox +libuci +libubus +libeasy +libnl-genl +libjson-c +libblobmsg-json +ieee1905 +libieee1905
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: utils
+Category: Utilities
+Repository: base
+Title: Multi-AP (Easymesh) plugin
+Maintainer: Anjan Chanda <anjan.chanda@iopsys.eu>
+Source: ieee1905-4.10.33_a989b025e85bb74c0f5f56350745eef21eda487b.tar.xz
+License: BSD-3-Clause
+LicenseFiles: LICENSE
+Type: ipkg
+Description: Multi-AP (Easymesh) plugin
+Anjan Chanda <anjan.chanda@iopsys.eu>
+@@
+Config:
+  source "rtk_openwrt/feeds/ieee1905/Config.map-plugin.in"
+@@
+
+
+Source-Makefile: feeds/custom/igmpproxy/Makefile
+
+Package: igmpproxy
+Submenu: Routing and Redirection
+Version: 0.3-1
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread 
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: Multicast Routing Daemon
+Maintainer: Felix Fietkau <nbd@nbd.name>
+Source: igmpproxy-0.3.tar.gz
+License: GPL-2.0+
+Type: ipkg
+Description: 	IGMPproxy is a simple dynamic Multicast Routing Daemon using
+	only IGMP signalling (Internet Group Management Protocol).
+http://sourceforge.net/projects/igmpproxy
+Felix Fietkau <nbd@nbd.name>
+@@
+
+
+Source-Makefile: feeds/custom/iperf3/Makefile
+Build-Depends: rtk_hostspeedup
+
+Package: iperf3
+Version: 3.11-1
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread 
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Build-Variant: nossl
+Section: net
+Category: Network
+Repository: base
+Title: Internet Protocol bandwidth measuring tool
+Maintainer: Felix Fietkau <nbd@nbd.name>
+Source: iperf-3.11.tar.gz
+License: BSD-3-Clause
+Type: ipkg
+Description:  Iperf is a modern alternative for measuring TCP and UDP bandwidth
+ performance, allowing the tuning of various parameters and
+ characteristics.
+https://github.com/esnet/iperf
+Felix Fietkau <nbd@nbd.name>
+@@
+
+Package: iperf3-ssl
+Version: 3.11-1
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libopenssl
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Build-Variant: ssl
+Section: net
+Category: Network
+Repository: base
+Title: Internet Protocol bandwidth measuring tool with iperf_auth support
+Maintainer: Felix Fietkau <nbd@nbd.name>
+Source: iperf-3.11.tar.gz
+License: BSD-3-Clause
+Type: ipkg
+Description: Internet Protocol bandwidth measuring tool with iperf_auth support
+https://github.com/esnet/iperf
+Felix Fietkau <nbd@nbd.name>
+@@
+
+
+Source-Makefile: feeds/custom/iw/Makefile
+
+Package: iw
+Version: 5.4-1
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libnl-tiny
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Build-Variant: tiny
+Section: net
+Category: Network
+Repository: base
+Title: cfg80211 interface configuration utility
+Maintainer: Felix Fietkau <nbd@nbd.name>
+Source: iw-5.4.tar.xz
+License: GPL-2.0
+Type: ipkg
+Description: cfg80211 interface configuration utility
+http://wireless.kernel.org/en/users/Documentation/iw
+Felix Fietkau <nbd@nbd.name>
+@@
+
+Package: iw-full
+Version: 5.4-1
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libnl-tiny
+Conflicts: 
+Menu-Depends: 
+Provides: iw
+Build-Variant: full
+Section: net
+Category: Network
+Repository: base
+Title: cfg80211 interface configuration utility (full version)
+Maintainer: Felix Fietkau <nbd@nbd.name>
+Source: iw-5.4.tar.xz
+License: GPL-2.0
+Type: ipkg
+Description: cfg80211 interface configuration utility (full version)
+http://wireless.kernel.org/en/users/Documentation/iw
+Felix Fietkau <nbd@nbd.name>
+@@
+
+
+Source-Makefile: feeds/custom/libmd5/Makefile
+
+Package: libmd5
+Version: 1.0-1
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread 
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: libs
+Category: Libraries
+Repository: base
+Title: RTK MD5 message-digest algorithm library
+Maintainer: 
+Source: 
+Type: ipkg
+Description: RTK MD5 message-digest algorithm library
+
+@@
+
+
+Source-Makefile: feeds/custom/libtrace/Makefile
+
+Package: libtrace
+Version: 3.0.23-1
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libpcap +libpthread +zlib +libbz2 +liblzo +librt +liblzma +libstdcpp
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: libs
+Category: Libraries
+Repository: base
+Title: Libtrace library for packet trace processing
+Maintainer: 
+Source: libtrace-3.0.23.tar.gz
+License: GPLv2
+LicenseFiles: COPYING
+Type: ipkg
+Description: 	Network trace processing library for trace processing. Supports multiple 
+	input methods, including device capture, raw and gz-compressed 
+	trace, and sockets.
+http://research.wand.net.nz/software/libtrace.php
+
+@@
+
+Package: libtrace-tools
+Version: 3.0.23-1
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libncurses +libtrace
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: Libtrace tools for packet trace processing
+Maintainer: 
+Source: libtrace-3.0.23.tar.gz
+License: GPLv2
+LicenseFiles: COPYING
+Type: ipkg
+Description: 	Network trace processing tools for trace processing.
+http://research.wand.net.nz/software/libtrace.php
+
+@@
+
+
+Source-Makefile: feeds/custom/luci/applications/generic/luci-app-rtk-br-grouping/Makefile
+
+Source-Makefile: feeds/custom/luci/applications/generic/luci-app-rtk-dhcpv4/Makefile
+
+Source-Makefile: feeds/custom/luci/applications/generic/luci-app-rtk-dhcpv6/Makefile
+
+Source-Makefile: feeds/custom/luci/applications/generic/luci-app-rtk-firewall/Makefile
+
+Source-Makefile: feeds/custom/luci/applications/generic/luci-app-rtk-gpon/Makefile
+
+Source-Makefile: feeds/custom/luci/applications/generic/luci-app-rtk-igmpproxy/Makefile
+
+Source-Makefile: feeds/custom/luci/applications/generic/luci-app-rtk-igmpsnooping/Makefile
+
+Source-Makefile: feeds/custom/luci/applications/generic/luci-app-rtk-ipsec/Makefile
+
+Source-Makefile: feeds/custom/luci/applications/generic/luci-app-rtk-l2tp/Makefile
+
+Source-Makefile: feeds/custom/luci/applications/generic/luci-app-rtk-mcproxy/Makefile
+
+Source-Makefile: feeds/custom/luci/applications/generic/luci-app-rtk-multi-ap-release-ap/Makefile
+
+Source-Makefile: feeds/custom/luci/applications/generic/luci-app-rtk-omcproxy/Makefile
+
+Source-Makefile: feeds/custom/luci/applications/generic/luci-app-rtk-pptp/Makefile
+
+Source-Makefile: feeds/custom/luci/applications/generic/luci-app-rtk-qos/Makefile
+
+Source-Makefile: feeds/custom/luci/applications/generic/luci-app-rtk-radvd/Makefile
+
+Source-Makefile: feeds/custom/luci/applications/generic/luci-app-rtk-samba/Makefile
+
+Source-Makefile: feeds/custom/luci/applications/generic/luci-app-rtk-tr069/Makefile
+
+Source-Makefile: feeds/custom/luci/applications/generic/luci-app-rtk-tr369/Makefile
+
+Source-Makefile: feeds/custom/luci/applications/generic/luci-app-rtk-upnp/Makefile
+
+Source-Makefile: feeds/custom/luci/applications/luci-app-omcproxy/Makefile
+
+Source-Makefile: feeds/custom/luci/colletions/generic/luci-rtk-generic/Makefile
+
+Source-Makefile: feeds/custom/luci/modules/generic/luci-mod-rtk-admin/Makefile
+
+Source-Makefile: feeds/custom/luci/modules/generic/luci-mod-rtk-advance/Makefile
+
+Source-Makefile: feeds/custom/luci/modules/generic/luci-mod-rtk-bridging/Makefile
+
+Source-Makefile: feeds/custom/luci/modules/generic/luci-mod-rtk-diag/Makefile
+
+Source-Makefile: feeds/custom/luci/modules/generic/luci-mod-rtk-generic/Makefile
+
+Source-Makefile: feeds/custom/luci/modules/generic/luci-mod-rtk-lan/Makefile
+
+Source-Makefile: feeds/custom/luci/modules/generic/luci-mod-rtk-multiap/Makefile
+
+Source-Makefile: feeds/custom/luci/modules/generic/luci-mod-rtk-route/Makefile
+
+Source-Makefile: feeds/custom/luci/modules/generic/luci-mod-rtk-service/Makefile
+
+Source-Makefile: feeds/custom/luci/modules/generic/luci-mod-rtk-statistic/Makefile
+
+Source-Makefile: feeds/custom/luci/modules/generic/luci-mod-rtk-status/Makefile
+
+Source-Makefile: feeds/custom/luci/modules/generic/luci-mod-rtk-voip/Makefile
+
+Source-Makefile: feeds/custom/luci/modules/generic/luci-mod-rtk-wan/Makefile
+
+Source-Makefile: feeds/custom/luci/modules/generic/luci-mod-rtk-wlan/Makefile
+
+Source-Makefile: feeds/custom/luci/protocols/luci-proto-gre/Makefile
+
+Source-Makefile: feeds/custom/luci/themes/generic/luci-theme-rtk-generic/Makefile
+
+Source-Makefile: feeds/custom/mac80211_rtk/Makefile
+
+Package: kmod-cfg80211_rtk
+Submenu: Wireless Drivers
+Version: <LINUX_VERSION>-
+Depends: +iw +iwinfo +wireless-regdb @!PACKAGE_kmod-cfg80211
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: kernel
+Category: Kernel modules
+Title: cfg80211 - wireless configuration API
+Maintainer: 
+Source: 
+Type: ipkg
+Kernel-Config: CONFIG_CFG80211=m CONFIG_NL80211_TESTMODE=n CONFIG_CFG80211_REQUIRE_SIGNED_REGDB=n CONFIG_CFG80211_DEVELOPER_WARNINGS=n CONFIG_CFG80211_CERTIFICATION_ONUS=y CONFIG_CFG80211_DEFAULT_PS=n CONFIG_CFG80211_DEBUGFS=n CONFIG_CFG80211_USE_KERNEL_REGDB_KEYS=y CONFIG_CFG80211_CRDA_SUPPORT=y CONFIG_CFG80211_REG_CELLULAR_HINTS=n CONFIG_CFG80211_REG_RELAX_NO_IR=n CONFIG_CFG80211_WEXT=y CONFIG_VIRT_WIFI=n CONFIG_PKCS8_PRIVATE_KEY_PARSER=n CONFIG_PKCS7_TEST_KEY=n CONFIG_SIGNED_PE_FILE_VERIFICATION=n CONFIG_SYSTEM_EXTRA_CERTIFICATE=n CONFIG_SECONDARY_TRUSTED_KEYRING=n
+Description: cfg80211 is the Linux wireless LAN (802.11) configuration API.
+
+@@
+
+Package: kmod-mac80211_rtk
+Submenu: Wireless Drivers
+Version: <LINUX_VERSION>-
+Depends: +kmod-cfg80211_rtk +kmod-crypto-cmac +kmod-crypto-ccm +kmod-crypto-gcm +hostapd-common @!PACKAGE_kmod-mac80211
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: kernel
+Category: Kernel modules
+Title: Linux 802.11 Wireless Networking Stack
+Maintainer: 
+Source: 
+Type: ipkg
+Kernel-Config: CONFIG_MAC80211=m CONFIG_MAC80211_HAS_RC=y CONFIG_MAC80211_RC_MINSTREL=y CONFIG_MAC80211_RC_DEFAULT_MINSTREL=y CONFIG_MAC80211_MESH=y CONFIG_MAC80211_LEDS=y CONFIG_MAC80211_DEBUGFS=y CONFIG_MAC80211_DEBUG_MENU=n CONFIG_MAC80211_HWSIM=n
+Description: Generic IEEE 802.11 Networking Stack (mac80211)
+
+@@
+
+Package: kmod-lib80211_rtk
+Submenu: Wireless Drivers
+Version: <LINUX_VERSION>-
+Depends: +kmod-cfg80211_rtk +kmod-crypto-hash +kmod-crypto-ccm @!PACKAGE_kmod-lib80211
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: kernel
+Category: Kernel modules
+Title: 802.11 Networking stack
+Maintainer: 
+Source: 
+Type: ipkg
+Kernel-Config: CONFIG_LIB80211=m CONFIG_LIB80211_CRYPT_WEP=m CONFIG_LIB80211_CRYPT_CCMP=m CONFIG_LIB80211_CRYPT_TKIP=m 
+Description:  Kernel modules for 802.11 Networking stack
+ Includes:
+ - lib80211
+ - lib80211_crypt_wep
+ - lib80211_crypt_tkip
+ - lib80211_crytp_ccmp
+
+@@
+
+
+Source-Makefile: feeds/custom/map-topology/Makefile
+Build-Depends: ieee1905
+
+Package: map-topology
+Version: 2.5.0.15
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libubox +ubus +libpthread +libuci +libeasy +libavahi-nodbus-support +libnetfilter-conntrack +libnfnetlink +libmnl +ieee1905 +map-plugin
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: opt
+Category: Utilities
+Repository: base
+Title: Utility to build topology of a multi-AP network
+Maintainer: 
+Source: map-topology-2.5.0.15-ad2df376c558d16286f21308759342cb470f3efd.tar.xz
+License: BSD-3-Clause
+LicenseFiles: LICENSE
+Type: ipkg
+Description: 	Constructs network topology and show it as json structure over UBUS
+
+@@
+Config:
+	source "rtk_openwrt/feeds/map-topology/Config.in"
+@@
+
+
+Source-Makefile: feeds/custom/mcproxy/Makefile
+
+Package: mcproxy
+Submenu: Routing and Redirection
+Version: 2017-08-24-93b5ace42268160ebbfff4c61818fb15fa2d9b99-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libpthread +libstdcpp @(!GCC_VERSION_4_4&&!GCC_VERSION_4_6)
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: Multicast Proxy for IGMP/MLD
+Maintainer: Steven Barth <cyrus@openwrt.org>
+Source: mcproxy-2017-08-24-93b5ace42268160ebbfff4c61818fb15fa2d9b99.tar.xz
+License: GPL-2.0-or-later
+LicenseFiles: COPYING
+Type: ipkg
+Description:   mcproxy is a free & open source implementation of the IGMP/MLD proxy function (see  RFC 4605) for Linux systems.
+  It operates on the kernel tables for multicast routing and allows for multiple instantiations,
+  as well as dynamically changing downstream interfaces.
+https://mcproxy.realmv6.org
+Steven Barth <cyrus@openwrt.org>
+@@
+
+
+Source-Makefile: feeds/custom/miniupnpd/Makefile
+
+Package: miniupnpd-iptables
+Submenu: Firewall
+Version: 2.2.3-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libcap-ng +libmnl +libuuid +IPV6:ip6tables +IPV6:libip6tc +iptables +libip4tc +libnetfilter-conntrack
+Conflicts: 
+Menu-Depends: 
+Provides: miniupnpd
+Build-Variant: iptables
+Section: net
+Category: Network
+Repository: base
+Title: Lightweight UPnP IGD, NAT-PMP & PCP daemon (iptables)
+Maintainer: 
+Source: miniupnpd-2.2.3.tar.gz
+License: BSD-3-Clause
+LicenseFiles: LICENSE
+Type: ipkg
+Description: Lightweight UPnP IGD, NAT-PMP & PCP daemon (iptables)
+https://miniupnp.tuxfamily.org/
+
+@@
+
+Package: miniupnpd-nftables
+Submenu: Firewall
+Version: 2.2.3-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libcap-ng +libmnl +libuuid +libnftnl
+Conflicts: miniupnpd-iptables
+Menu-Depends: 
+Provides: miniupnpd
+Build-Variant: nftables
+Default-Variant: nftables
+Section: net
+Category: Network
+Repository: base
+Title: Lightweight UPnP IGD, NAT-PMP & PCP daemon (nftables)
+Maintainer: 
+Source: miniupnpd-2.2.3.tar.gz
+License: BSD-3-Clause
+LicenseFiles: LICENSE
+Type: ipkg
+Description: Lightweight UPnP IGD, NAT-PMP & PCP daemon (nftables)
+https://miniupnp.tuxfamily.org/
+
+@@
+
+
+Source-Makefile: feeds/custom/port-management/Makefile
+
+Package: port-management
+Version: 1.0.0-1
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread 
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: opt
+Category: Utilities
+Repository: base
+Title: Port management tool
+Maintainer: 
+Source: 
+Type: ipkg
+Description: 	Port configuration utility
+
+@@
+
+
+Source-Makefile: feeds/custom/pptpd/Makefile
+
+Package: pptpd
+Submenu: VPN
+Version: 1.4.0-5
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +kmod-ppp +kmod-gre +kmod-mppe +ppp
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: PopTop pptp server
+Maintainer: 
+Source: pptpd-1.4.0.tar.gz
+Type: ipkg
+Description: PopTop pptp server
+http://poptop.sourceforge.net/
+
+@@
+
+
+Source-Makefile: feeds/custom/qos-scripts/Makefile
+
+Package: qos-scripts
+Version: 1.3.1-2
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +tc +kmod-sched-core +kmod-sched-connmark +kmod-ifb +iptables +iptables-mod-ipopt +iptables-mod-conntrack-extra +kmod-ipt-physdev
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: utils
+Category: Base system
+Repository: base
+Title: QoS scripts
+Maintainer: Felix Fietkau <nbd@nbd.name>
+Source: 
+License: GPL-2.0
+Type: ipkg
+Description:  A set of scripts that abstract QoS configuration into a simple 
+ configuration file supporting stanzas that specify any number of QoS 
+ entries.
+Felix Fietkau <nbd@nbd.name>
+@@
+
+
+Source-Makefile: feeds/custom/samba36/Makefile
+Build-Depends: RTK_LIB_MIB:rtk_mib
+
+Package: samba36-client
+Version: 3.6.25-14
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libreadline +libncurses
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: Samba 3.6 SMB/CIFS client
+Maintainer: Felix Fietkau <nbd@nbd.name>
+Source: samba-3.6.25.tar.gz
+License: GPL-3.0
+LicenseFiles: COPYING
+Type: ipkg
+Description: Samba 3.6 SMB/CIFS client
+https://www.samba.org/
+Felix Fietkau <nbd@nbd.name>
+@@
+
+Package: samba36-server
+Version: 3.6.25-14
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread 
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: Samba 3.6 SMB/CIFS server
+Maintainer: Felix Fietkau <nbd@nbd.name>
+Source: samba-3.6.25.tar.gz
+License: GPL-3.0
+LicenseFiles: COPYING
+Type: ipkg
+Description:  The Samba software suite is a collection of programs that implements the
+ SMB protocol for UNIX systems, allowing you to serve files and printers to
+ Windows, NT, OS/2 and DOS clients. This protocol is sometimes also referred
+ to as the LanManager or Netbios protocol.
+https://www.samba.org/
+Felix Fietkau <nbd@nbd.name>
+@@
+Config:
+	choice
+	prompt "Account Management"
+	default PACKAGE_SAMBA_PDBEDIT
+	config PACKAGE_SAMBA_PDBEDIT
+	bool "pdbedit"
+
+	config PACKAGE_SAMBA_SMBPASSWD
+	bool "smbpasswd"
+	endchoice
+
+	config PACKAGE_SAMBA_MAX_DEBUG_LEVEL
+		int "Maximum level of compiled-in debug messages"
+		depends on PACKAGE_samba36-server || PACKAGE_samba36-client
+		default -1
+@@
+
+Package: samba36-hotplug
+Version: 3.6.25-14
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +blockd
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: Samba 3.6 SMB/CIFS hotplug script for auto sharing
+Maintainer: Felix Fietkau <nbd@nbd.name>
+Source: samba-3.6.25.tar.gz
+License: GPL-3.0
+LicenseFiles: COPYING
+Type: ipkg
+Description: Samba 3.6 SMB/CIFS hotplug script for auto sharing
+https://www.samba.org/
+Felix Fietkau <nbd@nbd.name>
+@@
+
+Package: samba36-net
+Version: 3.6.25-14
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libreadline +libncurses
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: Samba 3.6 SMB/CIFS net commands
+Maintainer: Felix Fietkau <nbd@nbd.name>
+Source: samba-3.6.25.tar.gz
+License: GPL-3.0
+LicenseFiles: COPYING
+Type: ipkg
+Description: Samba 3.6 SMB/CIFS net commands
+https://www.samba.org/
+Felix Fietkau <nbd@nbd.name>
+@@
+
+
+Source-Makefile: feeds/custom/strongswan/Makefile
+Build-Depends: !BUILD_NLS:libiconv
+
+Package: strongswan
+Menu: 1
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libpthread +ip +kmod-crypto-authenc +kmod-ipsec +kmod-ipsec4 +IPV6:kmod-ipsec6
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description:  StrongSwan is an OpenSource IPsec implementation for the Linux operating system.
+ This package contains shared libraries and scripts.
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+Config:
+  source "rtk_openwrt/feeds/strongswan/Config.in"
+@@
+
+Package: strongswan-default
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +strongswan-charon +strongswan-mod-aes +strongswan-mod-attr +strongswan-mod-connmark +strongswan-mod-constraints +strongswan-mod-des +strongswan-mod-dnskey +strongswan-mod-fips-prf +strongswan-mod-gmp +strongswan-mod-hmac +strongswan-mod-kernel-netlink +strongswan-mod-md5 +strongswan-mod-nonce +strongswan-mod-pem +strongswan-mod-pgp +strongswan-mod-pkcs1 +strongswan-mod-pubkey +strongswan-mod-random +strongswan-mod-rc2 +strongswan-mod-resolve +strongswan-mod-revocation +strongswan-mod-sha1 +strongswan-mod-sha2 +strongswan-mod-socket-default +strongswan-mod-sshkey +strongswan-mod-updown +strongswan-mod-x509 +strongswan-mod-xauth-generic +strongswan-mod-xcbc +strongswan-swanctl
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan (default)
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description:  StrongSwan is an OpenSource IPsec implementation for the Linux operating system.
+ This meta-package contains only dependencies to match upstream defaults.
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-full
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +strongswan-charon +strongswan-charon-cmd +strongswan-ipsec +strongswan-libnttfft +strongswan-mod-addrblock +strongswan-mod-aes +strongswan-mod-af-alg +strongswan-mod-agent +strongswan-mod-attr +strongswan-mod-attr-sql +strongswan-mod-bliss +strongswan-mod-blowfish +strongswan-mod-ccm +strongswan-mod-chapoly +strongswan-mod-cmac +strongswan-mod-constraints +strongswan-mod-connmark +strongswan-mod-coupling +strongswan-mod-ctr +strongswan-mod-curl +strongswan-mod-curve25519 +strongswan-mod-des +strongswan-mod-dhcp +strongswan-mod-dnskey +strongswan-mod-duplicheck +strongswan-mod-eap-identity +strongswan-mod-eap-md5 +strongswan-mod-eap-mschapv2 +strongswan-mod-eap-radius +strongswan-mod-eap-tls +strongswan-mod-farp +strongswan-mod-fips-prf +strongswan-mod-forecast +strongswan-mod-gcm +strongswan-mod-gcrypt +strongswan-mod-gmp +strongswan-mod-ha +strongswan-mod-hmac +strongswan-mod-kernel-netlink +strongswan-mod-ldap +strongswan-mod-led +strongswan-mod-load-tester +strongswan-mod-nonce +strongswan-mod-md4 +strongswan-mod-md5 +strongswan-mod-mgf1 +strongswan-mod-mysql +strongswan-mod-newhope +strongswan-mod-ntru +strongswan-mod-openssl +strongswan-mod-pem +strongswan-mod-pgp +strongswan-mod-pkcs1 +strongswan-mod-pkcs7 +strongswan-mod-pkcs8 +strongswan-mod-pkcs11 +strongswan-mod-pkcs12 +strongswan-mod-pubkey +strongswan-mod-random +strongswan-mod-rc2 +strongswan-mod-resolve +strongswan-mod-revocation +strongswan-mod-sha1 +strongswan-mod-sha2 +strongswan-mod-sha3 +strongswan-mod-smp +strongswan-mod-socket-default +strongswan-mod-sql +strongswan-mod-sqlite +strongswan-mod-sshkey +strongswan-mod-stroke +strongswan-mod-test-vectors +strongswan-mod-uci +strongswan-mod-unity +strongswan-mod-updown +strongswan-mod-vici +strongswan-mod-whitelist +strongswan-mod-wolfssl +strongswan-mod-x509 +strongswan-mod-xauth-eap +strongswan-mod-xauth-generic +strongswan-mod-xcbc +strongswan-pki +strongswan-scepclient +strongswan-swanctl @DEVEL
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan (full)
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description:  StrongSwan is an OpenSource IPsec implementation for the Linux operating system.
+ This meta-package contains dependencies for all of the strongswan plugins
+ except kernel-libipsec,
+ socket-dynamic and which are omitted in favor of the kernel-netlink and
+ socket-default plugins.
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-minimal
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +strongswan-charon +strongswan-mod-aes +strongswan-mod-gmp +strongswan-mod-hmac +strongswan-mod-kernel-netlink +strongswan-mod-nonce +strongswan-mod-pubkey +strongswan-mod-random +strongswan-mod-sha1 +strongswan-mod-socket-default +strongswan-mod-stroke +strongswan-mod-updown +strongswan-mod-x509 +strongswan-mod-xcbc
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan (minimal)
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description:  StrongSwan is an OpenSource IPsec implementation for the Linux operating system.
+ This meta-package contains only dependencies for a minimal IKEv2 setup.
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-isrtksetting
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +strongswan-charon +strongswan-mod-aes +strongswan-mod-attr +strongswan-mod-cmac +strongswan-mod-counters +strongswan-mod-constraints +strongswan-mod-curve25519 +strongswan-mod-des +strongswan-mod-dnskey +strongswan-mod-drbg +strongswan-mod-fips-prf +strongswan-mod-gmp +strongswan-mod-hmac +strongswan-mod-kernel-netlink +strongswan-mod-md5 +strongswan-mod-mgf1 +strongswan-mod-nonce +strongswan-mod-pem +strongswan-mod-pgp +strongswan-mod-pkcs1 +strongswan-mod-pkcs7 +strongswan-mod-pkcs8 +strongswan-mod-pkcs12 +strongswan-mod-pubkey +strongswan-mod-random +strongswan-mod-rc2 +strongswan-mod-resolve +strongswan-mod-revocation +strongswan-mod-sha1 +strongswan-mod-sha2 +strongswan-mod-socket-default +strongswan-mod-sshkey +strongswan-mod-updown +strongswan-mod-vici +strongswan-mod-x509 +strongswan-mod-xauth-generic +strongswan-mod-xcbc +strongswan-pki +strongswan-swanctl
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan (isrtksetting)
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description:  StrongSwan is an OpenSource IPsec implementation for the Linux operating system.
+ This meta-package contains only choose for rtk settings.
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-isakmp
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +strongswan-charon +strongswan-ipsec +strongswan-mod-aes +strongswan-mod-des +strongswan-mod-gmpdh +strongswan-mod-hmac +strongswan-mod-kernel-netlink +strongswan-mod-md5 +strongswan-mod-nonce +strongswan-mod-pubkey +strongswan-mod-random +strongswan-mod-sha1 +strongswan-mod-socket-default +strongswan-mod-stroke +strongswan-mod-uci +strongswan-mod-updown
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan (isakmp)
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description:  StrongSwan is an OpenSource IPsec implementation for the Linux operating system.
+ This meta-package contains only dependencies to establish  ISAKMP /
+ IKE PSK connections, dropping other capabilities in favor of small size 
+ Can fit most routers even with 4Mb flash (after removing IPv6 support).
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-charon
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan IKEv1/IKEv2 keying daemon
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description:  StrongSwan is an OpenSource IPsec implementation for the Linux operating system.
+ This package contains charon, an IKEv2 keying daemon.
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-charon-cmd
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +strongswan-charon
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan charon-cmd utility
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description:  StrongSwan is an OpenSource IPsec implementation for the Linux operating system.
+ This package contains the charon-cmd utility.
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-ipsec
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan utilities
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description:  StrongSwan is an OpenSource IPsec implementation for the Linux operating system.
+ This package contains the ipsec utility.
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-libnttfft
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan nttfft library
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description:  StrongSwan is an OpenSource IPsec implementation for the Linux operating system.
+ This package contains the Number Theoretic Transforms library.
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-pki
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan PKI tool
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description:  StrongSwan is an OpenSource IPsec implementation for the Linux operating system.
+ This package contains the pki tool.
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-scepclient
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan SCEP client
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description:  StrongSwan is an OpenSource IPsec implementation for the Linux operating system.
+ This package contains the SCEP client.
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-swanctl
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +strongswan-mod-vici
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan swanctl utility
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description:  StrongSwan is an OpenSource IPsec implementation for the Linux operating system.
+ This package contains the swanctl utility.
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-gencerts
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +strongswan-pki bash
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan X.509 certificate generation utility
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description:  StrongSwan is an OpenSource IPsec implementation for the Linux operating system.
+ This package contains the X.509 certificate generation utility.
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-libtls
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan libtls
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description:  StrongSwan is an OpenSource IPsec implementation for the Linux operating system.
+ This package contains libtls for strongSwan plugins eap-tls, eap-ttls,
+ eap-peap, tnc-tnccs
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-addrblock
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan RFC 3779 address block constraint support plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan RFC 3779 address block constraint support plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-aes
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan AES crypto plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan AES crypto plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-af-alg
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +kmod-crypto-user
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan AF_ALG crypto interface to Linux Crypto API plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan AF_ALG crypto interface to Linux Crypto API plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-agent
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan SSH agent signing plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan SSH agent signing plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-attr
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan file based config plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan file based config plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-attr-sql
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +strongswan-charon
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan SQL based config plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan SQL based config plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-bliss
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +strongswan-libnttfft +strongswan-mod-mgf1 +strongswan-mod-hmac
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan BLISS crypto plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan BLISS crypto plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-blowfish
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan Blowfish crypto plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan Blowfish crypto plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-ccm
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan CCM AEAD wrapper crypto plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan CCM AEAD wrapper crypto plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-chapoly
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan ChaCha20-Poly1305 AEAD crypto plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan ChaCha20-Poly1305 AEAD crypto plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-cmac
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan CMAC crypto plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan CMAC crypto plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-connmark
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +libip4tc
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan netfilter connection marking plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan netfilter connection marking plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-constraints
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan advanced X509 constraint checking plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan advanced X509 constraint checking plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-counters
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan collects and provides several IKE performance counters plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan collects and provides several IKE performance counters plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-coupling
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan IKEv2 plugin to couple peer certificates permanently to authentication plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan IKEv2 plugin to couple peer certificates permanently to authentication plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-ctr
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan Counter Mode wrapper crypto plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan Counter Mode wrapper crypto plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-curl
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +PACKAGE_strongswan-mod-curl:libcurl
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan cURL fetcher plugin plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan cURL fetcher plugin plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-curve25519
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan Curve25519 Diffie-Hellman plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan Curve25519 Diffie-Hellman plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-des
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan DES crypto plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan DES crypto plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-dhcp
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan DHCP based attribute provider plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan DHCP based attribute provider plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-dnskey
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan DNS RR key decoding plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan DNS RR key decoding plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-drbg
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan NIST Deterministic Random Bit Generator plugin based on AES-CTR and SHA2-HMAC modes plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan NIST Deterministic Random Bit Generator plugin based on AES-CTR and SHA2-HMAC modes plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-duplicheck
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan advanced duplicate checking plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan advanced duplicate checking plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-eap-identity
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan EAP identity helper plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan EAP identity helper plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-eap-md5
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan EAP MD5 (CHAP) EAP auth plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan EAP MD5 (CHAP) EAP auth plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-eap-mschapv2
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +strongswan-mod-md4 +strongswan-mod-des
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan EAP MS-CHAPv2 EAP auth plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan EAP MS-CHAPv2 EAP auth plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-eap-radius
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan EAP RADIUS auth plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan EAP RADIUS auth plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-eap-tls
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +strongswan-libtls
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan EAP TLS auth plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan EAP TLS auth plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-farp
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan fake arp respsonses plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan fake arp respsonses plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-fips-prf
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +strongswan-mod-sha1
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan FIPS PRF crypto plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan FIPS PRF crypto plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-forecast
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +libip4tc +kmod-ipt-conntrack-extra
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan forward multi/broadcast traffic plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan forward multi/broadcast traffic plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-gcm
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan GCM AEAD wrapper crypto plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan GCM AEAD wrapper crypto plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-gcrypt
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +PACKAGE_strongswan-mod-gcrypt:libgcrypt
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan libgcrypt plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan libgcrypt plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-gmp
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +PACKAGE_strongswan-mod-gmp:libgmp
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan libgmp plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan libgmp plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-gmpdh
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan DH-Groups; no libgmp dep plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan DH-Groups; no libgmp dep plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-ha
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan high availability cluster plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan high availability cluster plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-hmac
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan HMAC crypto plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan HMAC crypto plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-kernel-libipsec
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan libipsec kernel interface plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan libipsec kernel interface plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-kernel-netlink
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan netlink kernel interface plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan netlink kernel interface plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-ldap
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +PACKAGE_strongswan-mod-ldap:libopenldap
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan LDAP plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan LDAP plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-led
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan LED blink on IKE activity plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan LED blink on IKE activity plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-load-tester
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan load testing plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan load testing plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-nonce
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan nonce genereation plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan nonce genereation plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-md4
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan MD4 crypto plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan MD4 crypto plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-md5
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan MD5 crypto plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan MD5 crypto plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-mgf1
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan MGF1 crypto plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan MGF1 crypto plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-mysql
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +strongswan-mod-sql +PACKAGE_strongswan-mod-mysql:libmysqlclient-r
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan MySQL database interface plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan MySQL database interface plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-newhope
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +strongswan-libnttfft +strongswan-mod-chapoly +strongswan-mod-sha3
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan New Hope crypto plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan New Hope crypto plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-ntru
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +strongswan-mod-mgf1
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan NTRU crypto plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan NTRU crypto plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-openssl
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +PACKAGE_strongswan-mod-openssl:libopenssl
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan OpenSSL crypto plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan OpenSSL crypto plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-pem
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan PEM decoding plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan PEM decoding plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-pgp
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan PGP key decoding plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan PGP key decoding plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-pkcs1
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan PKCS1 key decoding plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan PKCS1 key decoding plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-pkcs7
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan PKCS7 key decoding plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan PKCS7 key decoding plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-pkcs8
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan PKCS8 key decoding plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan PKCS8 key decoding plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-pkcs11
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan PKCS11 key decoding plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan PKCS11 key decoding plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-pkcs12
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan PKCS12 key decoding plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan PKCS12 key decoding plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-pubkey
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan raw public key plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan raw public key plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-random
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan RNG plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan RNG plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-rc2
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan RC2 crypto plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan RC2 crypto plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-resolve
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan DNS resolver plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan DNS resolver plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-revocation
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan X509 CRL/OCSP revocation plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan X509 CRL/OCSP revocation plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-sha1
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan SHA1 crypto plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan SHA1 crypto plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-sha2
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan SHA2 crypto plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan SHA2 crypto plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-sha3
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan SHA3 and SHAKE crypto plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan SHA3 and SHAKE crypto plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-smp
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +PACKAGE_strongswan-mod-smp:libxml2
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan SMP configuration and control interface plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan SMP configuration and control interface plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-socket-default
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan default socket implementation for charon plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan default socket implementation for charon plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-socket-dynamic
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan dynamic socket implementation for charon plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan dynamic socket implementation for charon plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-sql
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan SQL database interface plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan SQL database interface plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-sqlite
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +strongswan-mod-sql +PACKAGE_strongswan-mod-sqlite:libsqlite3
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan SQLite database interface plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan SQLite database interface plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-sshkey
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan SSH key decoding plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan SSH key decoding plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-stroke
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +strongswan-charon +strongswan-ipsec
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan Stroke plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan Stroke plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-test-vectors
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan crypto test vectors plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan crypto test vectors plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-uci
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +PACKAGE_strongswan-mod-uci:libuci
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan UCI config interface plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan UCI config interface plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-unity
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan Cisco Unity extension plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan Cisco Unity extension plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-updown
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +iptables-legacy +iptables-mod-ipsec +kmod-ipt-ipsec
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan updown firewall plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan updown firewall plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-vici
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan Versatile IKE Configuration Interface plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan Versatile IKE Configuration Interface plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-whitelist
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan peer identity whitelisting plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan peer identity whitelisting plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-wolfssl
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan +PACKAGE_strongswan-mod-wolfssl:libwolfssl
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan WolfSSL crypto plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan WolfSSL crypto plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-x509
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan x509 certificate plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan x509 certificate plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-xauth-eap
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan EAP XAuth backend plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan EAP XAuth backend plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-xauth-generic
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan generic XAuth backend plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan generic XAuth backend plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+Package: strongswan-mod-xcbc
+Submenu: VPN
+Version: 5.9.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread strongswan
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: StrongSwan xcbc crypto plugin
+Maintainer: Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+Source: strongswan-5.9.5.tar.bz2
+License: GPL-2.0-or-later
+Type: ipkg
+Description: StrongSwan xcbc crypto plugin
+http://www.strongswan.org/
+Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+@@
+
+
+Source-Makefile: feeds/custom/stunc/Makefile
+Build-Depends: bbf
+
+Package: stunc-openssl
+Submenu: TRx69
+Version: 1.1.12-1
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libubus +libuci +libubox +libjson-c +libblobmsg-json +PACKAGE_stunc-openssl:libopenssl
+Conflicts: stunc-mbedtls
+Menu-Depends: 
+Provides: 
+Build-Variant: openssl
+Section: utils
+Category: Utilities
+Repository: base
+Title: BBF STUN Client (openssl)
+Maintainer: 
+Source: stunc-1.1.12-5b65364709a921db0956bf74a4f126217cfb1775.tar.gz
+License: GPL-2.0-only
+LicenseFiles: LICENSE
+Type: ipkg
+Description: BBF STUN Client (openssl)
+
+@@
+
+Package: stunc-wolfssl
+Submenu: TRx69
+Version: 1.1.12-1
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libubus +libuci +libubox +libjson-c +libblobmsg-json +PACKAGE_stunc-wolfssl:libwolfssl
+Conflicts: stunc-mbedtls stunc-openssl
+Menu-Depends: 
+Provides: 
+Build-Variant: wolfssl
+Section: utils
+Category: Utilities
+Repository: base
+Title: BBF STUN Client (wolfssl)
+Maintainer: 
+Source: stunc-1.1.12-5b65364709a921db0956bf74a4f126217cfb1775.tar.gz
+License: GPL-2.0-only
+LicenseFiles: LICENSE
+Type: ipkg
+Description: BBF STUN Client (wolfssl)
+
+@@
+
+Package: stunc-mbedtls
+Submenu: TRx69
+Version: 1.1.12-1
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libubus +libuci +libubox +libjson-c +libblobmsg-json +PACKAGE_stunc-mbedtls:libmbedtls
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Build-Variant: mbedtls
+Default-Variant: mbedtls
+Section: utils
+Category: Utilities
+Repository: base
+Title: BBF STUN Client (mbedtls)
+Maintainer: 
+Source: stunc-1.1.12-5b65364709a921db0956bf74a4f126217cfb1775.tar.gz
+License: GPL-2.0-only
+LicenseFiles: LICENSE
+Type: ipkg
+Description: BBF STUN Client (mbedtls)
+
+@@
+
+
+Source-Makefile: feeds/custom/uspd/Makefile
+
+Package: uspd-openssl
+Submenu: TRx69
+Version: 2.2.14
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libubox +ubus +@BBFDM_ENABLE_JSON_PLUGIN +@BBFDM_ENABLE_DOTSO_PLUGIN +@BBF_TR181 +@BBF_TR104 +@BBF_TR143 +PACKAGE_uspd-openssl:libbbfdm-openssl
+Conflicts: uspd-mbedtls
+Menu-Depends: 
+Provides: 
+Build-Variant: openssl
+Section: utils
+Category: Utilities
+Repository: base
+Title: Datamodel ubus backend (openssl)
+Maintainer: 
+Source: uspd-2.2.14-1c3b886bb5e654049ae81cda726dffae950369c7.tar.gz
+License: GPL-2.0-only
+LicenseFiles: LICENSE
+Type: ipkg
+Description: Datamodel ubus backend (openssl)
+
+@@
+
+Package: uspd-wolfssl
+Submenu: TRx69
+Version: 2.2.14
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libubox +ubus +@BBFDM_ENABLE_JSON_PLUGIN +@BBFDM_ENABLE_DOTSO_PLUGIN +@BBF_TR181 +@BBF_TR104 +@BBF_TR143 +PACKAGE_uspd-wolfssl:libbbfdm-wolfssl
+Conflicts: uspd-mbedtls uspd-openssl
+Menu-Depends: 
+Provides: 
+Build-Variant: wolfssl
+Section: utils
+Category: Utilities
+Repository: base
+Title: Datamodel ubus backend (wolfssl)
+Maintainer: 
+Source: uspd-2.2.14-1c3b886bb5e654049ae81cda726dffae950369c7.tar.gz
+License: GPL-2.0-only
+LicenseFiles: LICENSE
+Type: ipkg
+Description: Datamodel ubus backend (wolfssl)
+
+@@
+
+Package: uspd-mbedtls
+Submenu: TRx69
+Version: 2.2.14
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libubox +ubus +@BBFDM_ENABLE_JSON_PLUGIN +@BBFDM_ENABLE_DOTSO_PLUGIN +@BBF_TR181 +@BBF_TR104 +@BBF_TR143 +PACKAGE_uspd-mbedtls:libbbfdm-mbedtls
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Build-Variant: mbedtls
+Default-Variant: mbedtls
+Section: utils
+Category: Utilities
+Repository: base
+Title: Datamodel ubus backend (mbedtls)
+Maintainer: 
+Source: uspd-2.2.14-1c3b886bb5e654049ae81cda726dffae950369c7.tar.gz
+License: GPL-2.0-only
+LicenseFiles: LICENSE
+Type: ipkg
+Description: Datamodel ubus backend (mbedtls)
+
+@@
+
+
+Source-Makefile: feeds/custom/vsftpd/Makefile
+
+Package: vsftpd
+Submenu: File Transfer
+Version: 3.0.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread 
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Build-Variant: notls
+Section: net
+Category: Network
+Repository: base
+Title: Fast and secure FTP server (no TLS)
+Maintainer: Cezary Jackiewicz <cezary@eko.one.pl>
+Source: vsftpd-3.0.5.tar.gz
+License: GPLv2
+Type: ipkg
+Description: Fast and secure FTP server (no TLS)
+https://security.appspot.com/vsftpd.html
+Cezary Jackiewicz <cezary@eko.one.pl>
+@@
+
+Package: vsftpd-tls
+Submenu: File Transfer
+Version: 3.0.5-0
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libopenssl
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Build-Variant: tls
+Section: net
+Category: Network
+Repository: base
+Title: Fast and secure FTP server (TLS)
+Maintainer: Cezary Jackiewicz <cezary@eko.one.pl>
+Source: vsftpd-3.0.5.tar.gz
+License: GPLv2
+Type: ipkg
+Description: Fast and secure FTP server (TLS)
+https://security.appspot.com/vsftpd.html
+Cezary Jackiewicz <cezary@eko.one.pl>
+@@
+
+
+Source-Makefile: feeds/custom/wifimngr/Makefile
+
+Package: wifimngr
+Version: 14.0.10
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libwifi +@LIBWIFI_USE_CTRL_IFACE +libuci +libubox +ubus +libpthread +libnl-genl
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: utils
+Category: Utilities
+Repository: base
+Title: WiFi status and configration utility
+Maintainer: Anjan Chanda <anjan.chanda@iopsys.eu>
+Source: wifimngr-14.0.10_b6481f096228da9805ff159d17ddac4dbce0e1ab.tar.xz
+License: GPL-2.0-only
+LicenseFiles: LICENSE
+Type: ipkg
+Description:  This package can be used to configure and provide status about
+ the WiFi modules through UBUS.
+ It does this in an implementation agnostic manner through APIs
+ exposed by the libwifi library.
+Anjan Chanda <anjan.chanda@iopsys.eu>
+@@
+
+
+Source-Makefile: feeds/custom/xinetd/Makefile
+
+Package: xinetd
+Version: 2.3.15-13
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread 
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: A powerful and secure super-server
+Maintainer: Florian Eckert <fe@dev.tdt.de>
+Source: xinetd-2.3.15.tar.gz
+License: xinetd
+LicenseFiles: COPYRIGHT
+Type: ipkg
+Description: 	xinetd has access control mechanisms, extensive logging capabilities,
+	the ability to make services available based on time, can place limits
+	on the number of servers that can be started, and has deployable
+	defence mechanisms to protect against port scanners, among other
+	things.
+https://github.com/xinetd-org
+Florian Eckert <fe@dev.tdt.de>
+@@
+
+
+Source-Makefile: feeds/custom/xl2tpd/Makefile
+
+Package: xl2tpd
+Submenu: VPN
+Version: 1.3.16-2
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +ppp-mod-pppol2tp +resolveip
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: An L2TP (Layer 2 Tunneling Protocol) daemon
+Maintainer: Yousong Zhou <yszhou4tech@gmail.com>
+Source: xl2tpd-1.3.16.tar.gz
+License: GPL-2.0
+LicenseFiles: LICENSE
+Type: ipkg
+Description: l2tpd is the open source implementation of the L2TP tunneling protocol (RFC2661).
+It does implement both LAC and LNS role in a L2TP networking architecture. The
+main goal of this protocol is to tunnel PPP frame trough an IP network.
+http://www.xelerance.com/software/xl2tpd/
+Yousong Zhou <yszhou4tech@gmail.com>
+@@
+
+
+Source-Makefile: feeds/custom/xmppc/Makefile
+Build-Depends: bbf
+
+Package: xmppc
+Submenu: TRx69
+Version: 2.0.2
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libuci +libubox +libstrophe +libubus
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: utils
+Category: Utilities
+Repository: base
+Title: BBF xmpp Client
+Maintainer: 
+Source: xmppc-2.0.2-63ba23c1dc5de3d136a3c1568ae9de08762fd0d0.tar.gz
+License: GPL-2.0-only
+LicenseFiles: LICENSE
+Type: ipkg
+Description: 	BBF XMPP Client
+
+@@
+
+

@@ -1,0 +1,8 @@
+menu "Realtek Startup Configuration features"
+        depends on PACKAGE_rtk_base
+		
+	config LAN_PORT_NUM
+		int "Lan Port Number"
+		default 4
+
+endmenu

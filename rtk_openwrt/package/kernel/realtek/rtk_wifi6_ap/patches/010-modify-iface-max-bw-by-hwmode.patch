@@ -1,0 +1,86 @@
+diff --git a/core/rtw_ap.c b/core/rtw_ap.c
+index 4f06104b5..b2f49610b 100755
+--- a/core/rtw_ap.c
++++ b/core/rtw_ap.c
+@@ -7198,7 +7198,7 @@ u16 rtw_ap_chbw_decision(_adapter *adapter, u16 ifbmp, u16 excl_ifbmp
+ 	u16 ifbmp_ch_changed = 0;
+ 	bool ifbmp_all_mesh = 0;
+ 	_adapter *iface;
+-	int i;
++	int i, j;
+ 	int if_idx = adapter->iface_id;
+ 
+ 	ifbmp_others >>= (16 - dvobj->iface_nums);
+@@ -7408,10 +7408,21 @@ u16 rtw_ap_chbw_decision(_adapter *adapter, u16 ifbmp, u16 excl_ifbmp
+ 			if (req_ch == 0 && dec_bw[i] > u_bw
+ 				&& rtw_chset_is_dfs_chbw(chset, dec_ch[i], dec_bw[i], dec_offset[i])
+ 			) {
+-				/* request comes from upper layer, prevent from additional channel waiting */
+-				dec_bw[i] = u_bw;
+-				if (dec_bw[i] == CHANNEL_WIDTH_20)
+-					dec_offset[i] = CHAN_OFFSET_NO_EXT;
++				/* request comes from upper layer, shrink the bandwidth until not cover dfs range */
++				for (j = dec_bw[i]; j > u_bw; j--) {
++					if (!rtw_chset_is_dfs_chbw(chset, dec_ch[i], j, dec_offset[i])) {
++						dec_bw[i] = j;
++						if (dec_bw[i] == CHANNEL_WIDTH_20)
++							dec_offset[i] = CHAN_OFFSET_NO_EXT;
++						break;
++					}
++				}
++				/* if no larger bw is available, use remote bw */
++				if (j == u_bw) {
++					dec_bw[i] = u_bw;
++					if (dec_bw[i] == CHANNEL_WIDTH_20)
++						dec_offset[i] = CHAN_OFFSET_NO_EXT;
++				}
+ 			}
+ 
+ 			/* follow */
+diff --git a/core/rtw_mlme.c b/core/rtw_mlme.c
+index 929bc0263..ebd135ec4 100755
+--- a/core/rtw_mlme.c
++++ b/core/rtw_mlme.c
+@@ -6203,17 +6203,23 @@ void _rtw_roaming(_adapter *padapter, struct wlan_network *tgt_network)
+ 
+ bool rtw_adjust_chbw(_adapter *adapter, u8 req_ch, u8 *req_bw, u8 *req_offset)
+ {
+-	struct registry_priv *regsty = adapter_to_regsty(adapter);
++	struct mlme_ext_priv* pmlmeextpriv = &dvobj_get_primary_adapter(adapter_to_dvobj(adapter))->mlmeextpriv;
+ 	u8 allowed_bw;
+ 	struct rf_ctl_t *rfctl = adapter_to_rfctl(adapter);
+ 
+-	if (req_ch < 14)
+-		allowed_bw = get_highest_bw_cap(REGSTY_BW_2G(regsty));
+-	else if (req_ch == 14)
++	/* Bandwidth will limit by hwmode of primary interface */
++	if (req_ch == 14)
+ 		allowed_bw = CHANNEL_WIDTH_20;
++	else if ((pmlmeextpriv->cur_wireless_mode & WLAN_MD_11AX))
++		allowed_bw = CHANNEL_WIDTH_160;
++	else if ((pmlmeextpriv->cur_wireless_mode & WLAN_MD_11AC))
++		allowed_bw = CHANNEL_WIDTH_160;
++	else if ((pmlmeextpriv->cur_wireless_mode & WLAN_MD_11N))
++		allowed_bw = CHANNEL_WIDTH_40;
+ 	else
+-		allowed_bw = get_highest_bw_cap(REGSTY_BW_5G(regsty));
++		allowed_bw = CHANNEL_WIDTH_20;
+ 
++	/* Still perform check on hardware limit, e.x. 2.4G not support > 40mhz */
+ 	allowed_bw = rtw_hw_largest_bw(adapter_to_dvobj(adapter), allowed_bw);
+ 	if(rfctl->csa_ch)
+ 	{
+diff --git a/core/rtw_mlme_ext.c b/core/rtw_mlme_ext.c
+index 031013785..6fbd42964 100755
+--- a/core/rtw_mlme_ext.c
++++ b/core/rtw_mlme_ext.c
+@@ -17234,6 +17234,9 @@ u8 rtw_join_cmd_hdl(_adapter *padapter, u8 *pbuf)
+ 	/*update HT/VHT/HE CAP and chan/bw/offset from join_info-pbuf*/
+ 	update_join_info(padapter, (struct _WLAN_BSSID_EX *)pbuf);
+ 
++	/* Sync wireless mode with primary interface */
++	update_wireless_mode(padapter);
++
+ 	sta = rtw_get_stainfo(&padapter->stapriv, padapter->phl_role->mac_addr);
+ 	rtw_free_stainfo(padapter, sta);
+ 	sta = rtw_get_stainfo(&padapter->stapriv, pnetwork->MacAddress);

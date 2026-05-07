@@ -1,0 +1,29 @@
+Index: linux-5.10.138/arch/arm64/boot/dts/realtek/Makefile
+===================================================================
+--- linux-5.10.138.orig/arch/arm64/boot/dts/realtek/Makefile
++++ linux-5.10.138/arch/arm64/boot/dts/realtek/Makefile
+@@ -13,3 +13,24 @@ dtb-$(CONFIG_ARCH_REALTEK) += rtd1395-bp
+ dtb-$(CONFIG_ARCH_REALTEK) += rtd1395-lionskin.dtb
+ 
+ dtb-$(CONFIG_ARCH_REALTEK) += rtd1619-mjolnir.dtb
++
++dtb-$(CONFIG_ARCH_CORTINA_G3HGU) += ca8279-engboard.dtb
++ifdef CONFIG_ARCH_CORTINA_VENUS
++dtb-$(CONFIG_CORTINA_BOARD_FPGA) += ca8277-fpga.dtb
++dtb-$(CONFIG_CORTINA_BOARD_VENUS_ENG) += ca8277B-engboard.dtb
++endif
++ifdef CONFIG_ARCH_REALTEK_TAURUS
++dtb-$(CONFIG_REALTEK_BOARD_FPGA) += rtl8277C-fpga.dtb
++dtb-$(CONFIG_CORTINA_BOARD_FPGA) += rtl8277C-fpga.dtb
++dtb-$(CONFIG_REALTEK_BOARD_TAURUS_ENG) += rtl8277C-engboard.dtb
++endif
++
++ifdef CONFIG_ARCH_REALTEK_9607F
++dtb-$(CONFIG_REALTEK_BOARD_FPGA) += rtl9607F-fpga.dtb
++dtb-$(CONFIG_REALTEK_BOARD_FPGA_V8) += rtl9607F-fpga-v8.dtb
++dtb-$(CONFIG_REALTEK_BOARD_9607F_ENG) += rtl9607F-engboard.dtb
++endif
++ifdef CONFIG_RTK_SOC_BC_COMPATIBLE
++dtb-y += rtl8277C-engboard.dtb ca8277B-engboard.dtb
++endif
++

@@ -1,0 +1,85 @@
+Index: ppp-2.4.9.git-2021-01-04/pppd/main.c
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/main.c
++++ ppp-2.4.9.git-2021-01-04/pppd/main.c
+@@ -479,6 +479,7 @@ main(int argc, char *argv[])
+ 	 */
+ 	fd_loop = open_ppp_loopback();
+ 	set_ifunit(1);
++	init_script(_PATH_INIT);
+ 	/*
+ 	 * Configure the interface and mark it up, etc.
+ 	 */
+@@ -1747,6 +1748,28 @@ device_script(char *program, int in, int
+     /* NOTREACHED */
+ }
+ 
++pid_t init_script_pid;
++/*
++ * init_script - Execute a script with arguments when ppp device is created
++ * interface-name tty-name.
++ */
++void
++init_script(script)
++	char *script;
++{
++    char *argv[4];
++
++    argv[0] = script;
++    argv[1] = ifname;
++    argv[2] = devnam;
++    argv[3] = NULL;
++
++    /* set init script env var */
++    script_setenv("DEVICE", devnam, 0);
++    script_setenv("IFNAME", ifname, 0);
++
++    init_script_pid = run_program(script, argv, 0, NULL, NULL, 1);
++}
+ 
+ /*
+  * update_script_environment - process the list of set/unset options
+Index: ppp-2.4.9.git-2021-01-04/pppd/pathnames.h
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/pathnames.h
++++ ppp-2.4.9.git-2021-01-04/pppd/pathnames.h
+@@ -27,6 +27,7 @@
+ #endif /* USE_EAPTLS */
+ 
+ #define _PATH_SYSOPTIONS _ROOT_PATH _PATH_VARRUN "/options"
++#define _PATH_INIT 	 _ROOT_PATH _PATH_VARRUN "/ppp-init"
+ #define _PATH_IPUP	 _ROOT_PATH _PATH_VARRUN "/ip-up"
+ #define _PATH_IPDOWN	 _ROOT_PATH _PATH_VARRUN "/ip-down"
+ #define _PATH_IPPREUP	 _ROOT_PATH _PATH_VARRUN "/ip-pre-up"
+Index: ppp-2.4.9.git-2021-01-04/pppd/pppd.h
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/pppd.h
++++ ppp-2.4.9.git-2021-01-04/pppd/pppd.h
+@@ -524,6 +524,7 @@ void untimeout(void (*func)(void *), voi
+ void record_child(int, char *, void (*) (void *), void *, int);
+ pid_t safe_fork(int, int, int);	/* Fork & close stuff in child */
+ int  device_script(char *cmd, int in, int out, int dont_wait);
++void init_script (char *script);
+ 				/* Run `cmd' with given stdin and stdout */
+ pid_t run_program(char *prog, char **args, int must_exist,
+ 		  void (*done)(void *), void *arg, int wait);
+Index: ppp-2.4.9.git-2021-01-04/pppd/sys-linux.c
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/sys-linux.c
++++ ppp-2.4.9.git-2021-01-04/pppd/sys-linux.c
+@@ -130,6 +130,7 @@
+ #include "pppd.h"
+ #include "fsm.h"
+ #include "ipcp.h"
++#include "pathnames.h"
+ 
+ #ifdef IPX_CHANGE
+ #include "ipxcp.h"
+@@ -564,6 +565,7 @@ int generic_establish_ppp (int fd)
+     if (!looped)
+ 	set_kdebugflag (kdebugflag);
+ 
++    if(new_style_driver && !looped && !multilink) init_script(_PATH_INIT);
+     looped = 0;
+ 
+     return ppp_fd;

@@ -1,0 +1,11 @@
+{
+	"luci-mod-rtk-voip-history": {
+		"description": "Grant access to VoIP Call History",
+		"read": {
+			"file": {
+				"/tmp/call_log.csv": [ "read" ],
+				"/tmp/voipstatus": [ "read" ]
+			}
+		}
+	}
+}

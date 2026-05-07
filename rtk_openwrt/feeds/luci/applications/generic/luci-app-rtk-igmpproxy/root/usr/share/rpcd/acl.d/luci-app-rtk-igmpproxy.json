@@ -1,0 +1,11 @@
+{
+	"luci-app-rtk-igmpproxy": {
+		"description": "Grant UCI access for luci-app-rtk-igmpproxy",
+		"read": {
+			"uci": [ "igmpproxy" ]
+		},
+		"write": {
+			"uci": [ "igmpproxy" ]
+		}
+	}
+}

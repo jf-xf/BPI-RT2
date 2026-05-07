@@ -1,0 +1,32 @@
+# Realtek Generic translation
+
+#: modules/generic/luci-mod-rtk-generic/root/usr/share/luci/menu.d/luci-rtk-base.json
+msgid "LAN"
+msgstr "區域網"
+
+msgid "WAN"
+msgstr "廣域網"
+
+msgid "Advance"
+msgstr "進階"
+
+msgid "Admin"
+msgstr "管理"
+
+#: modules/generic/luci-mod-rtk-generic/root/usr/share/luci/menu.d/luci-rtk-base.json
+#: modules/generic/luci-mod-rtk-lan/htdocs/luci-static/resources/view/rtk/lan/lan/settings.js
+msgid "LAN Interface Settings"
+msgstr "區域網介面設定"
+
+#：modules/generic/luci-mod-rtk-admin/root/usr/share/luci/menu.d/luci-mod-rtk-admin.json
+msgid "Backup/Restore"
+msgstr "備份與還原"
+
+#: modules/generic/luci-mod-rtk-admin/htdocs/luci-static/resources/view/rtk/admin/admin/config.js
+msgid "Backup and Restore Settings"
+msgstr "備份與還原設定檔"
+
+#：modules/generic/luci-mod-rtk-admin/root/usr/share/luci/menu.d/luci-mod-rtk-admin.json
+#: modules/generic/luci-mod-rtk-admin/htdocs/luci-static/resources/view/rtk/admin/admin/firmware.js
+msgid "Firmware Upgrade"
+msgstr "韌體更新"

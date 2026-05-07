@@ -1,0 +1,24 @@
+Index: luci/modules/luci-base/luasrc/sys.lua
+===================================================================
+--- luci.orig/modules/luci-base/luasrc/sys.lua
++++ luci/modules/luci-base/luasrc/sys.lua
+@@ -384,8 +384,8 @@ function process.list()
+ 	end
+ 
+ 	for line in ps do
+-		local pid, ppid, user, stat, vsz, mem, cpu, cmd = line:match(
+-			"^ *(%d+) +(%d+) +(%S.-%S) +([RSDZTW][<NW ][<N ]) +(%d+m?) +(%d+%%) +(%d+%%) +(.+)"
++		local pid, ppid, user, stat, vsz, mem, cpu, cpu1, cmd = line:match(
++			"^ *(%d+) +(%d+) +(%S.-%S) +([RSDZTW][<NW ][<N ]) +(%d+) +(%d+%.*%d*) +(%d+) +(%d+%.*%d*) +(.+)"
+ 		)
+ 
+ 		local idx = tonumber(pid)
+@@ -397,7 +397,7 @@ function process.list()
+ 				['STAT']    = stat,
+ 				['VSZ']     = vsz,
+ 				['%MEM']    = mem,
+-				['%CPU']    = cpu,
++				['%CPU']    = cpu1,
+ 				['COMMAND'] = cmd
+ 			}
+ 		end

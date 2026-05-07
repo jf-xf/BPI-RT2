@@ -1,0 +1,196 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: 2023-04-13 12:36+0800\n"
+"Last-Translator: SGSD1G248 <tanwahken@realtek-sg.com>\n"
+"Language-Team: German <translation-team-de@lists.sourceforge.net>\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Poedit 3.0.1\n"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:525
+msgid "';' not allowed!"
+msgstr "';' ist nicht erlaubt!"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:700
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:850
+msgid "2G"
+msgstr "2G"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:681
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:842
+msgid "5G"
+msgstr "5G"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:641
+msgid "Action"
+msgstr "Aktion"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:826
+msgid "Agent"
+msgstr "Agent"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:719
+msgid "All"
+msgstr "Alles"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:169
+msgid "Applying configuration changes… %ds"
+msgstr "Warte auf das Anwenden der Konfiguration… %ds"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:535
+msgid "Band"
+msgstr "Frequenztyp"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:638
+msgid "Channel"
+msgstr "Kanal"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:268
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:666
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:893
+msgid "Channel Scan"
+msgstr "Kanalscan"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:153
+msgid "Configuration changes applied."
+msgstr "Die Konfiguration wurde angewendet."
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:818
+msgid "Controller"
+msgstr "Controller"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:519
+msgid "Device Name"
+msgstr "Gerätname"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:506
+msgid "Device Role"
+msgstr "Gerätrolle"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:858
+msgid "ETH"
+msgstr "ETH"
+
+#: root/usr/share/luci/menu.d/luci-app-rtk-multi-ap-release-ap.json:3
+msgid "Easymesh"
+msgstr "Easymesh"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:910
+msgid "Easymesh Settings"
+msgstr "Easymesh Einstellungen"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:885
+msgid "General Settings"
+msgstr "Allgemeineinstellungen"
+
+#: root/usr/share/rpcd/acl.d/luci-app-rtk-multi-ap-release-ap.json:3
+msgid "Grant UCI access to LuCI app multi-ap-release-ap"
+msgstr "Zugriff auf LuCI App multi-ap-release-ap gewähren"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:520
+msgid "Input for the device name"
+msgstr "Eingabe für den Gerätname"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:587
+msgid "Interfaces"
+msgstr "Netzwerkschnittstellen"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:588
+msgid "Interfaces to include"
+msgstr "Netzwerkschnittstellen, die aufgenommen werden sollen"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:574
+msgid "Name"
+msgstr "Name"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:768
+msgid "No data"
+msgstr "Keine Daten"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:299
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:307
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:646
+msgid "No entries available"
+msgstr "Keine Eingabe verfügbar"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:639
+msgid "Op Class"
+msgstr "Operationsklasse"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:577
+msgid "Please input name"
+msgstr "Bitte Name eingeben"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:581
+msgid "Primary VLAN"
+msgstr "Primärer VLAN"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:800
+msgid "Refresh"
+msgstr "Aktualisieren"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:640
+msgid "Score"
+msgstr "Note"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:535
+msgid "Select Band"
+msgstr "Frequenztyp wählen"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:286
+msgid "Select Best Channel"
+msgstr "Beste Frequenztyp wählen"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:507
+msgid "Select Device Role"
+msgstr "Gerätrolle wählen"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:748
+msgid "Start Channel Scan"
+msgstr "Kanalscan starten"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:558
+msgid "Start WPS"
+msgstr "WPS starten"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:834
+msgid "Station"
+msgstr "Station"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:898
+msgid "Topology"
+msgstr "Struktur"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:784
+msgid "Topology Scan"
+msgstr "Strukturscan"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:575
+msgid "Unnamed VLAN"
+msgstr "Unbenannte VLAN"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:566
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:903
+msgid "VLAN"
+msgstr "VLAN"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:546
+msgid "WPS"
+msgstr "WPS"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:546
+msgid "WPS button"
+msgstr "WPS Schaltfläche"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:523
+msgid "must set device name"
+msgstr "Gerätname muss eingegeben werden"
+
+#: htdocs/luci-static/resources/view/rtk_map/rtkmap_form.js:524
+msgid "no spaces allowed!"
+msgstr "Keine Leerzeichen erlaubt!"

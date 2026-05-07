@@ -1,0 +1,81 @@
+From d66b76504e3230337e1f0af73f73be5c63a8304a Mon Sep 17 00:00:00 2001
+From: Qubot <1445788683@qq.com>
+Date: Tue, 27 Jan 2026 17:58:04 +0800
+Subject: [PATCH 10/12] update dts
+
+---
+ .../dts/rtl8198d_engboard.dts                 | 31 +++++++++----------
+ 1 file changed, 15 insertions(+), 16 deletions(-)
+
+diff --git a/rtk_openwrt/vendor/Realtek_ap/conf2203/V0J4G_98D_8832D_8192XB_8221B_MULTI_WAN_EASYMESH/dts/rtl8198d_engboard.dts b/rtk_openwrt/vendor/Realtek_ap/conf2203/V0J4G_98D_8832D_8192XB_8221B_MULTI_WAN_EASYMESH/dts/rtl8198d_engboard.dts
+index 36502c12..c39ff753 100755
+--- a/rtk_openwrt/vendor/Realtek_ap/conf2203/V0J4G_98D_8832D_8192XB_8221B_MULTI_WAN_EASYMESH/dts/rtl8198d_engboard.dts
++++ b/rtk_openwrt/vendor/Realtek_ap/conf2203/V0J4G_98D_8832D_8192XB_8221B_MULTI_WAN_EASYMESH/dts/rtl8198d_engboard.dts
+@@ -13,20 +13,26 @@
+ #include <dt-bindings/input/input.h>
+ 
+ / {
+-	compatible = "rtk,8198d";
++	compatible = "BPI-RT2";
+ 	#address-cells = <1>;
+ 	#size-cells = <1>;
+ 	
+ 	leds {
+ 		compatible = "gpio-leds";
+-		led_wps {
+-			label = "LED_WPS_G";
+-			gpios = <&gpio1 24 GPIO_ACTIVE_HIGH>;
++		led_pwr_r {
++			label = "LED_PWR_R";
++			gpios = <&gpio0 10 GPIO_ACTIVE_LOW>;  //gpio10
+ 			default-state = "on";
+ 		};
+-		led_usb1 {
+-			label = "LED_USB1";
+-			gpios = <&gpio0 20 GPIO_ACTIVE_LOW>;
++		led_fun_g {
++			label = "LED_FUN_G";
++			gpios = <&gpio0 7 GPIO_ACTIVE_LOW>;  //gpio7
++			default-state = "off";
++		};
++		led_sys_b {
++			label = "LED_SYS_B";
++			gpios = <&gpio0 6 GPIO_ACTIVE_LOW>;  //gpio6
++			default-state = "off";
+ 		};
+ 	};
+ 
+@@ -37,28 +43,21 @@
+ 		btn_reset {
+ 			label = "btn,reset";
+ 			linux,code = <KEY_RESTART>;
+-			gpios = <&gpio1 5 GPIO_ACTIVE_LOW>;
++			gpios = <&gpio1 28 GPIO_ACTIVE_LOW>;  //gpio60
+ 		};
+ 		
+ 		btn_wps {
+ 			label = "btn,wps";
+ 			linux,code = <KEY_WPS_BUTTON>;
+-			gpios = <&gpio1 2 GPIO_ACTIVE_LOW>;
++			gpios = <&gpio1 2 GPIO_ACTIVE_LOW>;  //gpio34
+ 		};
+ 	};
+ 	
+ 	board_setting {
+ 		pci0_gpio_rst = <&gpio1 8 GPIO_ACTIVE_HIGH>;
+ 		pci1_gpio_rst = <&gpio1 7 GPIO_ACTIVE_HIGH>;
+-		rtl8221b_dev0_reset = <&gpio1 28 GPIO_ACTIVE_LOW>;
+ 	};
+ 	
+-	ext_gphy: ext_gphy{
+-		compatible = "realtek,ext-gphy";
+-		num-cells = <2>;
+-		/* eth_mapping_phyAddr = <Port#0 PhyAddr#0>, ... ,<Port#n PhyAddr#n>; */
+-		port_mapping_phyAddr = <6 6>;
+-	};
+ };
+ 
+ &gic {
+-- 
+2.34.1
+

@@ -1,0 +1,30 @@
+From 7c83f273162f1541066c993ce639ffdd947d75c9 Mon Sep 17 00:00:00 2001
+From: "lucien.zhliu" <lucien.zhliu@realtek.com>
+Date: Mon, 8 Aug 2022 20:00:58 +0800
+Subject: [PATCH] [hostapd] Add BSS_TM_RESP EVENT if target BSSID field is
+ missed
+
+---
+ src/ap/wnm_ap.c | 3 +++
+ 1 file changed, 3 insertions(+)
+ mode change 100644 => 100755 src/ap/wnm_ap.c
+
+diff --git a/src/ap/wnm_ap.c b/src/ap/wnm_ap.c
+old mode 100644
+new mode 100755
+index 72cd126..e963a38
+--- a/src/ap/wnm_ap.c
++++ b/src/ap/wnm_ap.c
+@@ -509,6 +509,9 @@ static void ieee802_11_rx_bss_trans_mgmt_resp(struct hostapd_data *hapd,
+ 
+ 	if (status_code == WNM_BSS_TM_ACCEPT) {
+ 		if (end - pos < ETH_ALEN) {
++			wpa_msg(hapd->msg_ctx, MSG_INFO, BSS_TM_RESP MACSTR
++				" status_code=%u bss_termination_delay=%u",
++				MAC2STR(addr), status_code, bss_termination_delay);
+ 			wpa_printf(MSG_DEBUG, "WNM: not enough room for Target BSSID field");
+ 			return;
+ 		}
+-- 
+2.37.1
+

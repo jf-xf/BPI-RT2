@@ -1,0 +1,315 @@
+//
+// Copyright (C) 2012 Realtek Semiconductor Corp.
+// All Rights Reserved.
+//
+// This program is the proprietary software of Realtek Semiconductor
+// Corporation and/or its licensors, and only be used, duplicated,
+// modified or distributed under the authorized license from Realtek.
+//
+// ANY USE OF THE SOFTWARE OTHER THAN AS AUTHORIZED UNDER
+// THIS LICENSE OR COPYRIGHT LAW IS PROHIBITED.
+//
+// $Revision: $
+// $Date:  $
+//
+// Purpose : Define diag shell commands for debug.
+//
+// Feature : The file have include the following module and sub-modules
+//           1) RT CLS commands.
+//
+
+//cls configuration
+//rule clear operation
+rt_cls clear
+
+//cls configuration
+//set configuration
+//rule configuration
+//diretction configuration
+//specify to upstream
+//specify to downstream
+rt_cls set rule direction ( upstream | downstream )
+
+//cls configuration
+//set configuration
+//rule configuration
+//connection index configuration
+//type index
+rt_cls set rule connection-index <UINT:index>
+
+//cls configuration
+//set configuration
+//rule configuration
+//flow-id configuration
+//type flow-id
+rt_cls set rule flow-id <UINT:flowId>
+
+//cls configuration
+//set configuration
+//rule configuration
+//ingress port configuration
+//ingress port configuration <0-6>
+rt_cls set rule ingress-port-mask ( <PORT_LIST:ingressports> | none )
+
+//cls configuration
+//set configuration
+//rule configuration
+//filter configuration
+//flow-id configuration
+//type flow-id
+rt_cls set rule filter flow-id <UINT:flowId>
+
+//cls configuration
+//set configuration
+//rule configuration
+//filter configuration
+//outer-tag configuration
+//type outer-tag
+//type tpid
+rt_cls set rule filter outer-tag <UINT:outerTag> { <UINT:tpid> }
+
+//cls configuration
+//set configuration
+//rule configuration
+//filter configuration
+//inner-tag configuration
+//type inner-tag
+//type tpid
+rt_cls set rule filter inner-tag <UINT:innerTag> { <UINT:tpid> }
+
+//cls configuration
+//set configuration
+//rule configuration
+//filter configuration
+//outer-vid configuration
+//type outer-vid
+rt_cls set rule filter outer-vid <UINT:outerVid>
+
+//cls configuration
+//set configuration
+//rule configuration
+//filter configuration
+//outer-pri configuration
+//type outer-pri
+rt_cls set rule filter outer-pri <UINT:outerPri>
+
+//cls configuration
+//set configuration
+//rule configuration
+//filter configuration
+//outer-dei configuration
+//type outer-dei
+rt_cls set rule filter outer-dei <UINT:outerDei>
+
+//cls configuration
+//set configuration
+//rule configuration
+//filter configuration
+//inner-vid configuration
+//type inner-vid
+rt_cls set rule filter inner-vid <UINT:innerVid>
+
+//cls configuration
+//set configuration
+//rule configuration
+//filter configuration
+//inner-pri configuration
+//type inner-pri
+rt_cls set rule filter inner-pri <UINT:innerPri>
+
+//cls configuration
+//set configuration
+//rule configuration
+//filter configuration
+//inner-dei configuration
+//type inner-dei
+rt_cls set rule filter inner-dei <UINT:innerDei>
+
+//cls configuration
+//set configuration
+//rule configuration
+//filter configuration
+//ethertype configuration
+//type ethertype
+rt_cls set rule filter ethertype <UINT:ethertype>
+
+//cls configuration
+//set configuration
+//rule configuration
+//filter configuration
+//dscp configuration
+//type dscp
+rt_cls set rule filter dscp <UINT:dscp>
+
+//cls configuration
+//set configuration
+//rule configuration
+//filter configuration
+//egress-port configuration
+//type egress-port
+rt_cls set rule filter egress-port <UINT:egressPort>
+
+//cls configuration
+//set configuration
+//rule configuration
+//action configuration
+//outer-tag configuration
+//specify to transparent
+//specify to tagging
+//specify to modify
+//specify to remove
+rt_cls set rule action outer-tag ( transparent | tagging | modify | remove )
+
+//cls configuration
+//set configuration
+//rule configuration
+//action configuration
+//outer-tpid configuration
+//specify to assign
+//specify to copy from 1st tag
+//specify to copy from 2nd tag
+//type tpid
+rt_cls set rule action outer-tpid ( assign | copy-outer | copy-inner ) { <UINT:tpid> }
+
+//cls configuration
+//set configuration
+//rule configuration
+//action configuration
+//outer-vid configuration
+//specify to assign
+//specify to copy from 1st tag
+//specify to copy from 2nd tag
+//specify to transparent
+//type vid
+rt_cls set rule action outer-vid ( assign | copy-outer | copy-inner | transparent ) { <UINT:vid> }
+
+//cls configuration
+//set configuration
+//rule configuration
+//action configuration
+//outer-pri configuration
+//specify to assign
+//specify to copy from 1st tag
+//specify to copy from 2nd tag
+//specify to transparent
+//type pri
+rt_cls set rule action outer-pri ( assign | copy-outer | copy-inner | dscp-remapping | transparent ) { <UINT:pri> }
+
+//cls configuration
+//set configuration
+//rule configuration
+//action configuration
+//outer-dei configuration
+//specify to assign
+//specify to copy from 1st tag
+//specify to copy from 2nd tag
+//type dei
+rt_cls set rule action outer-dei ( assign | copy-outer | copy-inner ) { <UINT:dei> }
+
+//cls configuration
+//set configuration
+//rule configuration
+//action configuration
+//inner-tag configuration
+//specify to transparent
+//specify to tagging
+//specify to modify
+//specify to remove
+rt_cls set rule action inner-tag ( transparent | tagging | modify | remove )
+
+//cls configuration
+//set configuration
+//rule configuration
+//action configuration
+//inner-tpid configuration
+//specify to assign
+//specify to copy from 1st tag
+//specify to copy from 2nd tag
+//type tpid
+rt_cls set rule action inner-tpid ( assign | copy-outer | copy-inner ) { <UINT:tpid> }
+
+//cls configuration
+//set configuration
+//rule configuration
+//action configuration
+//inner-vid configuration
+//specify to assign
+//specify to copy from 1st tag
+//specify to copy from 2nd tag
+//specify to transparent
+//type vid
+rt_cls set rule action inner-vid ( assign | copy-outer | copy-inner | transparent ) { <UINT:vid> }
+
+//cls configuration
+//set configuration
+//rule configuration
+//action configuration
+//inner-pri configuration
+//specify to assign
+//specify to copy from 1st tag
+//specify to copy from 2nd tag
+//specify to transparent
+//type pri
+rt_cls set rule action inner-pri ( assign | copy-outer | copy-inner | dscp-remapping | transparent ) { <UINT:pri> }
+
+//cls configuration
+//set configuration
+//rule configuration
+//action configuration
+//inner-dei configuration
+//specify to assign
+//specify to copy from 1st tag
+//specify to copy from 2nd tag
+//type dei
+rt_cls set rule action inner-dei ( assign | copy-outer | copy-inner ) { <UINT:dei> }
+
+//cls configuration
+//set configuration
+//rule configuration
+//action configuration
+//downstream-pri-act configuration
+//specify to assign
+//specify to no operation
+//type pri
+rt_cls set rule action downstream-pri-act ( assign | nop ) { <UINT:pri> }
+
+//cls configuration
+//intial configuration
+rt_cls init
+
+//cls configuration
+//add configuration
+//rule add operation
+rt_cls add rule
+
+//cls configuration
+//delete configuration
+//rule delete operation
+//connection index configuration
+//type connection-index
+rt_cls delete rule connection-index <UINT:index>
+
+//cls configuration
+//show configuration
+//rule show operation
+rt_cls show rule
+
+//cls configuration
+//set configuration
+//port configuration
+//port list
+//fwdPort configuration
+//fwdPort value
+rt_cls set port ( <PORT_LIST:ports> | all ) fwdPort <UINT:fwdPort>
+
+//cls configuration
+//get configuation
+//entry configuration
+//index, <UINT32>
+rt_cls get entry <UINT:index>
+
+//cls configuration
+//get configuration
+//entry configuration
+//valid
+rt_cls get entry valid

@@ -1,0 +1,153 @@
+Source-Makefile: feeds/custom/easy-soc-libs/Makefile
+Unexpected CONFIG_TARGET, use default MAC80211
+
+Package: libeasy
+Menu: 1
+Submenu: IOPSYS Easy SoC libraries
+Version: 6.5.57-1
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libopenssl +libnl +libnl-route
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: libs
+Category: Libraries
+Repository: base
+Title: Common helper functions library (libeasy)
+Maintainer: Anjan Chanda <anjan.chanda@iopsys.eu>
+Source: easy-soc-libs-6.5.57_3b07e800c1f27b5bf65946339e94a86dfd96a95d.tar.xz
+License: GPLv2
+LicenseFiles: LICENSE
+Type: ipkg
+Description: Common helper functions library (libeasy)
+Anjan Chanda <anjan.chanda@iopsys.eu>
+@@
+Config:
+    source "rtk_openwrt/feeds/easy-soc-libs/Config.in"
+@@
+
+
+Package: libwifi
+Menu: 1
+Submenu: IOPSYS Easy SoC libraries
+Version: 6.5.57-1
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libopenssl +libnl +libnl-route +libeasy
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: libs
+Category: Libraries
+Repository: base
+Title: WiFi library (libwifi)
+Maintainer: Anjan Chanda <anjan.chanda@iopsys.eu>
+Source: easy-soc-libs-6.5.57_3b07e800c1f27b5bf65946339e94a86dfd96a95d.tar.xz
+License: GPLv2
+LicenseFiles: LICENSE
+Type: ipkg
+Description: WiFi library (libwifi)
+Anjan Chanda <anjan.chanda@iopsys.eu>
+@@
+Config:
+  if PACKAGE_libdsl
+	  config LIBWIFI_DEBUG
+		depends on PACKAGE_libwifi
+		bool "Enable wifi debugging"
+		default n
+
+  endif
+@@
+
+
+Package: libdsl
+Menu: 1
+Submenu: IOPSYS Easy SoC libraries
+Version: 6.5.57-1
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libopenssl
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: libs
+Category: Libraries
+Repository: base
+Title: xDSL library (libdsl)
+Maintainer: Anjan Chanda <anjan.chanda@iopsys.eu>
+Source: easy-soc-libs-6.5.57_3b07e800c1f27b5bf65946339e94a86dfd96a95d.tar.xz
+License: GPLv2
+LicenseFiles: LICENSE
+Type: ipkg
+Description: xDSL library (libdsl)
+Anjan Chanda <anjan.chanda@iopsys.eu>
+@@
+Config:
+  if PACKAGE_libdsl
+	  config LIBDSL_DEBUG
+		depends on PACKAGE_libdsl
+		bool "Enable dsl debugging"
+		default n
+
+	  config LIBDSL_TEST
+		depends on PACKAGE_libdsl
+		bool "Enable dsl test program"
+		default n
+
+  endif
+@@
+
+
+Package: libethernet
+Menu: 1
+Submenu: IOPSYS Easy SoC libraries
+Version: 6.5.57-1
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libopenssl +libnl +libnl-route +libeasy +TARGET_iopsys_ramips:swconfig
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: libs
+Category: Libraries
+Repository: base
+Title: Ethernet library (libethernet)
+Maintainer: Anjan Chanda <anjan.chanda@iopsys.eu>
+Source: easy-soc-libs-6.5.57_3b07e800c1f27b5bf65946339e94a86dfd96a95d.tar.xz
+License: GPLv2
+LicenseFiles: LICENSE
+Type: ipkg
+Description: Ethernet library (libethernet)
+Anjan Chanda <anjan.chanda@iopsys.eu>
+@@
+Config:
+  config LIBETHERNET_DEBUG
+	depends on PACKAGE_libethernet
+	bool "Enable ethernet debugging"
+	default n
+
+@@
+
+
+Package: libqos
+Menu: 1
+Submenu: IOPSYS Easy SoC libraries
+Version: 6.5.57-1
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libopenssl +libnl +libnl-route +libeasy
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: libs
+Category: Libraries
+Repository: base
+Title: QoS library (libqos)
+Maintainer: Anjan Chanda <anjan.chanda@iopsys.eu>
+Source: easy-soc-libs-6.5.57_3b07e800c1f27b5bf65946339e94a86dfd96a95d.tar.xz
+License: GPLv2
+LicenseFiles: LICENSE
+Type: ipkg
+Description: QoS library (libqos)
+Anjan Chanda <anjan.chanda@iopsys.eu>
+@@
+Config:
+  config LIBQOS_DEBUG
+	depends on PACKAGE_libqos
+	bool "Enable qos debugging"
+	default n
+
+@@
+
+

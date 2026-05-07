@@ -1,0 +1,20 @@
+Index: netifd-2022-06-01-39ef9fe1/config.c
+===================================================================
+--- netifd-2022-06-01-39ef9fe1.orig/config.c
++++ netifd-2022-06-01-39ef9fe1/config.c
+@@ -805,9 +805,15 @@ config_init_all(void)
+ 	config_init = true;
+ 
+ 	device_reset_config();
++#if 1 // need load none bridge device first, because it can be found dev structure when init bridge device
++	config_init_devices(false);
++	config_init_devices(true);
++	config_init_vlans();
++#else
+ 	config_init_devices(true);
+ 	config_init_vlans();
+ 	config_init_devices(false);
++#endif
+ 	config_init_interfaces();
+ 	config_init_ip();
+ 	config_init_rules();

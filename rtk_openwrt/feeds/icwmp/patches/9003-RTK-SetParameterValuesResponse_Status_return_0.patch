@@ -1,0 +1,13 @@
+Index: icwmp-8.5.9/src/rpc.c
+===================================================================
+--- icwmp-8.5.9.orig/src/rpc.c
++++ icwmp-8.5.9/src/rpc.c
+@@ -975,7 +975,7 @@ int cwmp_handle_rpc_cpe_set_parameter_va
+ 		goto fault;
+ 	}
+ 
+-	int status = 1;
++	int status = 0;
+ 
+ 	struct xml_data_struct spv_resp_xml_attrs = {.status = &status};
+ 	fault = build_xml_node_data(SOAP_RESP_SPV, b, &spv_resp_xml_attrs);

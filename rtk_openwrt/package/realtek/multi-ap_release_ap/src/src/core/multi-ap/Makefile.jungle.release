@@ -1,0 +1,85 @@
+BUILD_FOLDER               := $(shell pwd)/build
+
+CONTROLLER_EXE             := map_controller
+AGENT_EXE                  := map_agent
+MAP_CHECKER_EXE            := map_checker
+HLE_ENTITY_EXE			   := hle_entity
+
+MAP_REINIT_EXE			   := map_reinit
+MAP_REINIT_SRC_MAIN		   := src/jungle_map_reinit.c src/ini.c src/config_file_handler.c src/base64.c
+MAP_REINIT_OBJ_MAIN        := $(patsubst src/%.c,$(BUILD_FOLDER)/%.o,$(MAP_REINIT_SRC_MAIN))
+
+MAP_RESET_EXE              := map_reset
+MAP_RESET_SRC_MAIN         := src/jungle_map_reset.c
+MAP_RESET_OBJ_MAIN         := $(patsubst src/%.c,$(BUILD_FOLDER)/%.o,$(MAP_RESET_SRC_MAIN))
+
+MAP_VLAN_EXE               := map_vlan_config
+MAP_VLAN_SRC_MAIN          := src/jungle_map_vlan_config.c
+MAP_VLAN_OBJ_MAIN          := $(patsubst src/%.c,$(BUILD_FOLDER)/%.o,$(MAP_VLAN_SRC_MAIN))
+
+APMIB_INC     := $(shell pwd)/../boa/apmib/
+
+CCFLAGS       := -Wall -Wextra -Werror -O2 -DRTK_MULTI_AP -I$(APMIB_INC) -I$(shell pwd)/include
+CCFLAGS       += $(COMMON_CFLAGS) $(EXTRA_CFLAGS)
+
+ifneq ($(origin DIR_USERS), undefined)
+       include $(DIR_USERS)/.config
+else ifneq ($(origin CONFIG_CONFIG), undefined)
+       include $(CONFIG_CONFIG)
+else ifneq ($(wildcard ../users/.config),)
+       include ../../users/.config
+else ifneq ($(wildcard ../config/.config),)
+       include ../config/.config
+else
+$(error Undefined users directory)
+endif
+
+ifeq ($(CONFIG_RTK_MULTI_AP_WFA),y)
+	CCFLAGS       += -DRTK_MULTI_AP_WFA
+endif
+
+MULTI_AP_DIR := $(shell pwd)/
+
+export MULTI_AP_DIR
+
+################################################################################
+# Targets
+################################################################################
+.PHONY: all
+all: clean $(MAP_REINIT_EXE) $(MAP_RESET_EXE) $(MAP_VLAN_EXE)
+	$(MAKE) -C vendor
+
+$(MAP_REINIT_EXE): $(MAP_REINIT_OBJ_MAIN)
+	$(CC) $(MAP_REINIT_OBJ_MAIN) -L$(APMIB_INC) -lapmib -o $@
+
+$(MAP_RESET_EXE): $(MAP_RESET_OBJ_MAIN)
+	$(CC) $(CCFLAGS) -L$(APMIB_INC) -lapmib $< -o $@
+
+$(MAP_VLAN_EXE): $(MAP_VLAN_OBJ_MAIN)
+	$(CC) $< -o $@
+
+$(BUILD_FOLDER)/%.o : src/%.c
+	mkdir -p $(BUILD_FOLDER)
+	$(CC) $(CCFLAGS) -c $(addprefix -I,$(EXTERNAL_INC)) $< -o $@
+
+.PHONY: clean
+clean:
+	rm -f $(BUILD_FOLDER)/*.o
+	rm -f $(MAP_REINIT_EXE)
+	rm -f $(MAP_RESET_EXE)
+	rm -f $(MAP_VLAN_EXE)
+	$(MAKE) -C vendor clean
+
+.PHONY: romfs
+romfs:
+	$(ROMFSINST) $(CONTROLLER_EXE) /bin/map_controller
+	$(ROMFSINST) $(AGENT_EXE) /bin/map_agent
+	$(ROMFSINST) $(MAP_CHECKER_EXE) /bin/map_checker
+	$(ROMFSINST) $(HLE_ENTITY_EXE) /bin/hle_entity
+	$(ROMFSINST) $(MAP_REINIT_EXE) /bin/map_reinit
+	$(ROMFSINST) $(MAP_RESET_EXE) /bin/map_reset
+	$(ROMFSINST) $(MAP_VLAN_EXE) /bin/map_vlan_config
+	$(ROMFSINST) multiap.conf /etc/multiap.conf
+	$(ROMFSINST) lib/libmultiap.so /lib
+	$(ROMFSINST) lib/libmapvendor.so /lib
+	$(MAKE) -C vendor romfs

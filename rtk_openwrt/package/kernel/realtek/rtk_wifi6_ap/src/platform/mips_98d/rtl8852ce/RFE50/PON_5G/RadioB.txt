@@ -1,0 +1,6 @@
+//8832CR RFE50 version = 69
+//PON_5G_PWRTAB_00
+
+0xFD	0x15069
+
+0xffff 0xffff 			

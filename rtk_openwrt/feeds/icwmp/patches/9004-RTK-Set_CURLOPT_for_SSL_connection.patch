@@ -1,0 +1,16 @@
+Index: icwmp-8.5.9/src/http.c
+===================================================================
+--- icwmp-8.5.9.orig/src/http.c
++++ icwmp-8.5.9/src/http.c
+@@ -138,7 +138,11 @@ static void http_set_security_options(st
+ 	curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC | CURLAUTH_DIGEST);
+ 
+ 	if (cwmp->conf.acs_ssl_capath)
++	{
+ 		curl_easy_setopt(curl, CURLOPT_CAPATH, cwmp->conf.acs_ssl_capath);
++		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
++		curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, (long)CURL_HTTP_VERSION_1_1);
++	}
+ 	if (cwmp->conf.insecure_enable) {
+ 		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, false);
+ 		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);

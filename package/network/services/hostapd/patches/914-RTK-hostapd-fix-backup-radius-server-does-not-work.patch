@@ -1,0 +1,37 @@
+From 017f8013695fd887bc1844d50c6c91cd1083aad3 Mon Sep 17 00:00:00 2001
+From: "lucien.zhliu" <lucien.zhliu@realtek.com>
+Date: Mon, 8 Aug 2022 20:46:35 +0800
+Subject: [PATCH] [hostapd] fix backup radius server does not work
+
+---
+ src/radius/radius_client.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+ mode change 100644 => 100755 src/radius/radius_client.c
+
+diff --git a/src/radius/radius_client.c b/src/radius/radius_client.c
+old mode 100644
+new mode 100755
+index ee9e46d..570d180
+--- a/src/radius/radius_client.c
++++ b/src/radius/radius_client.c
+@@ -380,7 +380,7 @@ static int radius_client_retransmit(struct radius_client_data *radius,
+ 		num_servers = conf->num_acct_servers;
+ 		if (radius->acct_sock < 0)
+ 			radius_client_init_acct(radius);
+-		if (radius->acct_sock < 0 && conf->num_acct_servers > 1) {
++		if (radius->acct_sock >= 0 && conf->num_acct_servers > 1) {
+ 			prev_num_msgs = radius->num_msgs;
+ 			radius_client_acct_failover(radius);
+ 			if (prev_num_msgs != radius->num_msgs)
+@@ -397,7 +397,7 @@ static int radius_client_retransmit(struct radius_client_data *radius,
+ 		num_servers = conf->num_auth_servers;
+ 		if (radius->auth_sock < 0)
+ 			radius_client_init_auth(radius);
+-		if (radius->auth_sock < 0 && conf->num_auth_servers > 1) {
++		if (radius->auth_sock >= 0 && conf->num_auth_servers > 1) {
+ 			prev_num_msgs = radius->num_msgs;
+ 			radius_client_auth_failover(radius);
+ 			if (prev_num_msgs != radius->num_msgs)
+-- 
+2.37.1
+

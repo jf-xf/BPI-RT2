@@ -1,0 +1,12 @@
+{
+	"realtek/services/service/igmpsnooping": {
+		"title": "IGMP/MLD Snooping",
+		"action": {
+			"type": "view",
+			"path": "rtk/services/service/igmpsnooping"
+		},
+		"depends": {
+			"acl": [ "luci-app-rtk-igmpsnooping" ]
+		}
+    }
+}

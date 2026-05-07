@@ -1,0 +1,41 @@
+From ee2ea76dba280964fbe95c447e95f81d8af72b5b Mon Sep 17 00:00:00 2001
+From: "lucien.zhliu" <lucien.zhliu@realtek.com>
+Date: Mon, 8 Aug 2022 20:10:39 +0800
+Subject: [PATCH] [hostapd] update 20210105_fix_duplicate_wpa_ctrl_files
+
+* add SIGTERM handler for hostapd_cli -a
+---
+ hostapd/hostapd_cli.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+ mode change 100644 => 100755 hostapd/hostapd_cli.c
+
+diff --git a/hostapd/hostapd_cli.c b/hostapd/hostapd_cli.c
+old mode 100644
+new mode 100755
+index 8d3ed9e..5d1e019
+--- a/hostapd/hostapd_cli.c
++++ b/hostapd/hostapd_cli.c
+@@ -2017,6 +2017,11 @@ static void hostapd_cli_cleanup(void)
+ 	os_program_deinit();
+ }
+ 
++static void handle_hostapd_cli_action_term(int sig)
++{
++	fprintf(stderr, "Signal %d received - terminating\n", sig);
++	hostapd_cli_quit = 1;
++}
+ 
+ static void hostapd_cli_action(struct wpa_ctrl *ctrl)
+ {
+@@ -2026,6 +2031,8 @@ static void hostapd_cli_action(struct wpa_ctrl *ctrl)
+ 	char buf[256];
+ 	size_t len;
+ 
++	signal(SIGTERM, handle_hostapd_cli_action_term);
++
+ 	fd = wpa_ctrl_get_fd(ctrl);
+ 
+ 	while (!hostapd_cli_quit) {
+-- 
+2.37.1
+

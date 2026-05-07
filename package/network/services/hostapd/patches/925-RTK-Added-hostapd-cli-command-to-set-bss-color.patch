@@ -1,0 +1,37 @@
+From b691cbdbead52b14837811cbacbb9d50afdbc8a0 Mon Sep 17 00:00:00 2001
+From: "ryan.kuo" <ryan.kuo@realtek.com>
+Date: Fri, 10 Feb 2023 15:27:58 +0800
+Subject: [PATCH] Added hostapd cli command to set bss color
+
+---
+ hostapd/ctrl_iface.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/hostapd/ctrl_iface.c b/hostapd/ctrl_iface.c
+index c419a35..0aacf2e 100755
+--- a/hostapd/ctrl_iface.c
++++ b/hostapd/ctrl_iface.c
+@@ -1592,6 +1592,20 @@ static int hostapd_ctrl_iface_set(struct hostapd_data *hapd, char *cmd)
+ 			return -1;
+ 		hapd->dpp_configurator_connectivity = val;
+ 		ieee802_11_update_beacons(hapd->iface);
++	} else if (os_strcasecmp(cmd, "bss_color") == 0) {
++		int val = atoi(value);
++		int he_support = hapd->iface->current_mode->he_capab[IEEE80211_MODE_AP].he_supported;
++		wpa_printf(MSG_DEBUG, "[bss colour] he_support = %d\n", he_support);
++		if (!he_support) {
++			return -1;
++		}
++		if (val < 1 || val > 63)
++			return -1;
++		hapd->iface->conf->he_op.he_bss_color = val;
++		if (hapd->iface->conf->he_op.he_bss_color_disabled){
++			hapd->iface->conf->he_op.he_bss_color_disabled = 0;
++		}
++		ieee802_11_update_beacons(hapd->iface);
+ #endif /* CONFIG_DPP */
+ 	} else if (os_strcasecmp(cmd, "setband") == 0) {
+ 		ret = hostapd_ctrl_iface_set_band(hapd, value);
+-- 
+2.17.1
+

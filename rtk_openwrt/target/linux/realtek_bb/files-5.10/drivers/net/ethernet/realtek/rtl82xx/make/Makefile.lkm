@@ -1,0 +1,65 @@
+#
+# For Building Linux Kernel Module
+#
+
+LKM_INSTALL_PATH        := $(ROOT_PATH)/kernel/uClinux/romfs/lib/modules
+ifneq ($(KERNELRELEASE),)
+BUILD_DIR    		    :=
+#EXTRA_CFLAGS                  += -D__KERNEL__
+else
+BUILD_DIR    		    := build
+CFLAGS                  += -D__KERNEL__ $(EXTRA_CFLAGS)
+endif
+LDFLAGS                 += $(EXTRA_LDFLAGS)
+MODULE_SRC              := $(subst .o,.c,$(MODULE_OBJ))
+MODULE_SRC_SHORT        := $(subst $(ROOT_PATH)/,,$(MODULE_SRC))
+
+OUTPUT_MODULE_OBJ       := $(addprefix $(BUILD_DIR)/,$(subst $(ROOT_PATH)/,,$(MODULE_OBJ)))
+
+
+ifeq ($(SDK_TARGET_ARCH),TYPE_ARM_RDC)
+    #KERNEL_PATH             := /home/sdk/ca8279-kernel-tree/kernel-build
+    #KERNEL_PATH             := /home/sdk/toolchain/kernel-rockchip-nanopi4-linux-v4.4.y
+    KERNEL_PATH             := /home/sdk/rdc-44-kernel-tree/linux-4.4
+else ifeq ($(SDK_TARGET_ARCH),TYPE_ARM_CA)
+    KERNEL_PATH             := /home/sdk/g3hgu-eng_gpon.sdk-image.R0.7.27.0.sdk/build/tmp/work/g3hgu_eng-poky-linux/linux-ca/4.4-r0/build
+else ifeq ($(SDK_TARGET_ARCH),TYPE_X86)
+    KERNEL_PATH             := /lib/modules/$(shell uname -r)/build
+else ifeq ($(SDK_TARGET_ARCH),TYPE_MIPS)
+    SET_LINUX_KERNEL_PATH   := $(CONFIG_LINUXDIR)
+    KERNEL_PATH             := $(ROOT_PATH)/$(KERNEL_DIR)/$(OS_TYPE)/$(SET_LINUX_KERNEL_PATH)
+else
+    KERNEL_PATH             := no_kernel_path
+endif
+
+ifneq ($(KERNELRELEASE),)
+    obj-m               := $(MODULE_NAME).o
+    $(MODULE_NAME)-objs := $(OUTPUT_MODULE_OBJ)
+else
+    PWD := $(shell pwd)
+default: link_file_local
+	$(MAKE) -C $(KERNEL_PATH) M=$(PWD) "CC=$(CC)" "LD=$(LD)" "AR=$(AR)" "CFLAGS=$(CFLAGS)" "LDFLAGS=$(LDFLAGS)" modules
+endif
+
+
+.PHONY: install
+install:
+ifeq ($(MODULE_NAME).ko, $(wildcard $(MODULE_NAME).ko))
+	$(if $(wildcard $(LKM_INSTALL_PATH)),,mkdir -p $(LKM_INSTALL_PATH))
+	$(STRIP) --strip-debug -R .note -R .comment $(MODULE_NAME).ko
+	@cp $(MODULE_NAME).ko $(LKM_INSTALL_PATH)
+	@echo "$(MODULE_NAME).ko installed"
+endif
+
+
+clean:
+	$(MAKE) -C $(KERNEL_PATH) M=$(PWD) "CC=$(CC)" "LD=$(LD)" "AR=$(AR)" "CFLAGS=$(CFLAGS)" "LDFLAGS=$(LDFLAGS)" clean
+	@find \( -name '*.[oas]' -o -name 'Module.symvers' -o -name 'modules.order' \) -type f -print | xargs rm -rf
+	rm -rf $(BUILD_DIR)
+
+
+link_file_local:
+	$(foreach i,$(MODULE_SRC_SHORT),  $(if $(wildcard $(BUILD_DIR)/$i),,$(shell mkdir -p $(dir $(BUILD_DIR)/$i);ln -s $(ROOT_PATH)/$i $(BUILD_DIR)/$i)))
+
+
+

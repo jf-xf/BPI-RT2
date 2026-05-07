@@ -1,0 +1,54 @@
+{
+	"realtek/admin/admin/gpon": {
+		"title": "GPON Settings",
+		"action": {
+			"type": "view",
+			"path": "rtk/admin/admin/gpon"
+		},
+		"depends": {
+			"acl": [ "luci-app-rtk-gpon" ],
+			"fs": {
+				"/tmp/menu/pon": "file"
+			}
+		}
+	},
+	"realtek/admin/admin/omci": {
+		"title": "OMCI Information",
+		"action": {
+			"type": "view",
+			"path": "rtk/admin/admin/omci"
+		},
+		"depends": {
+			"acl": [ "luci-app-rtk-gpon" ],
+			"fs": {
+				"/tmp/menu/pon": "file"
+			}
+		}
+	},
+	"realtek/status/status/pon_status": {
+		"title": "PON",
+		"action": {
+			"type": "view",
+			"path": "rtk/status/status/pon_status"
+		},
+		"depends": {
+			"acl": [ "luci-app-rtk-gpon-status" ],
+			"fs": {
+				"/tmp/menu/pon": "file"
+			}
+		}
+	},
+	"realtek/statistics/statistics/pon_statistics": {
+		"title": "PON Statistics",
+		"action": {
+			"type": "view",
+			"path": "rtk/statistics/statistics/pon_statistics"
+		},
+		"depends": {
+			"acl": [ "luci-app-rtk-gpon-status" ],
+			"fs": {
+				"/tmp/menu/pon": "file"
+			}
+		}
+	},
+}

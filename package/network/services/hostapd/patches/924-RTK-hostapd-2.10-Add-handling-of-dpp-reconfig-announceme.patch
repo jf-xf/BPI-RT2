@@ -1,0 +1,82 @@
+From 815dd4f649ba5619afd1426b9df4426a3ee7c549 Mon Sep 17 00:00:00 2001
+From: "ryan.kuo" <ryan.kuo@realtek.com>
+Date: Fri, 10 Feb 2023 15:25:31 +0800
+Subject: [PATCH] [hostapd-2.10] Add handling of dpp reconfig announcement
+
+Once hostapd receives dpp reconfig announcement,
+it shall notify the multi-ap layer using an event
+---
+ src/ap/dpp_hostapd.c  |  2 ++
+ src/common/dpp.c      | 12 ++++++++++++
+ src/common/dpp.h      |  2 ++
+ src/common/wpa_ctrl.h |  1 +
+ 4 files changed, 17 insertions(+)
+ mode change 100644 => 100755 src/ap/dpp_hostapd.c
+ mode change 100644 => 100755 src/common/dpp.h
+
+diff --git a/src/ap/dpp_hostapd.c b/src/ap/dpp_hostapd.c
+old mode 100644
+new mode 100755
+index 13e1fc5..0d6d604
+--- a/src/ap/dpp_hostapd.c
++++ b/src/ap/dpp_hostapd.c
+@@ -1363,6 +1363,8 @@ hostapd_dpp_rx_reconfig_announcement(struct hostapd_data *hapd, const u8 *src,
+ 		    csign_hash, csign_hash_len);
+ 	conf = dpp_configurator_find_kid(hapd->iface->interfaces->dpp,
+ 					 csign_hash);
++	dpp_notify_reconfig_announcement(hapd->msg_ctx, 0, src,
++				  freq, csign_hash);
+ 	if (!conf) {
+ 		if (dpp_relay_rx_action(hapd->iface->interfaces->dpp,
+ 					src, hdr, buf, len, freq, NULL,
+diff --git a/src/common/dpp.c b/src/common/dpp.c
+index 85a3d98..de01652 100755
+--- a/src/common/dpp.c
++++ b/src/common/dpp.c
+@@ -4418,4 +4418,16 @@ void dpp_notify_chirp_received(void *msg_ctx, int id, const u8 *src,
+ 		id, MAC2STR(src), freq, hex);
+ }
+ 
++void dpp_notify_reconfig_announcement(void *msg_ctx, int id, const u8 *src,
++				unsigned int freq, const u8 *hash)
++{
++	wpa_printf(MSG_DEBUG, "Notify reconfig announcement");
++
++	char hex[SHA256_MAC_LEN * 2 + 1];
++
++	wpa_snprintf_hex(hex, sizeof(hex), hash, SHA256_MAC_LEN);
++	wpa_msg(msg_ctx, MSG_INFO,
++		DPP_EVENT_RECONFIG_ANNOUNCEMENT "id=%d src=" MACSTR " freq=%u hash=%s",
++		id, MAC2STR(src), freq, hex);
++}
+ #endif /* CONFIG_DPP2 */
+diff --git a/src/common/dpp.h b/src/common/dpp.h
+old mode 100644
+new mode 100755
+index 8d62a0e..574dc11
+--- a/src/common/dpp.h
++++ b/src/common/dpp.h
+@@ -697,6 +697,8 @@ int dpp_tcp_init(struct dpp_global *dpp, struct dpp_authentication *auth,
+ struct wpabuf * dpp_build_presence_announcement(struct dpp_bootstrap_info *bi);
+ void dpp_notify_chirp_received(void *msg_ctx, int id, const u8 *src,
+ 				unsigned int freq, const u8 *hash);
++void dpp_notify_reconfig_announcement(void *msg_ctx, int id, const u8 *src,
++				unsigned int freq, const u8 *hash);
+ 
+ struct dpp_global_config {
+ 	void *cb_ctx;
+diff --git a/src/common/wpa_ctrl.h b/src/common/wpa_ctrl.h
+index 157a978..77eb8df 100755
+--- a/src/common/wpa_ctrl.h
++++ b/src/common/wpa_ctrl.h
+@@ -214,6 +214,7 @@ extern "C" {
+ #define DPP_EVENT_BAND_SUPPORT "DPP-BAND-SUPPORT "
+ #define DPP_EVENT_CSR "DPP-CSR "
+ #define DPP_EVENT_CHIRP_RX "DPP-CHIRP-RX "
++#define DPP_EVENT_RECONFIG_ANNOUNCEMENT "DPP-RECONFIG-ANNOUNCEMENT "
+ 
+ /* MESH events */
+ #define MESH_GROUP_STARTED "MESH-GROUP-STARTED "
+-- 
+2.17.1
+

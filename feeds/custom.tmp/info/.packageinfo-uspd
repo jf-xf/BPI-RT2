@@ -1,0 +1,67 @@
+Source-Makefile: feeds/custom/uspd/Makefile
+
+Package: uspd-openssl
+Submenu: TRx69
+Version: 2.2.14
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libubox +ubus +@BBFDM_ENABLE_JSON_PLUGIN +@BBFDM_ENABLE_DOTSO_PLUGIN +@BBF_TR181 +@BBF_TR104 +@BBF_TR143 +PACKAGE_uspd-openssl:libbbfdm-openssl
+Conflicts: uspd-mbedtls
+Menu-Depends: 
+Provides: 
+Build-Variant: openssl
+Section: utils
+Category: Utilities
+Repository: base
+Title: Datamodel ubus backend (openssl)
+Maintainer: 
+Source: uspd-2.2.14-1c3b886bb5e654049ae81cda726dffae950369c7.tar.gz
+License: GPL-2.0-only
+LicenseFiles: LICENSE
+Type: ipkg
+Description: Datamodel ubus backend (openssl)
+
+@@
+
+Package: uspd-wolfssl
+Submenu: TRx69
+Version: 2.2.14
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libubox +ubus +@BBFDM_ENABLE_JSON_PLUGIN +@BBFDM_ENABLE_DOTSO_PLUGIN +@BBF_TR181 +@BBF_TR104 +@BBF_TR143 +PACKAGE_uspd-wolfssl:libbbfdm-wolfssl
+Conflicts: uspd-mbedtls uspd-openssl
+Menu-Depends: 
+Provides: 
+Build-Variant: wolfssl
+Section: utils
+Category: Utilities
+Repository: base
+Title: Datamodel ubus backend (wolfssl)
+Maintainer: 
+Source: uspd-2.2.14-1c3b886bb5e654049ae81cda726dffae950369c7.tar.gz
+License: GPL-2.0-only
+LicenseFiles: LICENSE
+Type: ipkg
+Description: Datamodel ubus backend (wolfssl)
+
+@@
+
+Package: uspd-mbedtls
+Submenu: TRx69
+Version: 2.2.14
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libubox +ubus +@BBFDM_ENABLE_JSON_PLUGIN +@BBFDM_ENABLE_DOTSO_PLUGIN +@BBF_TR181 +@BBF_TR104 +@BBF_TR143 +PACKAGE_uspd-mbedtls:libbbfdm-mbedtls
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Build-Variant: mbedtls
+Default-Variant: mbedtls
+Section: utils
+Category: Utilities
+Repository: base
+Title: Datamodel ubus backend (mbedtls)
+Maintainer: 
+Source: uspd-2.2.14-1c3b886bb5e654049ae81cda726dffae950369c7.tar.gz
+License: GPL-2.0-only
+LicenseFiles: LICENSE
+Type: ipkg
+Description: Datamodel ubus backend (mbedtls)
+
+@@
+
+

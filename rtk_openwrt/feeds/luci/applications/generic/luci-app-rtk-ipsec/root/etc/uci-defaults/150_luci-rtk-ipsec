@@ -1,0 +1,26 @@
+#!/bin/sh
+
+# If It don't select "strongswan-ipsec" packeage, there would be no /etc/config/ipsec file.
+touch /etc/config/ipsec
+
+uci -q batch <<-EOF
+	delete ipsec.main
+	set ipsec.main=ipsec
+	set ipsec.main.debug=1
+	delete ipsec.acme
+	set ipsec.acme=remote
+	set ipsec.acme.local_cert=local.cacert.pem
+	set ipsec.acme.local_key=local.priv.pem
+	set ipsec.acme.ca_cert=remote.cacert.pem
+	add_list ipsec.acme.crypto_proposal=ike_proposal
+	delete ipsec.ike_proposal
+	set ipsec.ike_proposal=crypto_proposal
+	delete ipsec.tun
+	set ipsec.tun=tunnel
+	add_list ipsec.tun.crypto_proposal=esp_proposal
+	delete ipsec.esp_proposal
+	set ipsec.esp_proposal=crypto_proposal
+	commit ipsec
+EOF
+
+exit 0

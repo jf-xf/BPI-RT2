@@ -1,0 +1,58 @@
+From ccc20ef65c897ee89ac49c07fd56f46f1dc4a772 Mon Sep 17 00:00:00 2001
+From: "ryan.kuo" <ryan.kuo@realtek.com>
+Date: Fri, 10 Feb 2023 14:44:01 +0800
+Subject: [PATCH] [*][hapd][DPP2] Fix to pass a check in EAPOL 2/4
+
+- Adds Diffie Hellman parameter to association request when DH parameter
+is present in the association request
+
+========================================================================
+
+[+][ALL][EasyMesh] This commit contains squashed DPP commits from
+hostapd-2.9 branch ap/usdk_ap_v1.2.0/master.
+
+========= Squash Begin =========
+
+[+][All][DPP] Enable dpp in hostapd to recongnize multi-ap network
+roles.
+
+Change-Id: If2fc95bd083e6f113cb6a85e085b7e913944d830
+---
+ src/ap/drv_callbacks.c | 2 ++
+ src/common/dpp.c       | 4 +++-
+ 2 files changed, 5 insertions(+), 1 deletion(-)
+ mode change 100644 => 100755 src/common/dpp.c
+
+diff --git a/src/ap/drv_callbacks.c b/src/ap/drv_callbacks.c
+index 6f395f5..29f674e 100755
+--- a/src/ap/drv_callbacks.c
++++ b/src/ap/drv_callbacks.c
+@@ -689,6 +689,8 @@ skip_wpa_check:
+ 				reason = WLAN_REASON_UNSPECIFIED;
+ 				goto fail;
+ 			}
++			os_memcpy(p, wpabuf_head(sta->dpp_pfs->ie),wpabuf_len(sta->dpp_pfs->ie));
++			p += wpabuf_len(sta->dpp_pfs->ie);
+ 		}
+ 
+ 		wpa_auth_set_dpp_z(sta->wpa_sm, sta->dpp_pfs ?
+diff --git a/src/common/dpp.c b/src/common/dpp.c
+old mode 100644
+new mode 100755
+index ac6eae4..85a3d98
+--- a/src/common/dpp.c
++++ b/src/common/dpp.c
+@@ -3518,7 +3518,9 @@ fail:
+ static int dpp_compatible_netrole(const char *role1, const char *role2)
+ {
+ 	return (os_strcmp(role1, "sta") == 0 && os_strcmp(role2, "ap") == 0) ||
+-		(os_strcmp(role1, "ap") == 0 && os_strcmp(role2, "sta") == 0);
++		(os_strcmp(role1, "ap") == 0 && os_strcmp(role2, "sta") == 0) ||
++		(os_strcmp(role1, "mapBackhaulSta") == 0 && os_strcmp(role2, "mapBackhaulBss") == 0) ||
++		(os_strcmp(role1, "mapBackhaulBss") == 0 && os_strcmp(role2, "mapBackhaulSta") == 0);
+ }
+ 
+ 
+-- 
+2.17.1
+

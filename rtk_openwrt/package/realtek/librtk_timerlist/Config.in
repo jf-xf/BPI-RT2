@@ -1,0 +1,14 @@
+menu "Reaktek Timer API Configuration"
+	depends on PACKAGE_librtk_timerlist
+
+#
+config LIB_LIBRTK_TIMERLIST
+	bool "RTK TIMER LIST Compiler Flag"
+	default y
+	help
+		Now we usually use it for nflogd in systemd.
+
+endmenu
+
+
+

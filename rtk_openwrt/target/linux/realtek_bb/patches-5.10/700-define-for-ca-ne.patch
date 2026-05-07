@@ -1,0 +1,57 @@
+Index: linux-5.10.125/include/linux/netdevice.h
+===================================================================
+--- linux-5.10.125.orig/include/linux/netdevice.h
++++ linux-5.10.125/include/linux/netdevice.h
+@@ -2247,7 +2247,26 @@ struct net_device {
+ 
+ 	/* protected by rtnl_lock */
+ 	struct bpf_xdp_entity	xdp_state[__MAX_XDP_MODE];
+-};
++
++	/*Realtek private fields*/
++	u32						rtk_priv_flags;
++	#define RTK_IFF_RSMUX       (1<<0)
++	#define RTK_IFF_OSMUX       (1<<1)
++	#define RTK_IFF_VSMUX       (1<<2)
++	#define RTK_IFF_DOMAIN_ELAN (1<<3)
++	#define RTK_IFF_DOMAIN_WAN  (1<<4)
++	#define RTK_IFF_DOMAIN_WLAN (1<<5)
++};
++
++#define RTK_NETDEV_PRIV_FLAGS
++static inline void rtk_netdev_set_flags(struct net_device *dev, u32 flags) {
++	dev->rtk_priv_flags = flags;
++}
++
++static inline u32 rtk_netdev_get_flags(const struct net_device *dev) {
++	return dev->rtk_priv_flags;
++}
++
+ #define to_net_dev(d) container_of(d, struct net_device, dev)
+ 
+ static inline bool netif_elide_gro(const struct net_device *dev)
+@@ -4654,6 +4673,10 @@ extern int		dev_weight_tx_bias;
+ extern int		dev_rx_weight;
+ extern int		dev_tx_weight;
+ extern int		gro_normal_batch;
++#ifdef CONFIG_RTK_CONTROL_PACKET_PROTECTION
++extern int		netdev_hi_priomask;
++extern u32		ov_counter;
++#endif
+ 
+ enum {
+ 	NESTED_SYNC_IMM_BIT,
+Index: linux-5.10.125/include/uapi/linux/sockios.h
+===================================================================
+--- linux-5.10.125.orig/include/uapi/linux/sockios.h
++++ linux-5.10.125/include/uapi/linux/sockios.h
+@@ -153,6 +153,9 @@
+ #define SIOCSHWTSTAMP	0x89b0		/* set and get config		*/
+ #define SIOCGHWTSTAMP	0x89b1		/* get config			*/
+ 
++//realtek
++#define SIOCETHTEST     0x89b2
++#define SIOCSPEEDTEST     0x89ba
+ /* Device private ioctl calls */
+ 
+ /*

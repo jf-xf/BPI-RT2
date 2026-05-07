@@ -1,0 +1,28 @@
+Index: linux-5.10.125/drivers/net/ppp/ppp_generic.c
+===================================================================
+--- linux-5.10.125.orig/drivers/net/ppp/ppp_generic.c
++++ linux-5.10.125/drivers/net/ppp/ppp_generic.c
+@@ -511,7 +511,23 @@ static ssize_t ppp_write(struct file *fi
+ 		kfree_skb(skb);
+ 		goto out;
+ 	}
++#ifdef CONFIG_RTK_L34_FLEETCONNTRACK_ENABLE
++#define SOCK_MARK_QOS_SWQID_START               4
++#define SOCK_MARK_QOS_SWQID_END                 6
++#define SOCK_MARK_QOS_SWQID_BIT_NUM             (SOCK_MARK_QOS_SWQID_END-SOCK_MARK_QOS_SWQID_START+1)
++#define SOCK_MARK_QOS_SWQID_BIT_MASK            (((1<<SOCK_MARK_QOS_SWQID_BIT_NUM)-1) << SOCK_MARK_QOS_SWQID_START)
++#define SOCK_MARK_QOS_SWQID_TO_MARK(QOS_SWQID)  (QOS_SWQID << SOCK_MARK_QOS_SWQID_START)
++#define PPPOE_PROTOCOL(p) ((((__u8 *)(p))[0] << 8) + ((__u8 *)(p))[1])
+ 
++        int proto = PPPOE_PROTOCOL(buf);
++        if (proto == PPP_LCP || proto == PPP_CHAP ||
++                proto == PPP_IPCP || proto == PPP_IPV6CP ||
++                proto == PPP_CCP || proto == PPP_PAP)
++        {
++                skb->mark = SOCK_MARK_QOS_SWQID_TO_MARK(7);    /* set LCP to high queue */
++                skb->priority=7;
++        }
++#endif
+ 	switch (pf->kind) {
+ 	case INTERFACE:
+ 		ppp_xmit_process(PF_TO_PPP(pf), skb);

@@ -1,0 +1,83 @@
+--- a/drivers/i2c/busses/Kconfig
++++ b/drivers/i2c/busses/Kconfig
+@@ -513,6 +513,16 @@ config I2C_CPM
+ 	  This driver can also be built as a module.  If so, the module
+ 	  will be called i2c-cpm.
+ 
++config I2C_CA77XX
++	tristate "Cortina CA77XX I2C(BIW) Controller"
++	depends on ARCH_CORTINA
++	help
++	  If you say yes to this option, support will be included for the
++	  built-in I2C interface on the Cortina CA77XX of host bridges.
++
++	  This driver can also be built as a module.  If so, the module
++	  will be called i2c-ca77xx.
++
+ config I2C_DAVINCI
+ 	tristate "DaVinci I2C driver"
+ 	depends on ARCH_DAVINCI || ARCH_KEYSTONE || COMPILE_TEST
+--- a/drivers/i2c/busses/Makefile
++++ b/drivers/i2c/busses/Makefile
+@@ -47,6 +47,7 @@ obj-$(CONFIG_I2C_BCM_IPROC)	+= i2c-bcm-i
+ obj-$(CONFIG_I2C_CADENCE)	+= i2c-cadence.o
+ obj-$(CONFIG_I2C_CBUS_GPIO)	+= i2c-cbus-gpio.o
+ obj-$(CONFIG_I2C_CPM)		+= i2c-cpm.o
++obj-$(CONFIG_I2C_CA77XX)        += i2c-ca77xx.o
+ obj-$(CONFIG_I2C_DAVINCI)	+= i2c-davinci.o
+ obj-$(CONFIG_I2C_DESIGNWARE_CORE)			+= i2c-designware-core.o
+ i2c-designware-core-y					:= i2c-designware-common.o
+--- a/drivers/nvmem/Kconfig
++++ b/drivers/nvmem/Kconfig
+@@ -21,6 +21,16 @@ config NVMEM_SYSFS
+ 	 This interface is mostly used by userspace applications to
+ 	 read/write directly into nvmem.
+ 
++config CORTINA_OTP
++	tristate "Cortina-Access OTP Support"
++	depends on ARCH_CORTINA || COMPILE_TEST
++	help
++	  This is a simple drive to dump specified values of Cortina-
++	  Access SoC from OTP.
++
++	  This driver can also be built as a module. If so, the module
++	  will be called nvmem_cortina_otp.
++
+ config NVMEM_IMX_IIM
+ 	tristate "i.MX IC Identification Module support"
+ 	depends on ARCH_MXC || COMPILE_TEST
+--- a/drivers/nvmem/Makefile
++++ b/drivers/nvmem/Makefile
+@@ -7,6 +7,8 @@ obj-$(CONFIG_NVMEM)		+= nvmem_core.o
+ nvmem_core-y			:= core.o
+ 
+ # Devices
++obj-$(CONFIG_CORTINA_OTP)       += nvmem_cortina_otp.o
++nvmem_cortina_otp-y             := cortina-otp.o
+ obj-$(CONFIG_NVMEM_BCM_OCOTP)	+= nvmem-bcm-ocotp.o
+ nvmem-bcm-ocotp-y		:= bcm-ocotp.o
+ obj-$(CONFIG_NVMEM_IMX_IIM)	+= nvmem-imx-iim.o
+--- a/drivers/watchdog/Kconfig
++++ b/drivers/watchdog/Kconfig
+@@ -305,6 +305,14 @@ config XILINX_WATCHDOG
+ 	  To compile this driver as a module, choose M here: the
+ 	  module will be called of_xilinx_wdt.
+ 
++config CORTINA_PER_WATCHDOG
++	tristate "Cortina Peripheral Watchdog timer"
++	depends on ARCH_CORTINA
++	select WATCHDOG_CORE
++	help
++	  Say Y here if you want to include support for the watchdog
++	  timer in Cortina-Access SoC.
++
+ config ZIIRAVE_WATCHDOG
+ 	tristate "Zodiac RAVE Watchdog Timer"
+ 	depends on I2C
+--- a/drivers/watchdog/Makefile
++++ b/drivers/watchdog/Makefile
+@@ -227,3 +227,4 @@ obj-$(CONFIG_MENZ069_WATCHDOG) += menz69
+ obj-$(CONFIG_RAVE_SP_WATCHDOG) += rave-sp-wdt.o
+ obj-$(CONFIG_STPMIC1_WATCHDOG) += stpmic1_wdt.o
+ obj-$(CONFIG_SL28CPLD_WATCHDOG) += sl28cpld_wdt.o
++obj-$(CONFIG_CORTINA_PER_WATCHDOG) += cortina_per_wdt.o

@@ -1,0 +1,30 @@
+From e81112ef566702d3e6246b4066b9377432685ff3 Mon Sep 17 00:00:00 2001
+From: "lucien.zhliu" <lucien.zhliu@realtek.com>
+Date: Mon, 8 Aug 2022 20:57:27 +0800
+Subject: [PATCH] [wpa-supplicant] [EasyMesh] support backhaul-ap == hidden-ap
+
+---
+ wpa_supplicant/wps_supplicant.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+ mode change 100644 => 100755 wpa_supplicant/wps_supplicant.c
+
+diff --git a/wpa_supplicant/wps_supplicant.c b/wpa_supplicant/wps_supplicant.c
+old mode 100644
+new mode 100755
+index bb46928..1504d0f
+--- a/wpa_supplicant/wps_supplicant.c
++++ b/wpa_supplicant/wps_supplicant.c
+@@ -580,6 +580,10 @@ static int wpa_supplicant_wps_cred(void *ctx,
+ 	}
+ 	ssid->priority = wpa_s->conf->wps_priority;
+ 
++#if 1 /* CONFIG_RTW_MULTI_AP, in order to scan hidden-ap */
++	ssid->scan_ssid = 1;
++#endif
++
+ 	wpas_wps_security_workaround(wpa_s, ssid, cred);
+ 
+ 	wpas_wps_remove_dup_network(wpa_s, ssid);
+-- 
+2.37.1
+

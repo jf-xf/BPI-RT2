@@ -1,0 +1,15 @@
+{
+	"luci-app-rtk-gpon": {
+		"description": "Grant access to gpon procedures",
+		"read": {
+			"ubus": {
+				"rtk-rpc": [ "get_gpon_settings"]
+			}
+		},
+		"write": {
+			"ubus": {
+				"rtk-rpc": [ "set_gpon_settings", "apply_gpon_settings" ]
+			}
+		}
+	}
+}

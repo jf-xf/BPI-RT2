@@ -1,0 +1,57 @@
+#
+# Makefile for easymesh building
+#
+
+-include .config
+
+VENDOR_DIR := $(shell pwd)/vendor
+
+BINARY_DIR := $(shell pwd)/arch_bin
+
+MULTI_AP_DIR := $(shell pwd)/src
+
+BINARY_DIR := $(BINARY_DIR)/$(TOOLCHAIN_DIR)
+
+ARCH_CFLAGS := -I$(shell pwd)/target/include
+
+ARCH_LDFLAGS := -L$(shell pwd)/target/lib -lmultiap_roaming
+
+LINUX_BASE := $(if $(findstring linux,$(LINUXDIR)),$(LINUXDIR),$(shell basename $(DIR_LINUX)))
+
+export
+
+.PHONY: romfs clean prepare vendor sanity_check
+
+all: prepare sanity_check
+	$(MAKE) -C src
+	$(MAKE) -C dpp_broker
+	$(MAKE) vendor
+
+clean:
+	$(MAKE) -C src clean
+	$(MAKE) -C dpp_broker clean
+	$(MAKE) -C $(VENDOR_DIR) clean
+
+romfs:
+	$(MAKE) -C src romfs || exit $?
+	$(MAKE) -C dpp_broker romfs || exit $?
+	if [ -d $(VENDOR_DIR) ]; then \
+		$(MAKE) -C $(VENDOR_DIR) romfs || exit $?; \
+	fi
+
+prepare:
+	if [ -L "target" ]; then \
+		unlink target; \
+	fi
+	ln -s $(BINARY_DIR) target
+
+	if ! [ -d "$(BINARY_DIR)/lib" ]; then \
+		mkdir -p $(BINARY_DIR)/lib; \
+	fi
+
+vendor:
+	$(MAKE) -C $(VENDOR_DIR)
+
+sanity_check:
+	$(if $(value FLAVOUR),,$(error Undefined build flavour))
+	$(if $(value TOOLCHAIN_DIR),,$(error Undefined toolchain))

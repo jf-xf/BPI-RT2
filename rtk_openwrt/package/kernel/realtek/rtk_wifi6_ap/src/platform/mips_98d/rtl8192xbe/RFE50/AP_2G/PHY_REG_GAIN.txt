@@ -1,0 +1,6 @@
+//8192XBR RFE50 version = 35
+//AP_2G
+
+
+
+0xffff 0xffff

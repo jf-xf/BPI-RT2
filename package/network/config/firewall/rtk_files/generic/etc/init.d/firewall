@@ -1,0 +1,130 @@
+#!/bin/sh /etc/rc.common
+
+START=19
+USE_PROCD=1
+QUIET=""
+
+URLRULE_CONF="/etc/firewall_urlRule.user"
+DOMAINRULE_CONF="/etc/firewall_domainRule.user"
+
+validate_firewall_redirect()
+{
+	uci_validate_section firewall redirect "${1}" \
+		'proto:or(uinteger, string)' \
+		'src:string' \
+		'src_ip:cidr' \
+		'src_dport:or(port, portrange)' \
+		'dest:string' \
+		'dest_ip:cidr' \
+		'dest_port:or(port, portrange)' \
+		'target:or("SNAT", "DNAT")'
+}
+
+validate_firewall_rule()
+{
+	uci_validate_section firewall rule "${1}" \
+		'proto:or(uinteger, string)' \
+		'src:string' \
+		'dest:string' \
+		'src_port:or(port, portrange)' \
+		'dest_port:or(port, portrange)' \
+		'target:string'
+}
+
+service_triggers() {
+	procd_add_reload_trigger firewall	
+
+	procd_open_validate
+	validate_firewall_redirect
+	validate_firewall_rule
+	procd_close_validate
+}
+
+writeURLRule() {
+	num=1
+	LINES=`uci get firewall.urlID.fqdn | awk '{n=split($0, array, " ")} END {print n }'`
+	echo $LINES
+	local status=`uci get firewall.url.enabled`
+
+	if [ -f $URLRULE_CONF ]; then
+		fw3 flush
+		rm -r -f $URLRULE_CONF
+	fi
+
+	# Disable FC delay
+	echo count 0 > /proc/fc/ctrl/flow_delay
+
+	while [ $num -le $LINES ]; do
+		echo 'iptables -I FORWARD -p tcp --dport 80 -m weburl --contains' `uci get firewall.urlID.fqdn | awk '{print $'$num'}'` '--domain_only -j DROP' >> $URLRULE_CONF
+		echo 'iptables -I FORWARD -p tcp --dport 443 -m weburl --contains' `uci get firewall.urlID.fqdn | awk '{print $'$num'}'` '--domain_only -j DROP' >> $URLRULE_CONF
+		echo 'ip6tables -I FORWARD -p tcp --dport 80 m weburl --contains' `uci get firewall.urlID.fqdn | awk '{print $'$num'}'` '--domain_only -j DROP' >> $URLRULE_CONF
+		echo 'ip6tables -I FORWARD -p tcp --dport 443 m weburl --contains' `uci get firewall.urlID.fqdn | awk '{print $'$num'}'` '--domain_only -j DROP' >> $URLRULE_CONF
+		num=`expr $num + 1`
+	done
+
+	if [ -f $URLRULE_CONF ]; then
+		if [ "$status" != "0" ]; then
+			# Enable FC delay
+			echo mode kernel > /proc/fc/ctrl/flow_delay
+			echo count 20 > /proc/fc/ctrl/flow_delay
+		fi
+		fw3 restart
+	fi
+}
+
+writeDomainRule() {
+	num=1
+	LINES=`uci get firewall.domainID.domain | awk '{n=split($0, array, " ")} END {print n }'`
+	echo $LINES
+
+	if [ -f $DOMAINRULE_CONF ]; then
+		fw3 flush
+		rm -r -f $DOMAINRULE_CONF
+	fi
+
+	while [ $num -le $LINES ]; do
+		echo 'iptables -I FORWARD -p udp --dport 53 -m dns --qname' `uci get firewall.domainID.domain | awk '{print $'$num'}'` '--rmatch -j DROP' >> $DOMAINRULE_CONF
+		echo 'iptables -I FORWARD -p tcp --dport 53 -m dns --qname' `uci get firewall.domainID.domain | awk '{print $'$num'}'` '--rmatch -j DROP' >> $DOMAINRULE_CONF
+		echo 'iptables -I INPUT -p udp --dport 53 -m dns --qname' `uci get firewall.domainID.domain | awk '{print $'$num'}'` '--rmatch -j DROP' >> $DOMAINRULE_CONF
+		echo 'iptables -I INPUT -p tcp --dport 53 -m dns --qname' `uci get firewall.domainID.domain | awk '{print $'$num'}'` '--rmatch -j DROP' >> $DOMAINRULE_CONF
+		echo 'iptables -I OUTPUT -p udp --dport 53 -m dns --qname' `uci get firewall.domainID.domain | awk '{print $'$num'}'` '--rmatch -j DROP' >> $DOMAINRULE_CONF
+		echo 'iptables -I OUTPUT -p tcp --dport 53 -m dns --qname' `uci get firewall.domainID.domain | awk '{print $'$num'}'` '--rmatch -j DROP' >> $DOMAINRULE_CONF
+		echo 'ip6tables -I FORWARD -p udp --dport 53 -m dns --qname' `uci get firewall.domainID.domain | awk '{print $'$num'}'` '--rmatch -j DROP' >> $DOMAINRULE_CONF
+		echo 'ip6tables -I FORWARD -p tcp --dport 53 -m dns --qname' `uci get firewall.domainID.domain | awk '{print $'$num'}'` '--rmatch -j DROP' >> $DOMAINRULE_CONF
+		echo 'ip6tables -I INPUT -p udp --dport 53 -m dns --qname' `uci get firewall.domainID.domain | awk '{print $'$num'}'` '--rmatch -j DROP' >> $DOMAINRULE_CONF
+		echo 'ip6tables -I INPUT -p tcp --dport 53 -m dns --qname' `uci get firewall.domainID.domain | awk '{print $'$num'}'` '--rmatch -j DROP' >> $DOMAINRULE_CONF
+		echo 'ip6tables -I OUTPUT -p udp --dport 53 -m dns --qname' `uci get firewall.domainID.domain | awk '{print $'$num'}'` '--rmatch -j DROP' >> $DOMAINRULE_CONF
+		echo 'ip6tables -I OUTPUT -p tcp --dport 53 -m dns --qname' `uci get firewall.domainID.domain | awk '{print $'$num'}'` '--rmatch -j DROP' >> $DOMAINRULE_CONF
+		num=`expr $num + 1`
+	done
+
+	if [ -f $DOMAINRULE_CONF ]; then
+		fw3 restart
+	fi
+}
+
+restart() {
+	fw3 restart
+}
+
+start_service() {
+	fw3 ${QUIET} start
+}
+
+stop_service() {
+	fw3 flush
+}
+
+reload_service() {
+	writeURLRule
+	writeDomainRule
+	fw3 reload
+	ubus call rtk-rpc flush_conntrack
+}
+
+boot() {
+	# Be silent on boot, firewall might be started by hotplug already,
+	# so don't complain in syslog.
+	QUIET=-q
+	start
+}

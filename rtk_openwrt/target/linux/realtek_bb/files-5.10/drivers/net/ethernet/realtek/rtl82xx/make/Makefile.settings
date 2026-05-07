@@ -1,0 +1,102 @@
+# Copyright (C) 2015 Realtek Semiconductor Corp.
+#
+# Makefile for including all system configurations
+#
+
+export OS_TYPE              := uClinux
+export KERNEL_DIR           := kernel
+export SDK_DIR              := sdk
+export SDK_SYS_DIR          := sdk/system
+export SDK_PATH             := $(ROOT_PATH)/sdk
+export SDK_SYSTEM_PATH      := $(SDK_PATH)/system
+export SDK_CONFIG           := $(SDK_PATH)/config/.config
+export SDK_BUILD_PATH       := $(SDK_PATH)/build
+
+sinclude $(SDK_CONFIG)
+ifeq ($(CONFIG_LUNA_G3_SERIES), y)
+SDK_BUILD_64BIT             := y
+else
+SDK_BUILD_64BIT             := n
+endif
+
+ifeq ($(SDK_BUILD_64BIT),y)
+    EXTRA_CFLAGS            += -DCONFIG_SDK_WORDSIZE_64
+endif
+
+#
+# define compiler, flags
+#   SDK_TARGET_ARCH - select target type: TYPE_MIPS, TYPE_ARM_RDC, TYPE_ARM_CA, TYPE_X86
+#
+#SDK_TARGET_ARCH             := TYPE_MIPS
+SDK_TARGET_ARCH             := TYPE_ARM_RDC
+
+ifeq ($(SDK_TARGET_ARCH),TYPE_ARM_RDC)
+  ifeq ($(SDK_BUILD_64BIT),y)
+    #CROSS_COMPILE           := aarch64-cortexa53-linux-gnu-
+    CROSS_COMPILE           := asdk64-linux-
+    EXTRA_CFLAGS            +=
+    EXTRA_LDFLAGS           +=
+  else
+    CROSS_COMPILE           := asdk-linux-
+    #EXTRA_CFLAGS            += -mabi=ilp32
+    EXTRA_CFLAGS            +=
+    EXTRA_LDFLAGS           +=
+  endif
+
+else ifeq ($(SDK_TARGET_ARCH),TYPE_ARM_CA)
+    CROSS_COMPILE           := aarch64-poky-linux-
+    EXTRA_CFLAGS            += -I/home/sdk/g3hgu-eng_gpon.sdk-image.R0.7.27.0.sdk/build/tmp/sysroots/g3hgu-eng-tcbootstrap/usr/include
+#    EXTRA_LDFLAGS           += --sysroot=/home/sdk/g3hgu-eng_gpon.sdk-image.R0.7.27.0.sdk/build/tmp/sysroots/g3hgu-eng
+    EXTRA_LDFLAGS           +=
+
+else ifeq ($(SDK_TARGET_ARCH),TYPE_X86)
+    CROSS_COMPILE           :=
+    EXTRA_CFLAGS            +=
+    EXTRA_LDFLAGS           +=
+
+else ifeq ($(SDK_TARGET_ARCH),TYPE_MIPS)
+    CROSS_COMPILE           := rtk-ms-2.0.0-linux-
+    EXTRA_CFLAGS            += -mabi=32 -G 0  -fno-pic -pipe -msoft-float -ffreestanding -Wstrict-prototypes -Wundef -Wno-trigraphs -fno-strict-aliasing -fno-common
+    EXTRA_LDFLAGS           +=
+
+else
+    CROSS_COMPILE           := no_toolchain
+    EXTRA_CFLAGS            :=
+    EXTRA_LDFLAGS           :=
+
+endif
+
+#EXTRA_CFLAGS                += -Os -Wall -Werror
+EXTRA_CFLAGS                += -Os -Wall
+EXTRA_LDFLAGS               +=
+
+CC                          := $(CROSS_COMPILE)gcc
+AS                          := $(CROSS_COMPILE)as
+CXX                         := $(CROSS_COMPILE)g++
+AR                          := $(CROSS_COMPILE)ar
+LD                          := $(CROSS_COMPILE)ld
+OBJCOPY                     := $(CROSS_COMPILE)objcopy
+RANLIB                      := $(CROSS_COMPILE)ranlib
+STRIPTOOL                   := $(CROSS_COMPILE)strip
+STRIP                       := $(STRIPTOOL)
+
+
+SDK_INCLUDE                 = $(ROOT_PATH)/$(SDK_DIR)/include
+DRV_INCLUDE                 = $(ROOT_PATH)/$(SDK_DIR)/system/linux
+SYS_INCLUDE                 = $(ROOT_PATH)/$(SDK_DIR)/system/include
+SDK_KRN_INCLUDE             = $(ROOT_PATH)/$(SDK_DIR)/system/linux/$(CONFIG_LINUXDIR)/include
+
+ifeq ($(CONFIG_SDK_KERNEL_LINUX),y)
+    EXTRA_CFLAGS           += -D__linux__
+endif
+
+EXTRA_CFLAGS += -I. -I$(KDIR)
+
+ifeq ($(CONFIG_LUNA_G3_SERIES), y)
+EXTRA_CFLAGS += -I$(NETDIR) \
+		-I$(ROOTDIR)/ca_packages/ca-plat/1.0-r0/ca-plat-1.0/inc \
+		-I$(ROOTDIR)/ca_packages/ca-network-engine/1.0-r0/ca-network-engine-1.0/aal-gen2/include
+else
+EXTRA_CFLAGS += -I$(APOLLODIR)/sdk/include
+endif
+

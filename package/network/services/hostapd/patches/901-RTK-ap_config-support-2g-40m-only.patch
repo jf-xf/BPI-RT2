@@ -1,0 +1,83 @@
+From 4a183eaee9b5d03ad7d6cc6a4e86a200fdc913bf Mon Sep 17 00:00:00 2001
+From: "lucien.zhliu" <lucien.zhliu@realtek.com>
+Date: Mon, 8 Aug 2022 19:09:45 +0800
+Subject: [PATCH] [hostapd] support 2g 40m only
+
+* update patch 200812_hostapd_add_force_2g_40m_patch
+---
+ hostapd/config_file.c | 2 ++
+ src/ap/ap_config.c    | 2 ++
+ src/ap/ap_config.h    | 1 +
+ src/ap/hw_features.c  | 6 ++++++
+ 4 files changed, 11 insertions(+)
+ mode change 100644 => 100755 hostapd/config_file.c
+ mode change 100644 => 100755 src/ap/ap_config.c
+ mode change 100644 => 100755 src/ap/ap_config.h
+ mode change 100644 => 100755 src/ap/hw_features.c
+
+diff --git a/hostapd/config_file.c b/hostapd/config_file.c
+old mode 100644
+new mode 100755
+index 0d35543..9807f54
+--- a/hostapd/config_file.c
++++ b/hostapd/config_file.c
+@@ -4715,6 +4715,8 @@ static int hostapd_config_fill(struct hostapd_config *conf,
+ 		}
+ 		bss->mka_psk_set |= MKA_PSK_SET_CKN;
+ #endif /* CONFIG_MACSEC */
++	} else if (os_strcmp(buf, "force_2g_40m") == 0) {
++		conf->force_2g_40m = atoi(pos);
+ 	} else if (os_strcmp(buf, "disable_11n") == 0) {
+ 		bss->disable_11n = !!atoi(pos);
+ 	} else if (os_strcmp(buf, "disable_11ac") == 0) {
+diff --git a/src/ap/ap_config.c b/src/ap/ap_config.c
+old mode 100644
+new mode 100755
+index 1f04686..e3a1a57
+--- a/src/ap/ap_config.c
++++ b/src/ap/ap_config.c
+@@ -293,6 +293,8 @@ struct hostapd_config * hostapd_config_defaults(void)
+ 	conf->airtime_update_interval = AIRTIME_DEFAULT_UPDATE_INTERVAL;
+ #endif /* CONFIG_AIRTIME_POLICY */
+ 
++	conf->force_2g_40m = 0;
++
+ 	return conf;
+ }
+ 
+diff --git a/src/ap/ap_config.h b/src/ap/ap_config.h
+old mode 100644
+new mode 100755
+index f3aff36..38f0a73
+--- a/src/ap/ap_config.h
++++ b/src/ap/ap_config.h
+@@ -1110,6 +1110,7 @@ struct hostapd_config {
+ 	unsigned int airtime_update_interval;
+ #define AIRTIME_MODE_MAX (__AIRTIME_MODE_MAX - 1)
+ #endif /* CONFIG_AIRTIME_POLICY */
++	u8 force_2g_40m;
+ };
+ 
+ 
+diff --git a/src/ap/hw_features.c b/src/ap/hw_features.c
+old mode 100644
+new mode 100755
+index 2b66ab5..87ad2e2
+--- a/src/ap/hw_features.c
++++ b/src/ap/hw_features.c
+@@ -521,6 +521,12 @@ static int ieee80211n_check_40mhz(struct hostapd_iface *iface)
+ 		iface->conf->noscan)
+ 		return 0;
+ 
++	if (iface->current_mode->mode == HOSTAPD_MODE_IEEE80211G &&
++		iface->conf->force_2g_40m) {
++		wpa_printf(MSG_DEBUG, "Force 2G use 40 MHz channel");
++		return 0;
++	}
++	
+ 	hostapd_set_state(iface, HAPD_IFACE_HT_SCAN);
+ 	wpa_printf(MSG_DEBUG, "Scan for neighboring BSSes prior to enabling "
+ 		   "40 MHz channel");
+-- 
+2.37.1
+

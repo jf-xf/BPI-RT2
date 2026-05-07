@@ -1,0 +1,13 @@
+Index: icwmp-8.5.9/src/backupSession.h
+===================================================================
+--- icwmp-8.5.9.orig/src/backupSession.h
++++ icwmp-8.5.9/src/backupSession.h
+@@ -22,7 +22,7 @@
+ #define RPC_SEND 1
+ 
+ #define CWMP_BACKUP_SESSION "<cwmp></cwmp>"
+-#define CWMP_BKP_FILE "/var/run/icwmpd/icwmpd_backup_session.xml"
++#define CWMP_BKP_FILE "/etc/icwmpd/icwmpd_backup_session.xml"
+ typedef enum backup_loading
+ {
+ 	ALL,

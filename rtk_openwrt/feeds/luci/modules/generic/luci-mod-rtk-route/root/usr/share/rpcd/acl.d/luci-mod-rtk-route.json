@@ -1,0 +1,21 @@
+{
+	"luci-mod-rtk-network-config-route": {
+		"description": "Grant access to network route configuration",
+		"read": {
+			"file": {
+				"/etc/iproute2/rt_tables": [ "read" ]
+			},
+			"ubus": {
+				"file": [ "exec" ],
+				"luci": [ "getSwconfigFeatures", "getSwconfigPortState" ]
+			},
+			"uci": [ "network" ]
+		},
+		"write": {
+			"ubus": {
+				"file": [ "exec" ]
+			},
+			"uci": [ "network" ]
+		}
+	}
+}

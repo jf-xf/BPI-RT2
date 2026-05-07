@@ -1,0 +1,42 @@
+From dc27391a8d834604bccd6e4ba2191370f68b1721 Mon Sep 17 00:00:00 2001
+From: "lucien.zhliu" <lucien.zhliu@realtek.com>
+Date: Mon, 8 Aug 2022 20:31:42 +0800
+Subject: [PATCH] [hostapd] fix mac acl to set to vap interface
+
+---
+ src/ap/hostapd.c             | 3 ++-
+ src/drivers/driver_nl80211.c | 1 +
+ 2 files changed, 3 insertions(+), 1 deletion(-)
+ mode change 100644 => 100755 src/ap/hostapd.c
+
+diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
+old mode 100644
+new mode 100755
+index 439454a..14569ff
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -2210,7 +2210,8 @@ static int hostapd_setup_interface_complete_sync(struct hostapd_iface *iface,
+ 
+ 	ap_list_init(iface);
+ 
+-	hostapd_set_acl(hapd);
++	for (j = 0; j < iface->num_bss; j++)
++		hostapd_set_acl(iface->bss[j]);
+ 
+ 	if (hostapd_driver_commit(hapd) < 0) {
+ 		wpa_printf(MSG_ERROR, "%s: Failed to commit driver "
+diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
+index 4672bd7..49cbe29 100755
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -4212,6 +4212,7 @@ static int wpa_driver_nl80211_set_acl(void *priv,
+ 	if (!(msg = nl80211_ifindex_msg_build(drv, nlmsg_alloc_size(nlmsg_sz),
+ 					      drv->ifindex, 0,
+ 					      NL80211_CMD_SET_MAC_ACL)) ||
++		nl80211_set_iface_id(msg, bss) < 0 ||
+ 	    nla_put_u32(msg, NL80211_ATTR_ACL_POLICY, params->acl_policy ?
+ 			NL80211_ACL_POLICY_DENY_UNLESS_LISTED :
+ 			NL80211_ACL_POLICY_ACCEPT_UNLESS_LISTED) ||
+-- 
+2.37.1
+

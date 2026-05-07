@@ -1,0 +1,16 @@
+Index: hostapd-2022-01-16-cff80b4f/src/ap/dpp_hostapd.c
+===================================================================
+--- hostapd-2022-01-16-cff80b4f.orig/src/ap/dpp_hostapd.c
++++ hostapd-2022-01-16-cff80b4f/src/ap/dpp_hostapd.c
+@@ -1256,6 +1256,11 @@ hostapd_dpp_rx_presence_announcement(str
+ 	struct dpp_bootstrap_info *peer_bi;
+ 	struct dpp_authentication *auth;
+ 
++	if ((hapd->conf->multi_ap == BACKHAUL_BSS)) {
++		wpa_printf(MSG_DEBUG, "DPP: Received chirp on backhaul BSS, dropping chirp.");
++		return;
++	}
++
+ 	wpa_printf(MSG_DEBUG, "DPP: Presence Announcement from " MACSTR,
+ 		   MAC2STR(src));
+ 

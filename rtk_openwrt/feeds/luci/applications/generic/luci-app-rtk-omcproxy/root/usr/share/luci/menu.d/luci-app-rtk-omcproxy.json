@@ -1,0 +1,12 @@
+{
+	"realtek/services/service/omcproxy": {
+		"title": "omcproxy",
+		"action": {
+			"type": "view",
+			"path": "rtk/services/service/omcproxy"
+		},
+		"depends": {
+			"uci": { "omcproxy": true }
+		}
+	}
+}

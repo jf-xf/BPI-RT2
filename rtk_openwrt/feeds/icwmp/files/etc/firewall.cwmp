@@ -1,0 +1,80 @@
+#!/bin/sh
+
+#created by the icwmp package
+log() {
+	echo "${@}"|logger -t firewall.cwmp -p info
+}
+
+if [ ! -f "/var/state/cwmp" ]; then
+	exit 0;
+fi
+
+zone_name=$(uci -c /var/state -q get cwmp.acs.zonename)
+port=$(uci -q get cwmp.cpe.port)
+ipaddr=$(uci -c /var/state -q get cwmp.acs.ip)
+ip6addr=$(uci -c /var/state -q get cwmp.acs.ip6)
+incoming_rule=$(uci -q get cwmp.cpe.incoming_rule|tr 'A-Z' 'a-z')
+
+if [ -z "${zone_name}" ]; then
+	log "empty firewall zone name"
+	exit 0
+elif [ "$zone_name" = "icwmp" ]; then
+	iptables -nL zone_icwmp_input 2> /dev/null
+	if [ $? != 0 ]; then
+		iptables -w 1 -N zone_icwmp_input
+		iptables -w 1 -t filter -A INPUT -j zone_icwmp_input
+		iptables -w 1 -I zone_icwmp_input -p tcp --dport $port -j REJECT
+	else			
+		iptables -w 1 -F zone_icwmp_input
+		iptables -w 1 -I zone_icwmp_input -p tcp --dport $port -j REJECT
+	fi			
+else
+	iptables -w 1 -F zone_icwmp_input 2> /dev/null
+	iptables -w 1 -t filter -D INPUT -j zone_icwmp_input 2> /dev/null
+	iptables -w 1 -X zone_icwmp_input 2> /dev/null
+fi
+
+cmd="iptables -w 1 -I zone_${zone_name}_input -p tcp"
+cmd6="ip6tables -w 1 -I zone_${zone_name}_input -p tcp"
+
+# default incoming rule is Port only
+if [ -z "${incoming_rule}" ]; then
+	incoming_rule="port_only"
+fi
+
+if [ "${incoming_rule}" = "ip_only" ]; then
+	if [ -n "${ipaddr}" ]; then
+		cmd="${cmd} -s ${ipaddr}"
+		cmd6="${cmd6} -s ${ip6addr}"
+	fi
+elif [ "${incoming_rule}" = "port_only" ]; then
+	if [ -n "${port}" ]; then
+		cmd="${cmd} --dport ${port}"
+		cmd6="${cmd6} --dport ${port}"
+	fi
+else
+	if [ -n "${ipaddr}" ]; then
+		cmd="${cmd} -s ${ipaddr}"
+		cmd6="${cmd6} -s ${ip6addr}"
+	fi
+
+	if [ -n "${port}" ]; then
+		cmd="${cmd} --dport ${port}"
+		cmd6="${cmd6} --dport ${port}"
+	fi
+fi
+
+echo ${cmd}|grep -q "\-\-dport \|\-s "
+if [ "$?" -eq 0 ]; then
+	cmd="${cmd} -j ACCEPT -m comment --comment=Open_ACS_port"
+	${cmd}
+fi
+
+echo ${cmd6}|grep -q "\-\-dport \|\-s "
+if [ "$?" -eq 0 ]; then
+	cmd6="${cmd6} -j ACCEPT -m comment --comment=Open_ACS_port"
+	${cmd6}
+fi
+
+uci -c /var/state -q set cwmp.cpe.firewall_restart="init"
+uci -c /var/state -q commit cwmp

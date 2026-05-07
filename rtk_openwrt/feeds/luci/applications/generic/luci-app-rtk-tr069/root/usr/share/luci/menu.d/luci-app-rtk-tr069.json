@@ -1,0 +1,19 @@
+{
+	"realtek/admin/admin/tr069": {
+		"title": "TR-069 Settings",
+		"action": {
+			"type": "view",
+			"path": "rtk/admin/admin/tr069"
+		},
+		"depends": {
+			"depends": {
+				"acl": [
+					"luci-app-rtk-tr069"
+				],
+				"uci": {
+					"cwmp": true
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,119 @@
+Index: linux-5.10.138/net/Kconfig
+===================================================================
+--- linux-5.10.138.orig/net/Kconfig
++++ linux-5.10.138/net/Kconfig
+@@ -126,6 +126,11 @@ config RTK_SKB_MARK2
+        help
+          This enables skb mark2 marking of network packets.
+ 
++config RTK_CONTROL_PACKET_PROTECTION
++	bool "Realtek control packets protection"
++	help
++	  This protects control packets when router attacked.
++
+ config NET_PTP_CLASSIFY
+ 	def_bool n
+ 
+Index: linux-5.10.138/net/core/dev.c
+===================================================================
+--- linux-5.10.138.orig/net/core/dev.c
++++ linux-5.10.138/net/core/dev.c
+@@ -4361,6 +4361,14 @@ EXPORT_SYMBOL(__dev_direct_xmit);
+ int netdev_max_backlog __read_mostly = 1000;
+ EXPORT_SYMBOL(netdev_max_backlog);
+ 
++#ifdef CONFIG_RTK_CONTROL_PACKET_PROTECTION
++int netdev_hi_overcommit __read_mostly = 100;
++int netdev_hi_priomask __read_mostly = 0x80;
++u32 ov_counter = 0;
++EXPORT_SYMBOL(netdev_hi_overcommit);
++EXPORT_SYMBOL(netdev_hi_priomask);
++#endif
++
+ int netdev_tstamp_prequeue __read_mostly = 1;
+ int netdev_budget __read_mostly = 300;
+ /* Must be at least 2 jiffes to guarantee 1 jiffy timeout */
+@@ -4669,6 +4677,17 @@ static bool skb_flow_limit(struct sk_buf
+ 	return false;
+ }
+ 
++#ifdef CONFIG_RTK_CONTROL_PACKET_PROTECTION
++u32 ov_counter;
++static inline int skb_backlog_len(struct sk_buff *skb) {
++    if ((1<<skb->priority)&(netdev_hi_priomask)) {
++        ov_counter++;
++        return netdev_max_backlog + netdev_hi_overcommit;
++    }
++    return netdev_max_backlog;
++}
++#endif
++
+ /*
+  * enqueue_to_backlog is called to queue an skb to a per CPU backlog
+  * queue (may be a remote CPU queue).
+@@ -4679,6 +4698,11 @@ static int enqueue_to_backlog(struct sk_
+ 	struct softnet_data *sd;
+ 	unsigned long flags;
+ 	unsigned int qlen;
++#ifdef CONFIG_RTK_CONTROL_PACKET_PROTECTION
++	int allowed_backlog_len;
++
++	allowed_backlog_len = skb_backlog_len(skb);
++#endif
+ 
+ 	sd = &per_cpu(softnet_data, cpu);
+ 
+@@ -4688,11 +4712,24 @@ static int enqueue_to_backlog(struct sk_
+ 	if (!netif_running(skb->dev))
+ 		goto drop;
+ 	qlen = skb_queue_len(&sd->input_pkt_queue);
++#ifdef CONFIG_RTK_CONTROL_PACKET_PROTECTION
++	if (qlen <= allowed_backlog_len && !skb_flow_limit(skb, qlen)) {
++#else
+ 	if (qlen <= netdev_max_backlog && !skb_flow_limit(skb, qlen)) {
++#endif
+ 		if (qlen) {
+ enqueue:
+-			__skb_queue_tail(&sd->input_pkt_queue, skb);
+-			input_queue_tail_incr_save(sd, qtail);
++#ifdef CONFIG_RTK_CONTROL_PACKET_PROTECTION
++			if((1<<skb->priority)&(netdev_hi_priomask))
++			{
++				__skb_queue_head(&sd->input_pkt_queue, skb);
++			}
++			else
++#endif
++			{
++				__skb_queue_tail(&sd->input_pkt_queue, skb);
++				input_queue_tail_incr_save(sd, qtail);
++			}
+ 			rps_unlock(sd);
+ 			local_irq_restore(flags);
+ 			return NET_RX_SUCCESS;
+Index: linux-5.10.138/net/core/sysctl_net_core.c
+===================================================================
+--- linux-5.10.138.orig/net/core/sysctl_net_core.c
++++ linux-5.10.138/net/core/sysctl_net_core.c
+@@ -377,6 +377,22 @@ static struct ctl_table net_core_table[]
+ 		.mode		= 0444,
+ 		.proc_handler	= proc_do_rss_key,
+ 	},
++#ifdef CONFIG_RTK_CONTROL_PACKET_PROTECTION
++	{
++		.procname	= "netdev_hi_priomask",
++		.data		= &netdev_hi_priomask,
++		.maxlen 	= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec
++	},
++	{
++		.procname	= "netdev_hi_ov_counter",
++		.data		= &ov_counter,
++		.maxlen 	= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec
++	},
++#endif
+ #ifdef CONFIG_BPF_JIT
+ 	{
+ 		.procname	= "bpf_jit_enable",

@@ -1,0 +1,6 @@
+if [ "$ACTION" = "add" -o "$ACTION" = "remove" ];then
+	if [ "$DEVTYPE" = partition -a "$ACTION" = add ];then
+		block detect | uci import fstab
+	fi
+	/sbin/block hotplug
+fi

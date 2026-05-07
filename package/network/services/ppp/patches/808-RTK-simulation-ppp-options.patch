@@ -1,0 +1,189 @@
+Index: ppp-2.4.9.git-2021-01-04/pppd/ipcp.c
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/ipcp.c
++++ ppp-2.4.9.git-2021-01-04/pppd/ipcp.c
+@@ -1719,21 +1719,25 @@ ip_demand_conf(int u)
+ 	wo->accept_local = 1;
+ 	ask_for_local = 0;	/* don't tell the peer this address */
+     }
+-    if (!sifaddr(u, wo->ouraddr, wo->hisaddr, GetMask(wo->ouraddr)))
+-	return 0;
++    if(simulation_ppp==0) {
++    	if (!sifaddr(u, wo->ouraddr, wo->hisaddr, GetMask(wo->ouraddr)))
++		return 0;
++    }
+     ipcp_script(_PATH_IPPREUP, 1);
+     if (!sifup(u))
+ 	return 0;
+-    if (!sifnpmode(u, PPP_IP, NPMODE_QUEUE))
+-	return 0;
+-    if (wo->default_route)
+-	if (sifdefaultroute(u, wo->ouraddr, wo->hisaddr,
++	
++    if(simulation_ppp==0) {
++	if (!sifnpmode(u, PPP_IP, NPMODE_QUEUE))
++	   return 0;
++	if (wo->default_route)
++	   if (sifdefaultroute(u, wo->ouraddr, wo->hisaddr,
+ 					    wo->replace_default_route))
+-	    default_route_set[u] = 1;
+-    if (wo->proxy_arp)
+-	if (sifproxyarp(u, wo->hisaddr))
+-	    proxy_arp_set[u] = 1;
+-
++	       default_route_set[u] = 1;
++	   if (wo->proxy_arp)
++		if (sifproxyarp(u, wo->hisaddr))
++		    proxy_arp_set[u] = 1;
++    }
+     notice("local  IP address %I", wo->ouraddr);
+     if (wo->hisaddr)
+ 	notice("remote IP address %I", wo->hisaddr);
+@@ -1832,24 +1836,26 @@ ipcp_up(fsm *f)
+ 		script_unsetenv("OLDIPREMOTE");
+ 
+ 	    /* Set the interface to the new addresses */
+-	    mask = GetMask(go->ouraddr);
+-	    if (!sifaddr(f->unit, go->ouraddr, ho->hisaddr, mask)) {
+-		if (debug)
+-		    warn("Interface configuration failed");
+-		ipcp_close(f->unit, "Interface configuration failed");
+-		return;
+-	    }
+-
+-	    /* assign a default route through the interface if required */
+-	    if (ipcp_wantoptions[f->unit].default_route) 
+-		if (sifdefaultroute(f->unit, go->ouraddr, ho->hisaddr,
++	    if(simulation_ppp==0) {
++	        mask = GetMask(go->ouraddr);
++	        if (!sifaddr(f->unit, go->ouraddr, ho->hisaddr, mask)) {
++		    if (debug)
++		        warn("Interface configuration failed");
++		    ipcp_close(f->unit, "Interface configuration failed");
++		    return;
++	        }
++
++	        /* assign a default route through the interface if required */
++	        if (ipcp_wantoptions[f->unit].default_route) 
++		    if (sifdefaultroute(f->unit, go->ouraddr, ho->hisaddr,
+ 					     wo->replace_default_route))
+-		    default_route_set[f->unit] = 1;
++		        default_route_set[f->unit] = 1;
+ 
+-	    /* Make a proxy ARP entry if requested. */
+-	    if (ho->hisaddr != 0 && ipcp_wantoptions[f->unit].proxy_arp)
+-		if (sifproxyarp(f->unit, ho->hisaddr))
+-		    proxy_arp_set[f->unit] = 1;
++	        /* Make a proxy ARP entry if requested. */
++	        if (ho->hisaddr != 0 && ipcp_wantoptions[f->unit].proxy_arp)
++		    if (sifproxyarp(f->unit, ho->hisaddr))
++		       proxy_arp_set[f->unit] = 1;
++	    }
+ 
+ 	}
+ 	demand_rexmit(PPP_IP,go->ouraddr);
+@@ -1861,15 +1867,16 @@ ipcp_up(fsm *f)
+ 	 */
+ 	mask = GetMask(go->ouraddr);
+ 
++	if(simulation_ppp==0) {
+ #if !(defined(SVR4) && (defined(SNI) || defined(__USLC__)))
+-	if (!sifaddr(f->unit, go->ouraddr, ho->hisaddr, mask)) {
+-	    if (debug)
+-		warn("Interface configuration failed");
+-	    ipcp_close(f->unit, "Interface configuration failed");
+-	    return;
+-	}
++	    if (!sifaddr(f->unit, go->ouraddr, ho->hisaddr, mask)) {
++	        if (debug)
++		    warn("Interface configuration failed");
++	        ipcp_close(f->unit, "Interface configuration failed");
++	        return;
++	    }
+ #endif
+-
++	}
+ 	ifindex = if_nametoindex(ifname);
+ 
+ 	/* run the pre-up script, if any, and wait for it to finish */
+@@ -1890,26 +1897,28 @@ ipcp_up(fsm *f)
+ 	    return;
+ 	}
+ 
++	if(simulation_ppp==0) {
+ #if (defined(SVR4) && (defined(SNI) || defined(__USLC__)))
+-	if (!sifaddr(f->unit, go->ouraddr, ho->hisaddr, mask)) {
+-	    if (debug)
+-		warn("Interface configuration failed");
+-	    ipcp_close(f->unit, "Interface configuration failed");
+-	    return;
+-	}
++	    if (!sifaddr(f->unit, go->ouraddr, ho->hisaddr, mask)) {
++	        if (debug)
++		    warn("Interface configuration failed");
++	        ipcp_close(f->unit, "Interface configuration failed");
++	        return;
++	    }
+ #endif
+-	sifnpmode(f->unit, PPP_IP, NPMODE_PASS);
++	    sifnpmode(f->unit, PPP_IP, NPMODE_PASS);
+ 
+-	/* assign a default route through the interface if required */
+-	if (ipcp_wantoptions[f->unit].default_route) 
+-	    if (sifdefaultroute(f->unit, go->ouraddr, ho->hisaddr,
++	    /* assign a default route through the interface if required */
++	    if (ipcp_wantoptions[f->unit].default_route) 
++	        if (sifdefaultroute(f->unit, go->ouraddr, ho->hisaddr,
+ 					 wo->replace_default_route))
+-		default_route_set[f->unit] = 1;
++		    default_route_set[f->unit] = 1;
+ 
+-	/* Make a proxy ARP entry if requested. */
+-	if (ho->hisaddr != 0 && ipcp_wantoptions[f->unit].proxy_arp)
+-	    if (sifproxyarp(f->unit, ho->hisaddr))
+-		proxy_arp_set[f->unit] = 1;
++	    /* Make a proxy ARP entry if requested. */
++	    if (ho->hisaddr != 0 && ipcp_wantoptions[f->unit].proxy_arp)
++	        if (sifproxyarp(f->unit, ho->hisaddr))
++		    proxy_arp_set[f->unit] = 1;
++	}
+ 
+ 	ipcp_wantoptions[0].ouraddr = go->ouraddr;
+ 
+Index: ppp-2.4.9.git-2021-01-04/pppd/options.c
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/options.c
++++ ppp-2.4.9.git-2021-01-04/pppd/options.c
+@@ -89,7 +89,8 @@ struct option_value {
+ /*
+  * Option variables and default values.
+  */
+-int	debug = 0;		/* Debug flag */
++int 	simulation_ppp = 0; 	/* is simulation ppp? */
++int	debug = 1;		/* Debug flag */
+ int	kdebugflag = 0;		/* Tell kernel to print debug messages */
+ int	default_device = 1;	/* Using /dev/tty or equivalent */
+ char	devnam[MAXPATHLEN];	/* Device name */
+@@ -411,6 +412,10 @@ option_t general_options[] = {
+ 	OPT_PRIO | OPT_PRIV | OPT_STATIC, NULL, 32 },
+ #endif
+ 
++    { "simulation-ppp", o_int, &simulation_ppp,
++	"ppp simulation", OPT_INC | OPT_NOARG | 1 },
++
++
+     { NULL }
+ };
+ 
+Index: ppp-2.4.9.git-2021-01-04/pppd/pppd.h
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/pppd.h
++++ ppp-2.4.9.git-2021-01-04/pppd/pppd.h
+@@ -335,6 +335,7 @@ extern char	*bundle_name;	/* bundle name
+ extern bool	dump_options;	/* print out option values */
+ extern bool	dryrun;		/* check everything, print options, exit */
+ extern int	child_wait;	/* # seconds to wait for children at end */
++extern int 	simulation_ppp; /* is simulation ppp? */
+ 
+ #ifdef USE_EAPTLS
+ extern char	*crl_dir;

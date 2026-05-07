@@ -1,0 +1,70 @@
+{
+	"realtek/admin/admin": {
+		"title": "Admin",
+		"order": 10,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		}
+	},
+
+	"realtek/admin/admin/reboot": {
+		"title": "Reboot",
+		"order": 10,
+		"action": {
+			"type": "view",
+			"path": "rtk/admin/admin/reboot"
+		},
+		"depends": {
+			"acl": [ "luci-mod-rtk-admin-reboot" ]
+		}
+	},
+
+	"realtek/admin/admin/config": {
+		"title": "Backup/Restore",
+		"order": 20,
+		"action": {
+			"type": "view",
+			"path": "rtk/admin/admin/config"
+		},
+		"depends": {
+			"acl": [ "luci-mod-rtk-admin-flash" ]
+		}
+	},
+
+	"realtek/admin/admin/password": {
+		"title": "Password",
+		"order": 40,
+		"action": {
+			"type": "view",
+			"path": "rtk/admin/admin/password"
+		},
+		"depends": {
+			"acl": [ "luci-mod-rtk-admin-config" ]
+		}
+	},
+
+	"realtek/admin/admin/firmware": {
+		"title": "Firmware Upgrade",
+		"order": 50,
+		"action": {
+			"type": "view",
+			"path": "rtk/admin/admin/firmware"
+		},
+		"depends": {
+			"acl": [ "luci-mod-rtk-admin-flash" ]
+		}
+	},
+
+	"realtek/admin/admin/system": {
+		"title": "System",
+		"order": 999,
+		"action": {
+			"type": "view",
+			"path": "rtk/admin/admin/system"
+		},
+		"depends": {
+			"acl": [ "luci-mod-rtk-admin-config" ]
+		}
+	}
+}

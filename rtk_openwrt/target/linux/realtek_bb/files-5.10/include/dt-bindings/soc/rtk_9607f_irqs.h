@@ -1,0 +1,226 @@
+/*
+ * This header provides interrupt mapping.
+ *
+ */
+
+#ifndef _DT_BINDINGS_SOC_IRQ_H
+#define _DT_BINDINGS_SOC_IRQ_H
+
+/* Interrupt start from 32 */
+#define IRQ_GLB_SYS_BLK		0
+#define IRQ_GLB_NE			1
+#define IRQ_GLB_PERI		2
+#define IRQ_GLB_DDR_CTL		3
+#define IRQ_GLB_UART0		4
+#define IRQ_GLB_UART1		5
+#define IRQ_GLB_UART2		6
+#define IRQ_GLB_UART3		7
+
+#define IRQ_GLB_DMA_LSO_0	8
+#define IRQ_GLB_DMA_LSO_1	9
+#define IRQ_GLB_DMA_LSO_2	10
+#define IRQ_GLB_DMA_LSO_3	11
+#define IRQ_GLB_DMA_LSO_4	12
+#define IRQ_GLB_DMA_LSO_5	13
+#define IRQ_GLB_DMA_LSO_6	14
+#define IRQ_GLB_DMA_LSO_7	15
+#define IRQ_GLB_DMA_SSP_0	16
+#define IRQ_GLB_DMA_SSP_1	17
+#define IRQ_GLB_DMA_SSP_2	18
+#define IRQ_GLB_DMA_SSP_3	19
+#define IRQ_GLB_DMA_SSP_4	20
+#define IRQ_GLB_DMA_SSP_5	21
+#define IRQ_GLB_DMA_SSP_6	22
+#define IRQ_GLB_DMA_SSP_7	23
+
+#define IRQ_GLB_SW_IRQ_0	24
+#define IRQ_GLB_SW_IRQ_1	25
+#define IRQ_GLB_FLASH		26
+#define IRQ_GLB_DMA_UART0	27
+
+#define IRQ_GLB_I2S_1		28
+#define IRQ_GLB_GDMA		29
+#define IRQ_GLB_I2S_0		30
+
+#define IRQ_GLB_LDMA_0		31
+#define IRQ_GLB_LDMA_1		32
+#define IRQ_GLB_LDMA_2		33
+#define IRQ_GLB_LDMA_3		34
+#define IRQ_GLB_LDMA_4		35
+#define IRQ_GLB_LDMA_5		36
+#define IRQ_GLB_LDMA_6		37
+#define IRQ_GLB_LDMA_7		38
+
+#define IRQ_GLB_IPC_ARM0	39
+#define IRQ_GLB_IPC_ARM1	40
+#define IRQ_GLB_IPC_ARM2	41
+#define IRQ_GLB_IPC_ARM3	42
+
+#define IRQ_GLB_SW_IRQ_2		43
+
+#define IRQ_GLB_PCI_0_GIC0		44
+#define IRQ_GLB_PCI_0_GIC1		45
+#define IRQ_GLB_PCI_2_GIC0		46
+#define IRQ_GLB_PCI_2_GIC1		47
+
+#define IRQ_GLB_FBM0			48
+#define IRQ_GLB_FBM1			49
+#define IRQ_GLB_FBM2			50
+#define IRQ_GLB_FBM3			51
+#define IRQ_GLB_FBM4			52
+#define IRQ_GLB_FBM5			53
+#define IRQ_GLB_FBM6			54
+#define IRQ_GLB_FBM7			55
+
+#define IRQ_GLB_RES_56			56
+#define IRQ_GLB_SECURE_WDT		57
+#define IRQ_GLB_WOL				58
+#define IRQ_GLB_IPSEC			59
+#define IRQ_GLB_RES_60			60
+#define IRQ_GLB_PERI_01			61
+#define IRQ_GLB_TRNG			62
+
+#define IRQ_GLB_GPHY_MAC_0		63
+#define IRQ_GLB_GPHY_MAC_1		64
+#define IRQ_GLB_GPHY_MAC_2		65
+#define IRQ_GLB_GPHY_MAC_3		66
+
+#define IRQ_GLB_USB3_0			67
+
+#define IRQ_GLB_QM_CPU_REFILL_REQ_0		68
+#define IRQ_GLB_QM_CPU_REFILL_REQ_1		69
+#define IRQ_GLB_QM_CPU_REFILL_REQ_2		70
+#define IRQ_GLB_QM_CPU_REFILL_REQ_3		71
+#define IRQ_GLB_QM_CPU_REFILL_REQ_4		72
+#define IRQ_GLB_QM_CPU_REFILL_REQ_5		73
+#define IRQ_GLB_QM_CPU_REFILL_REQ_6		74
+#define IRQ_GLB_QM_CPU_REFILL_REQ_7		75
+#define IRQ_GLB_QM_CPU_REFILL_REQ_8		76
+#define IRQ_GLB_QM_CPU_REFILL_REQ_9		77
+#define IRQ_GLB_QM_CPU_REFILL_REQ_10	78
+#define IRQ_GLB_QM_CPU_REFILL_REQ_11	79
+#define IRQ_GLB_QM_CPU_REFILL_REQ_12	80
+#define IRQ_GLB_QM_CPU_REFILL_REQ_13	81
+#define IRQ_GLB_QM_CPU_REFILL_REQ_14	82
+#define IRQ_GLB_QM_CPU_REFILL_REQ_15	83
+
+#define IRQ_GLB_QM_CPU_FIFO0_REQ		84
+#define IRQ_GLB_QM_CPU_FIFO1_REQ		85
+#define IRQ_GLB_QM_CPU_FIFO2_REQ		86
+#define IRQ_GLB_QM_CPU_FIFO3_REQ		87
+#define IRQ_GLB_QM_CPU_FIFO4_REQ		88
+#define IRQ_GLB_QM_CPU_FIFO5_REQ		89
+#define IRQ_GLB_QM_CPU_FIFO6_REQ		90
+#define IRQ_GLB_QM_CPU_FIFO7_REQ		91
+
+#define IRQ_GLB_ARM_FAILTIRQ0			92
+#define IRQ_GLB_ARM_FAILTIRQ1			93
+#define IRQ_GLB_ARM_FAILTIRQ2			94
+#define IRQ_GLB_RES_95					95
+#define IRQ_GLB_RES_96					96
+
+#define IRQ_GLB_ARM_ERRIRQ0				97
+#define IRQ_GLB_ARM_ERRIRQ1				98
+#define IRQ_GLB_ARM_ERRIRQ2				99
+#define IRQ_GLB_RES_100					100
+#define IRQ_GLB_RES_101					101
+
+#define IRQ_GLB_ARM_CNTHVIRQ0			102
+#define IRQ_GLB_ARM_CNTHVIRQ1			103
+#define IRQ_GLB_RES_104					104
+#define IRQ_GLB_RES_105					105
+#define IRQ_GLB_ARM_CLUSTERPPMUIRQ		106
+#define IRQ_GLB_ARM_FIQ0				107
+#define IRQ_GLB_ARM_FIQ1				108
+#define IRQ_GLB_ARM_FIQ2				109
+#define IRQ_GLB_ARM_FIQ3				110
+#define IRQ_GLB_PROF_INT				111
+#define IRQ_GLB_SW_RCV_INT				112
+
+
+/* IRQ offset in peripheral */
+#define IRQ_PER_SOFT		0
+#define IRQ_PER_SOFT1		1
+#define IRQ_PER_TMR1		2
+#define IRQ_PER_TMR2		3
+#define IRQ_PER_TMR3		4
+#define IRQ_PER_TMR4		5
+#define IRQ_PER_WDT			6
+#define IRQ_PER_SPI			7
+#define IRQ_PER_GPIO0		8
+#define IRQ_PER_GPIO1		9
+#define IRQ_PER_GPIO2		10
+#define IRQ_PER_GPIO3		11
+#define IRQ_PER_GPIO4		12
+#define IRQ_PER_BIW0		13
+#define IRQ_PER_MDIO		14
+#define IRQ_PER_TRNG0		15
+#define IRQ_PER_TRNG1		16
+#define IRQ_PER_CSPI		17
+#define IRQ_PER_LDMA4		18
+#define IRQ_PER_LDMA5		19
+#define IRQ_PER_LDMA6		20
+#define IRQ_PER_LDMA7		21
+#define IRQ_PER_PE_TMR0		22
+#define IRQ_PER_PE_TMR1		23
+#define IRQ_PER_DYING_GASP	24
+#define IRQ_PER_SSP			25
+#define IRQ_PER_BIW1		26
+#define IRQ_PER_FBM0		27
+#define IRQ_PER_FBM1		28
+#define IRQ_PER_FBM2		29
+#define IRQ_PER_FBM3		30
+#define IRQ_PER_FBM4		31
+#define IRQ_PER_FBM5		32
+#define IRQ_PER_FBM6		33
+#define IRQ_PER_FBM7		34
+#define IRQ_PER_DOE_TMR1	35
+#define IRQ_PER_TOD_UNDERRUN1	36
+
+/* IRQ offset of NE */
+#define IRQ_NE_NI					0
+#define IRQ_NE_L2FE					1
+#define IRQ_NE_L2TM					2
+#define IRQ_NE_L3TE					3
+#define IRQ_NE_TQM					4
+#define IRQ_NE_PON					5
+#define IRQ_NE_CPU_EPP_FIFO_0		6
+#define IRQ_NE_CPU_EPP_FIFO_1		7
+#define IRQ_NE_CPU_EPP_FIFO_2		8
+#define IRQ_NE_CPU_EPP_FIFO_3		9
+#define IRQ_NE_CPU_EPP_FIFO_4		10
+#define IRQ_NE_CPU_EPP_FIFO_5		11
+#define IRQ_NE_CPU_EPP_FIFO_6		12
+#define IRQ_NE_CPU_EPP_FIFO_7		13
+#define IRQ_NE_CPU_EPP_256_FIFO_LO	14
+#define IRQ_NE_CPU_EPP_256_FIFO_HI	15
+#define IRQ_NE_CPU_REFILL_REQ_0		16
+#define IRQ_NE_CPU_REFILL_REQ_1		17
+#define IRQ_NE_CPU_REFILL_REQ_2		18
+#define IRQ_NE_CPU_REFILL_REQ_3		19
+#define IRQ_NE_CPU_REFILL_REQ_4		20
+#define IRQ_NE_CPU_REFILL_REQ_5		21
+#define IRQ_NE_CPU_REFILL_REQ_6		22
+#define IRQ_NE_CPU_REFILL_REQ_7		23
+#define IRQ_NE_CPU_REFILL_REQ_8		24
+#define IRQ_NE_CPU_REFILL_REQ_9		25
+#define IRQ_NE_CPU_REFILL_REQ_10	26
+#define IRQ_NE_CPU_REFILL_REQ_11	27
+#define IRQ_NE_CPU_REFILL_REQ_12	28
+#define IRQ_NE_CPU_REFILL_REQ_13	29
+#define IRQ_NE_CPU_REFILL_REQ_14	30
+#define IRQ_NE_CPU_REFILL_REQ_15	31
+
+/* IRQ offset in DMA SSP */
+#define IRQ_DMA_SSP_TXQ5	0
+#define IRQ_DMA_SSP_RXQ5	1
+#define IRQ_DMA_SSP_TXQ6	2
+#define IRQ_DMA_SSP_RXQ6	3
+#define IRQ_DMA_SSP_TXQ7	4
+#define IRQ_DMA_SSP_RXQ7	5
+#define IRQ_DMA_SSP_SSP0	6
+#define IRQ_DMA_SSP_SSP1	7
+#define IRQ_DMA_SSP_AXIM	8
+#define IRQ_DMA_SSP_SPDIF	9
+
+#endif

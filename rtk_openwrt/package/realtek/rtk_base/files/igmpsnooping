@@ -1,0 +1,3 @@
+config snooping 'snooping'
+        option igmpsnoopingenabled '1'
+        option mldsnoopingenabled '1'

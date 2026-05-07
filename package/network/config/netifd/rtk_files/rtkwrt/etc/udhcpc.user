@@ -1,0 +1,60 @@
+#!/bin/sh
+[ -z "$1" ] && echo "Error: should be run by udhcpc" && exit 1
+
+. /lib/functions.sh
+. /lib/netifd/netifd-proto.sh
+
+#echo udhcpc.user: $@
+
+save_ipv4_gateway_info()
+{
+	local ip_net
+	eval "$(ipcalc.sh "$ip/$mask")";ip_net="$NETWORK"
+
+	local i
+	for i in $router; do
+		#RTK add for saving IPv4 gateway
+		echo "$i" > $RTK_MER_GWINFO"."$INTERFACE
+	done
+}
+
+save_ipv4_dns_info()
+{
+	rm $RTK_DNS_RESOLV_FILE"."$INTERFACE 2>/dev/null
+	for i in $dns; do
+		echo $i"@"$ip >> $RTK_DNS_RESOLV_FILE"."$INTERFACE
+	done
+
+	rm $RTK_DNS_DOMAIN_SEARCH_FILE"."$INTERFACE 2>/dev/null
+	for i in $domain; do
+		echo $i >> $RTK_DNS_DOMAIN_SEARCH_FILE"."$INTERFACE
+	done
+}
+
+restart_dnsrelay()
+{
+	op=0
+	json_init
+	json_add_string wan_inf "$1"
+	json_add_int op "$op"
+	ubus call rtk-usock do_restart_dnsrelay "$(json_dump)"
+}
+
+case "$1" in
+	deconfig)
+		#Remove IPv4 gateway record
+		rm $RTK_MER_GWINFO"."$INTERFACE 2>/dev/null
+		#Remove IPv4 dns file
+		rm $RTK_DNS_RESOLV_FILE"."$INTERFACE 2>/dev/null
+		#Delete IPv4 policy rule
+		## [ -f /lib/netifd/rtk_v4_policy_route.sh ] && /lib/netifd/rtk_v4_policy_route.sh "$INTERFACE" "del"
+	;;
+	renew|bound)
+		save_ipv4_gateway_info
+		#save DNS info and restart dnsrelay
+		save_ipv4_dns_info
+		restart_dnsrelay "$INTERFACE"
+		#Add IPv4 policy route
+		## [ -f /lib/netifd/rtk_v4_policy_route.sh ] && /lib/netifd/rtk_v4_policy_route.sh "$INTERFACE" "add"
+	;;
+esac

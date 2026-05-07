@@ -1,0 +1,45 @@
+Source-Makefile: feeds/custom/libtrace/Makefile
+
+Package: libtrace
+Version: 3.0.23-1
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libpcap +libpthread +zlib +libbz2 +liblzo +librt +liblzma +libstdcpp
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: libs
+Category: Libraries
+Repository: base
+Title: Libtrace library for packet trace processing
+Maintainer: 
+Source: libtrace-3.0.23.tar.gz
+License: GPLv2
+LicenseFiles: COPYING
+Type: ipkg
+Description: 	Network trace processing library for trace processing. Supports multiple 
+	input methods, including device capture, raw and gz-compressed 
+	trace, and sockets.
+http://research.wand.net.nz/software/libtrace.php
+
+@@
+
+Package: libtrace-tools
+Version: 3.0.23-1
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libncurses +libtrace
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: net
+Category: Network
+Repository: base
+Title: Libtrace tools for packet trace processing
+Maintainer: 
+Source: libtrace-3.0.23.tar.gz
+License: GPLv2
+LicenseFiles: COPYING
+Type: ipkg
+Description: 	Network trace processing tools for trace processing.
+http://research.wand.net.nz/software/libtrace.php
+
+@@
+
+

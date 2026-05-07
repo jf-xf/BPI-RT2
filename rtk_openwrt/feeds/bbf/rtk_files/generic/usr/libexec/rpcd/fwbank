@@ -1,0 +1,160 @@
+#!/bin/sh
+
+. /usr/share/libubox/jshn.sh
+. /lib/upgrade/platform.sh
+
+active_img=`nv getenv sw_active | sed 's/^.*=//g'`
+if [ $active_img == 0 ]; then
+	bak_img=1
+elif [ $active_img == 1 ]; then
+	bak_img=0
+else
+	echo "ERROR: incorrect sw_active flag, should be 0 or 1 but got $active_img"
+	exit 1
+fi
+
+# Wrapper, checking if platform_get_bootbank() exists, and calling it if so.
+fwbank_get_bootbank() {
+	if type platform_get_bootbank >/dev/null 2>/dev/null; then
+		platform_get_bootbank
+	fi
+}
+
+case "$1" in
+	list)
+		echo '{ "dump" : {}, "set_bootbank" : {"bank":32} , "upgrade": {"path":"String","auto_activate":true, "reboot":true,"bank":32, "cwmp":true}}'
+	;;
+	call)
+		case "$2" in
+			dump)
+				json_init
+				json_add_array "bank"
+
+				for i in $(seq 0 1); do
+					if [ ${i} == ${active_img} ]; then
+
+						json_add_object ""
+						json_add_string "name" "partition${i}"
+						json_add_int "id" ${i}
+						json_add_boolean "active" 1
+						json_add_boolean "boot" 1
+						json_add_boolean "upgrade" 0
+						json_add_string "fwver" "`nv getenv sw_version${i} | sed 's/^.*=//g'`"
+						json_add_string "swver" "`nv getenv sw_version${i} | sed 's/^.*=//g'`"
+						json_add_string "status" "$(rtk_get_fwbank_status ${i})"
+						json_select ..
+					else
+						json_add_object ""
+						json_add_string "name" "partition${i}"
+						json_add_int "id" ${i}
+						json_add_boolean "active" 0
+						json_add_boolean "boot" 0
+						json_add_boolean "upgrade" 1
+						json_add_string "fwver" "`nv getenv sw_version${i} | sed 's/^.*=//g'`"
+						json_add_string "swver" "`nv getenv sw_version${i} | sed 's/^.*=//g'`"
+						json_add_string "status" "$(rtk_get_fwbank_status ${i})"
+						json_select ..
+					fi
+				done
+
+				# End of our two banks, end of array
+				json_close_array
+				json_dump
+			;;
+			set_bootbank)
+				read -r input
+				json_load "$input"
+				json_get_var bank bank
+
+				case $bank in
+				0|1)
+					;;
+				*)
+					echo "Invalid Value, bank should be 0 or 1."
+					return
+					;;
+				esac
+				# Redirect any output that this function might be printing
+				# to stderr, to keep stdout clean. This avoids problems with
+				# the caller of this ubus method, as only valid JSON is expected
+				# on stdout.
+				if type platform_set_bootbank >/dev/null 2>/dev/null; then
+					platform_set_bootbank $bank 1>&2
+				fi
+
+				bootbank="$(fwbank_get_bootbank)"
+
+				if [ "${bank}" == "${bootbank}" ]; then
+					echo '{"success": true}'
+				else
+					echo '{"success": false}'
+				fi
+			;;
+			upgrade)
+				# Read the JSON object provided for the arguments
+				read -r input
+
+				json_load "${input}"
+
+				json_get_var path path
+				json_get_var auto_activate auto_activate
+				json_get_var reboot reboot
+				json_get_var bank bank
+				json_get_var cwmp cwmp
+
+				ret=0
+				ret_status=""
+
+				# Do we have all the arguments we want?
+				[ -z ${path} ] || [ -z ${auto_activate} ] || [ -z ${bank} ] && ret=1 && ret_status="path/auto_activate/bank is mandatory parameter."
+
+				# Sanity: is the given bankid really the one to be upgraded?
+				[ ${bank} -ne $(platform_get_next_bank_id) ] && ret=1 && ret_status="Invalid bank id($bank)."
+
+				# Does the given file actually exist?
+				[ ! -r ${path} ] && ret=1 && ret_status="Invalid image path."
+
+				# Is the auto_activate provided in the JSON a boolean?
+				# (meaning: here we should get 0 or 1 instead of any other string)
+				[ ${auto_activate} == "0" -o ${auto_activate} == "1" ] || ret=1
+
+				# Fail if any of the above sanity checks fail.
+				[ ${ret} -eq 1 ] && {
+					echo "{ \"result\": \"$ret_status\" }"
+					return
+				}
+
+				sysupgrade_cwmp_flag=""
+				if [ ${cwmp} -eq 1 ]; then
+					sysupgrade_cwmp_flag="--from-cwmp"
+				fi
+
+				sysupgrade_flag=""
+				if [ ${auto_activate} -eq 0 ]; then
+					sysupgrade_flag="${sysupgrade_flag} --no-activate"
+				fi
+
+				if [ ${reboot} -eq 0 ]; then
+					sysupgrade_flag="${sysupgrade_flag} --no-reboot"
+				fi
+
+				if [ ${cwmp} -eq 1 ]; then
+					sysupgrade_flag="${sysupgrade_flag} --from-cwmp"
+				fi
+
+				# Call sysupgrade synchonously. It should not time out the ubus call,
+				# as it will just verify the image and do an ubus call, leading to
+				# do_stage2 doing the actual upgrade.
+				sysupgrade_result=""
+				sysupgrade $sysupgrade_flag "$path" 2>&1 > /dev/null
+				if [ $? -eq 0 ]; then
+					sysupgrade_result="ok"
+				else
+					sysupgrade_result="failure"
+				fi
+
+				echo "{ \"result\": \"$sysupgrade_result\" }"
+			;;
+		esac
+	;;
+esac

@@ -1,0 +1,20 @@
+Index: linux-5.10.138/drivers/clk/Makefile
+===================================================================
+--- linux-5.10.138.orig/drivers/clk/Makefile
++++ linux-5.10.138/drivers/clk/Makefile
+@@ -84,6 +84,7 @@ obj-$(CONFIG_H8300)			+= h8300/
+ obj-$(CONFIG_ARCH_HISI)			+= hisilicon/
+ obj-y					+= imgtec/
+ obj-y					+= imx/
++obj-$(CONFIG_ARCH_CORTINA)		+= cortina/
+ obj-y					+= ingenic/
+ obj-$(CONFIG_ARCH_K3)			+= keystone/
+ obj-$(CONFIG_ARCH_KEYSTONE)		+= keystone/
+@@ -124,3 +125,7 @@ endif
+ obj-$(CONFIG_ARCH_ZX)			+= zte/
+ obj-$(CONFIG_ARCH_ZYNQ)			+= zynq/
+ obj-$(CONFIG_COMMON_CLK_ZYNQMP)         += zynqmp/
++obj-$(CONFIG_COMMON_CLK_RTK_APRO) += realtek/
++obj-$(CONFIG_ARCH_REALTEK_TAURUS) += realtek/
++obj-$(CONFIG_ARCH_REALTEK_9607F) += realtek/
++obj-$(CONFIG_RTK_SOC_BC_COMPATIBLE) += realtek/

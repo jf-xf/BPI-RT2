@@ -1,0 +1,13 @@
+{
+	"luci-mod-rtk-bridging": {
+		"description": "Grant access to status",
+		"read": {
+			"file": {
+				"/usr/sbin/brctl showmacs br-lan": [ "exec" ]
+			},
+			"ubus": {
+				"file": [ "exec" ]
+			}
+		}
+	}
+}

@@ -1,0 +1,26 @@
+From a24ca9a2c043fd58fd4ab29632ce6df4f1d8a9d0 Mon Sep 17 00:00:00 2001
+From: "ryan.kuo" <ryan.kuo@realtek.com>
+Date: Mon, 12 Sep 2022 19:22:11 +0800
+Subject: [PATCH] [wpa-supplicant] Refined scan interval to fixed ap can't send
+ beacon.
+
+---
+ wpa_supplicant/wpa_supplicant.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/wpa_supplicant/wpa_supplicant.c b/wpa_supplicant/wpa_supplicant.c
+index e70dc75..6f8a733 100644
+--- a/wpa_supplicant/wpa_supplicant.c
++++ b/wpa_supplicant/wpa_supplicant.c
+@@ -5439,7 +5439,7 @@ wpa_supplicant_alloc(struct wpa_supplicant *parent)
+ 	if (wpa_s == NULL)
+ 		return NULL;
+ 	wpa_s->scan_req = INITIAL_SCAN_REQ;
+-	wpa_s->scan_interval = 1;
++	wpa_s->scan_interval = 5;
+ 	wpa_s->new_connection = 1;
+ 	wpa_s->parent = parent ? parent : wpa_s;
+ 	wpa_s->p2pdev = wpa_s->parent;
+-- 
+2.17.1
+

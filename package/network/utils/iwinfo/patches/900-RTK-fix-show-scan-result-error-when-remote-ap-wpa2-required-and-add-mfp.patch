@@ -1,0 +1,45 @@
+Index: libiwinfo-2022-08-19-0dad3e66/include/iwinfo.h
+===================================================================
+--- libiwinfo-2022-08-19-0dad3e66.orig/include/iwinfo.h
++++ libiwinfo-2022-08-19-0dad3e66/include/iwinfo.h
+@@ -185,6 +185,7 @@ struct iwinfo_crypto_entry {
+ 	uint16_t pair_ciphers;
+ 	uint8_t auth_suites;
+ 	uint8_t auth_algs;
++	uint8_t mfp_opt;
+ };
+ 
+ struct iwinfo_scanlist_ht_chan_entry {
+Index: libiwinfo-2022-08-19-0dad3e66/iwinfo_utils.c
+===================================================================
+--- libiwinfo-2022-08-19-0dad3e66.orig/iwinfo_utils.c
++++ libiwinfo-2022-08-19-0dad3e66/iwinfo_utils.c
+@@ -406,6 +406,7 @@ void iwinfo_parse_rsn(struct iwinfo_cryp
+ 					break;
+ 
+ 				case 2:  /* PSK */
++				case 6:  /* PSK/SHA-256 *///realtek add, supportieee80211w not zero
+ 					c->wpa_version |= wpa_version;
+ 					c->auth_suites |= IWINFO_KMGMT_PSK;
+ 					break;
+@@ -413,7 +414,7 @@ void iwinfo_parse_rsn(struct iwinfo_cryp
+ 				case 3:  /* FT/IEEE 802.1X */
+ 				case 4:  /* FT/PSK */
+ 				case 5:  /* IEEE 802.1X/SHA-256 */
+-				case 6:  /* PSK/SHA-256 */
++				//case 6:  /* PSK/SHA-256 */
+ 				case 7:  /* TPK Handshake */
+ 					break;
+ 
+@@ -449,6 +450,11 @@ void iwinfo_parse_rsn(struct iwinfo_cryp
+ 
+ 	data += 2 + (count * 4);
+ 	len -= 2 + (count * 4);
++
++	if(len >= 2)// realtek add, add mfp to show remote ap ieee80211w status
++	{
++		c->mfp_opt = (data[0] >> 6) & 0x03;
++	}
+ }
+ 
+ struct uci_section *iwinfo_uci_get_radio(const char *name, const char *type)

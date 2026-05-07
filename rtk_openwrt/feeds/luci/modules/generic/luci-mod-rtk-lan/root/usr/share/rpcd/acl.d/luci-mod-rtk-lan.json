@@ -1,0 +1,20 @@
+{
+	"luci-mod-rtk-lan": {
+		"description": "Grant access to lan",
+		"read": {
+			"uci": [ "network", "dhcp" ]
+		},
+		"write": {
+			"uci": [ "network", "dhcp" ]
+		}
+	},
+
+	"luci-mod-rtk-lanports": {
+		"description": "Grant access to lan status",
+		"read": {
+			"file": {
+				"/sbin/diag *": [ "exec" ]
+			}
+		}
+	}
+}

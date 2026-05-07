@@ -1,0 +1,23 @@
+Index: hostapd-2022-01-16-cff80b4f/src/ap/hostapd.c
+===================================================================
+--- hostapd-2022-01-16-cff80b4f.orig/src/ap/hostapd.c
++++ hostapd-2022-01-16-cff80b4f/src/ap/hostapd.c
+@@ -1692,6 +1692,10 @@ static int setup_interface(struct hostap
+ 		wpa_printf(MSG_DEBUG, "Previous country code %s, new country code %s",
+ 			   previous_country, country);
+ 
++		//remove by Realtek
++		//reason:Here setting the country code to the wifi driver is not really implemented,
++		//not need to delay setup wlan interface, country code implemented in later code
++		/*
+ 		if (os_strncmp(previous_country, country, 2) != 0) {
+ 			wpa_printf(MSG_DEBUG, "Continue interface setup after channel list update");
+ 			iface->wait_channel_update = 1;
+@@ -1700,6 +1704,7 @@ static int setup_interface(struct hostap
+ 					       iface, NULL);
+ 			return 0;
+ 		}
++		*/
+ 	}
+ 
+ 	return setup_interface2(iface);

@@ -1,0 +1,60 @@
+Index: icwmp-8.5.9/src/cwmp.c
+===================================================================
+--- icwmp-8.5.9.orig/src/cwmp.c
++++ icwmp-8.5.9/src/cwmp.c
+@@ -233,10 +233,12 @@ int cwmp_schedule_rpc(struct cwmp *cwmp,
+ 	while (1) {
+ 		list_for_each (ilist, &(session->head_rpc_acs)) {
+ 			rpc_acs = list_entry(ilist, struct rpc, list);
++#if 0
+ 			if ((rpc_acs->type != RPC_ACS_INFORM) && (rpc_acs_methods[rpc_acs->type].acs_support == RPC_ACS_NOT_SUPPORT)) {
+ 				CWMP_LOG(WARNING, "The RPC method %s is not included in the RPCs list supported by the ACS", rpc_acs_methods[rpc_acs->type].name);
+ 				continue;
+ 			}
++#endif
+ 			if (!rpc_acs->type || thread_end)
+ 				goto retry;
+ 
+Index: icwmp-8.5.9/src/session.c
+===================================================================
+--- icwmp-8.5.9.orig/src/session.c
++++ icwmp-8.5.9/src/session.c
+@@ -112,11 +112,13 @@ struct session *cwmp_add_queue_session(s
+ 	/*
+ 	 * Set Required methods as initial value of
+ 	 */
++#if 0
+ 	rpc_acs = cwmp_add_session_rpc_acs_head(session, RPC_ACS_GET_RPC_METHODS);
+ 	if (rpc_acs == NULL) {
+ 		FREE(session);
+ 		return NULL;
+ 	}
++#endif
+ 	rpc_acs = cwmp_add_session_rpc_acs_head(session, RPC_ACS_INFORM);
+ 	if (rpc_acs == NULL) {
+ 		FREE(session);
+@@ -176,20 +178,24 @@ int cwmp_move_session_to_session_queue(s
+ 		if (session->head_rpc_acs.next != &(session->head_rpc_acs)) {
+ 			rpc_acs = list_entry(session->head_rpc_acs.next, struct rpc, list);
+ 			if (rpc_acs->type != RPC_ACS_INFORM) {
++#if 0
+ 				if (cwmp_add_session_rpc_acs_head(session, RPC_ACS_GET_RPC_METHODS) == NULL) {
+ 					pthread_mutex_unlock(&(cwmp->mutex_session_queue));
+ 					return CWMP_MEM_ERR;
+ 				}
++#endif
+ 				if (cwmp_add_session_rpc_acs_head(session, RPC_ACS_INFORM) == NULL) {
+ 					pthread_mutex_unlock(&(cwmp->mutex_session_queue));
+ 					return CWMP_MEM_ERR;
+ 				}
+ 			}
+ 		} else {
++#if 0
+ 			if (cwmp_add_session_rpc_acs_head(session, RPC_ACS_GET_RPC_METHODS) == NULL) {
+ 				pthread_mutex_unlock(&(cwmp->mutex_session_queue));
+ 				return CWMP_MEM_ERR;
+ 			}
++#endif
+ 			if (cwmp_add_session_rpc_acs_head(session, RPC_ACS_INFORM) == NULL) {
+ 				pthread_mutex_unlock(&(cwmp->mutex_session_queue));
+ 				return CWMP_MEM_ERR;

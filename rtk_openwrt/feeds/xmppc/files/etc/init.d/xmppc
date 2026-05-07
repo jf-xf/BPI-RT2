@@ -1,0 +1,33 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+STOP=10
+
+USE_PROCD=1
+PROG="/usr/sbin/xmppc"
+
+start_service() {
+	local con_name=$(uci -q get xmpp.xmpp.conn_req_connection)
+	local con_enable=$(uci -q get xmpp.$con_name.enable)
+	if [ "$con_enable" == "1" ]; then
+		procd_open_instance
+		procd_set_param command "$PROG"
+		procd_set_param respawn "3" "7" "0"
+		procd_close_instance
+	fi
+}
+
+boot() {
+	start
+}
+
+reload_service() {
+	logger -p crit -t "xmppc" "reloading service()"
+	stop
+	start 
+}
+
+service_triggers()
+{
+	procd_add_reload_trigger xmpp
+}

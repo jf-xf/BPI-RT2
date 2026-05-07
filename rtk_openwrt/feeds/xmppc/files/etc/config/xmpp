@@ -1,0 +1,37 @@
+
+config xmpp 'xmpp'
+	option conn_req_connection 'connection_1'
+	option allowed_jid ''
+	#Log levels: Critical=0, Warning=1, Notice=2, Info=3, Debug=4
+	option loglevel '3'
+
+config connection 'connection_1'
+	option enable '0'
+	option username ''
+	option password ''
+	option domain 	''
+	option resource ''
+	option usetls '0'
+	option interval '30'
+	option attempt '16'
+	option initial_retry_interval '1'
+	option retry_interval_multiplier '1000'
+	option retry_max_interval '1'
+	option serveralgorithm 'DNS-SRV'
+	
+config connection_server 'connection_1_srv_1'
+	option con_name 'connection_1'
+	option enable '0'
+	option priority '0'
+	option weight '-1'
+	option port '5222'
+	option server_address ''
+
+config connection_server 'connection_1_srv_2'
+	option con_name 'connection_1'
+	option enable '0'
+	option priority '0'
+	option weight '-1'
+	option port '5222'
+	option server_address ''
+

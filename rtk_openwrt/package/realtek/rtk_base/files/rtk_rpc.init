@@ -1,0 +1,44 @@
+#!/bin/sh /etc/rc.common
+
+START=19
+
+PNAME=RTK_GPON
+PROG=/bin/rtk_rpc
+DEBUG=1
+USE_PROCD=1
+
+
+W_LOG()
+{
+	if [ $DEBUG -eq 1 ]; then
+		echo "[${PNAME}] $@" > /dev/console
+	fi
+}
+
+W_ERR()
+{
+	if [ $DEBUG -eq 1 ]; then
+		echo "[${PNAME}][ERR] $@" > /dev/console
+	fi
+}
+
+start_service()
+{
+	W_LOG "starting rtk_rpc service ..."
+	procd_open_instance
+	procd_set_param respawn ${threshold:-300} ${timeout:-5} ${retry:-5}
+	procd_set_param command $PROG
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_close_instance
+}
+
+stop_service()
+{
+	W_LOG "Stopped."
+}
+
+restart_service() {
+	stop  
+	start
+}

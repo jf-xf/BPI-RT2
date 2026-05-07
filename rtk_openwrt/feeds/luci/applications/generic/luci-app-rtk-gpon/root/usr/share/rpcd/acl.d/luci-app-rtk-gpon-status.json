@@ -1,0 +1,15 @@
+{
+	"luci-app-rtk-gpon-status": {
+		"description": "Grant access to gpon status procedures",
+		"read": {
+			"ubus": {
+				"rtk-rpc": [ "get_pon_status", "get_pon_statistics" ]
+			}
+		},
+		"write": {
+			"ubus": {
+				"rtk-rpc": [ "reset_pon_statistics" ]
+			}
+		}
+	}
+}

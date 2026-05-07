@@ -1,0 +1,29 @@
+Check Rule Name,Enable,Allowlist,Description
+CheckRule1,FALSE,".*_fw\.c, .*_log\.c, .*_fw_dcpu\.c, dle\.c, hci_fc\.c, dbgpkg_[0-9A-Z]*\.c, gpio_[0-9A-Z]*\.c","No Hard-Code, should use meaningful #define"
+CheckRule2,FALSE,".*_fw\.c, .*_log\.c, .*_fw_dcpu\.c, .*AutoGen_Func.*, .*diagnosis\.c",Return Error Handling
+CheckRule3,TRUE,".*_fw\.c, .*_log\.c, .*_fw_dcpu\.c","Should use NULL PTR protection for all h2cb_alloc, h2db_alloc, PLTFM_MALLOC"
+CheckRule4,FALSE,,Polling count
+CheckRule5,FALSE,,Trigger type Reg
+CheckRule6,FALSE,".*_fw\.c, .*_log\.c, .*_fw_dcpu\.c",Doxygen document maintain
+CheckRule7,FALSE,,Add mutex to prevent racing issue
+CheckRule8,TRUE,".*_fw\.c, .*_log\.c, .*dbg.*\.c, .*fwdl.*\.c",Illegal indirect access usage. Please consider to use APIs: mac_sram_dbg_read() and mac_sram_dbg_write()
+CheckRule9,TRUE,".*_fw\.c, .*_log\.c, .*_fw_dcpu\.c","The function which starts with ""_patch_*"" should contain a ""chk_patch_*"" function"
+CheckRule10,TRUE,^((?!mac_ax\.c).)*,Init function in mac_ax_ops_init and exit function in mac_ax_ops_exit should exist in pairs
+CheckRule11,FALSE,,Check common function if you want to use C2HREG
+CheckRule12,TRUE,"^((?!init_[0-9]{4}[a-z]{1,2}\.c).)*","variable in struct mac_CHIPID_adapter should align mac_ax_adapter in mac_def.h"
+CheckRule13,FALSE,,"If access more than 8-bit memory, should handle endian"
+CheckRule14,FALSE,,H2C/ C2H format update flow
+CheckRule15,FALSE,,C2H handshake flow with PHL
+CheckRule16,TRUE,".*_fw\.c, .*_log\.c",FWOFLD recommended format
+CheckRule17,FALSE,,"Avoid to reuse the code which probably cause racing,  use static variable"
+CheckRule18,FALSE,,C2H Event parsing flow
+CheckRule19,FALSE,,"H2C format could not be modified,  can only be added"
+CheckRule20,TRUE,".*_fw\.c, .*_log\.c",Run time flag should be greater than or equal to compile flag
+CheckRule21,TRUE,".*_fw\.c, .*_log\.c",Cut Version Checker for Switch Case
+CheckRule22,TRUE,".*_fw\.c, .*_log\.c",Cut Version Checker for If else
+CheckRule23,TRUE,".*_fw\.c, .*_log\.c, .*\\mac_ax\.c*",PLTFM_REG_W/R misuse
+CheckRule24,TRUE,".*_fw\.c, .*_log\.c","h2cb_alloc misuse"
+CheckRule25,FALSE,".*_fw\.c, .*_log\.c","h2c done/recv ack handler checker"
+CheckRule26,FALSE,".*_fw\.c, .*_log\.c","Structure variables checker"
+CheckRule27,TRUE,".*_fw\.c, .*_log\.c","Program counter debug port checker"
+CheckRule28,FALSE,".*_fw\.c, .*_log\.c","Order of definition checker (Macro->Enum->Struct->Func)"

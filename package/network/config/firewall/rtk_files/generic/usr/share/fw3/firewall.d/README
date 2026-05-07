@@ -1,0 +1,15 @@
+For customize firewall requirement,
+We insert a firewall script in /etc/config/firewall,
+this script go through all executable file in "/usr/share/fw3/firewall.d".
+
+config include
+  option enabled '1'
+  option path '/usr/share/fw3/customized_fw3.sh'
+  option type 'script'
+  option family 'any'
+  option reload '1'
+
+You can change script name to adjust execute order.
+For examples:
+  s03_xxx --> 's' is normal firewall script.
+  p01_xxx --> 'p' is preconfig script, it means this script have higher priority than all normal scripts.

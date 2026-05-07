@@ -1,0 +1,23 @@
+#!/bin/sh
+
+uci -q batch <<-EOF
+	delete firewall.dmz
+	set firewall.dmz=redirect
+	set firewall.dmz.name=DMZ
+	set firewall.dmz.src=wan
+	set firewall.dmz.target=DNAT
+	set firewall.dmz.dest_ip=192.168.1.7
+	set firewall.dmz.enabled=0
+	add_list firewall.dmz.proto=all
+	delete firewall.url
+	set firewall.url=include
+	set firewall.url.path=/etc/firewall_urlRule.user
+	set firewall.url.enabled='0'
+	delete firewall.domain
+	set firewall.domain=include
+	set firewall.domain.path=/etc/firewall_domainRule.user
+	set firewall.domain.enabled='0'
+	commit firewall
+EOF
+
+exit 0

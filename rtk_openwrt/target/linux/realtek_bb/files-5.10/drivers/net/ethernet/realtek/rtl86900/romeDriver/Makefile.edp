@@ -1,0 +1,71 @@
+include $(APOLLODIR)/Compiler_Flag
+
+srctree=$(KDIR)
+
+EXTRA_CFLAGS += -Wall -Werror
+EXTRA_CFLAGS += $(PON_CFLAGS)
+EXTRA_CFLAGS += -I$(APOLLODIR)/romeDriver
+EXTRA_CFLAGS += -I$(APOLLODIR)/romeDriver/asicDriver
+EXTRA_CFLAGS += -I$(APOLLODIR)/romeDriver/diagshell
+EXTRA_CFLAGS += -I$(APOLLODIR)/FleetConntrackDriver/
+EXTRA_CFLAGS += -I$(APOLLODIR)/FleetConntrackDriver/include
+EXTRA_CFLAGS += -I$(APOLLODIR)/FleetConntrackDriver/core
+ifeq ($(CONFIG_DEFAULTS_KERNEL_3_18),y)
+	EXTRA_CFLAGS += -I$(srctree)/drivers/net/ethernet/realtek
+else
+	EXTRA_CFLAGS += -I$(srctree)/drivers/net
+endif
+EXTRA_CFLAGS += -DCONFIG_SDK_KERNEL_LINUX
+
+LUNAR_SVN_VERSION=$(shell $(APOLLODIR)/romeDriver/getSvnVersion.sh ..)
+SWITCH_SVN_VERSION=$(shell $(APOLLODIR)/romeDriver/getSvnVersion.sh $(APOLLODIR)/sdk)
+DIAG_SVN_VERSION=$(shell $(APOLLODIR)/romeDriver/getSvnVersion.sh $(APOLLODIR)/sdk/src/app/diag_rtk)
+ROMEDRIVER_SVN_VERSION=$(shell $(APOLLODIR)/romeDriver/getSvnVersion.sh $(APOLLODIR)/romeDriver)
+USER_SVN_VERSION=$(shell $(APOLLODIR)/romeDriver/getSvnVersion.sh ../user)
+EXTRA_CFLAGS +=  -DLUNAR_SVN_VERSION="\""$(LUNAR_SVN_VERSION)"\""
+EXTRA_CFLAGS +=  -DSWITCH_SVN_VERSION="\""$(SWITCH_SVN_VERSION)"\""
+EXTRA_CFLAGS +=  -DDIAG_SVN_VERSION="\""$(DIAG_SVN_VERSION)"\""
+EXTRA_CFLAGS +=  -DROMEDRIVER_SVN_VERSION="\""$(ROMEDRIVER_SVN_VERSION)"\""
+EXTRA_CFLAGS +=  -DUSER_SVN_VERSION="\""$(USER_SVN_VERSION)"\""
+
+EXTRA_CFLAGS += -I$(APOLLODIR)/sdk/include
+EXTRA_CFLAGS += -I$(APOLLODIR)/sdk/system/include
+EXTRA_CFLAGS += -I$(APOLLODIR)/sdk/system/linux
+EXTRA_CFLAGS += -I$(APOLLODIR)/sdk/src/app/diag_rtk/include
+
+#EXTRA_CFLAGS += -DCONFIG_APOLLO_MP
+
+#CHIP_TYPE :=
+
+#ifeq ($(CONFIG_RG_RTL9607C_SERIES),y)
+#CHIP_TYPE = CHIP_APOLLOPRO
+#endif
+#ifeq ($(CONFIG_RG_RTL9603D_SERIES),y)
+#CHIP_TYPE = CHIP_APOLLOPRO
+#endif
+
+
+#ifeq ($(CONFIG_RT_EDP_API),y)
+
+obj-$(CONFIG_RTK_L34_ENABLE) += rtk_rg_liteRomeDriver.o
+obj-$(CONFIG_RTK_L34_ENABLE) += diagshell/rtdrv_rg_netfilter.o
+obj-$(CONFIG_RT_EDP_API) += rt_edp_api.o
+obj-$(CONFIG_RT_EDP_API) += rt_edp_proc.o
+obj-$(CONFIG_RT_EDP_API) += rt_edp_hooks.o
+obj-$(CONFIG_RT_EDP_API) += rt_edp_debug.o
+obj-$(CONFIG_RT_EDP_API) += rt_edp_internal.o
+obj-$(CONFIG_RT_EDP_API) += rt_edp_acl.o
+
+#endif
+
+
+
+#all:
+#	$(MAKE) -C $(KDIR) M=$(APOLLODIR)/romeDriver ARCH=rlx CROSS_COMPILE=$(CROSS_COMPILE)
+
+#install:
+#	cp -af $(MODULE_NAME).ko $(ROMFSDIR)/lib/modules
+
+#clean:
+#	rm -rf *.o *~ core .depend .*.cmd *.mod.c .tmp_versions *.symvers *.ko
+

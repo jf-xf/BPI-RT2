@@ -1,0 +1,204 @@
+#ifndef _RT_EDP_ACL_H
+#define _RT_EDP_ACL_H
+
+#define EDP_ACL_SUPPORT_HOOK_CHECK 0	//also define in rt_edp_define.h
+#if defined(EDP_ACL_SUPPORT_HOOK_CHECK) && (EDP_ACL_SUPPORT_HOOK_CHECK==1)
+#ifndef PATTERN_CHECK_INIT
+#define PATTERN_CHECK_INIT(result) { result = ACL_PATTERN_HIT; }
+#endif
+
+
+#ifndef PATTERN_CHECK_RESULT
+#define PATTERN_CHECK_RESULT( ruleIdx, inverse, result, comment ,arg... ) { \
+		if(!((inverse) ^ (result))){ ACL_EDP(comment,ruleIdx); continue;} \
+	}
+#endif
+#endif	//EDP_ACL_SUPPORT_HOOK_CHECK
+
+#define EDP_ACL_XTABLES_FILTER "-t filter"
+#define EDP_ACL_XTABLES_MANGLE "-t mangle"
+#define EDP_ACL_XTABLES_INPUT "ACL-IN"
+#define EDP_ACL_XTABLES_OUTPUT "ACL-OUT"
+#define EDP_ACL_XTABLES_FORWARD "ACL-FWD"
+#define EDP_ACL_XTABLES_PREROUTING "ACL-PRE"
+#define EDP_ACL_XTABLES_POSTROUTING "ACL-POST"
+#define EDP_ACL_EBTABLES_FILTER "-t filter"
+#define EDP_ACL_EBTABLES_FORWARD "ACL-FWD"
+
+//iptables
+#define EDP_ACL_CMD_P_TCP "-p tcp "
+#define EDP_ACL_CMD_P_UDP "-p udp "
+//ebtables
+#define EDP_ACL_CMD_P_IPV4 "-p IPv4 "
+#define EDP_ACL_CMD_P_IPV6 "-p IPv6 "
+
+#define ACL_INTERNAL_CHECK_ETHERTYPE \
+(RT_EDP_ACL_INTERNAL_CHECK_ETHERTYPE_IPV4|RT_EDP_ACL_INTERNAL_CHECK_ETHERTYPE_IPV6)
+
+#define ACL_INTERNAL_CHECK_PROTO \
+(RT_EDP_ACL_INTERNAL_CHECK_PROTO_TCP|RT_EDP_ACL_INTERNAL_CHECK_PROTO_UDP)
+
+#define ACL_INTERNAL_CHECK_EBTABLE_DEFAULT_IPV4 \
+(INGRESS_L4_TCP_BIT|INGRESS_L4_UDP_BIT|INGRESS_L4_POROTCAL_VALUE_BIT|INGRESS_L4_SPORT_RANGE_BIT|INGRESS_L4_DPORT_RANGE_BIT)
+
+#define INGRESS_ACL_PATTERN_IPV4_BITS \
+(INGRESS_DSCP_BIT|INGRESS_TOS_BIT|INGRESS_L4_ICMP_BIT|INGRESS_IPV4_SIP_RANGE_BIT|INGRESS_IPV4_DIP_RANGE_BIT)
+
+#define INGRESS_ACL_PATTERN_IPV6_BITS \
+(INGRESS_IPV6_DSCP_BIT|INGRESS_IPV6_TC_BIT|INGRESS_L4_ICMPV6_BIT|INGRESS_IPV6_SIP_BIT|INGRESS_IPV6_DIP_BIT| \
+INGRESS_IPV6_SIP_RANGE_BIT|INGRESS_IPV6_DIP_RANGE_BIT|INGRESS_IPV6_FLOWLABEL_BIT)
+
+#define ACL_CMD_STRNCAT(  pattern_buf, tmp_buf ) { \
+		if((strlen(pattern_buf)+strlen(tmp_buf)) < sizeof(rt_edp_db.systemGlobal.acl_cmd_buff)) { strncat(pattern_buf, tmp_buf, strlen(tmp_buf));} \
+		else { printk("ACL CMD BUF overflow... (use buf %d + new buf %d > alloc buf %d)\n", strlen(pattern_buf), strlen(tmp_buf), sizeof(rt_edp_db.systemGlobal.acl_cmd_buff));} \
+	}
+
+#if defined(EDP_ACL_SUPPORT_HOOK_CHECK) && (EDP_ACL_SUPPORT_HOOK_CHECK==1)
+#define EDP_ACL_IS_ADD_LINUX_TABLE(acl_filter) (acl_filter->action_type==ACL_ACTION_TYPE_DROP ||acl_filter->action_type==ACL_ACTION_TYPE_TRAP||acl_filter->action_type==ACL_ACTION_TYPE_PERMIT||acl_filter->action_type==ACL_ACTION_TYPE_TRAP_TO_PS \
+		||acl_filter->action_type==ACL_ACTION_TYPE_POLICY_ROUTE || acl_filter->action_type==ACL_ACTION_TYPE_FLOW_MIB \
+		||(acl_filter->action_type==ACL_ACTION_TYPE_QOS && (acl_filter->qos_actions&ACL_ACTION_SHARE_METER_BIT)) \
+	  )
+
+#define EDP_ACL_IS_QOS_REMARKING(acl_filter) ((acl_filter->action_type==ACL_ACTION_TYPE_QOS) && \
+		((acl_filter->qos_actions&ACL_ACTION_1P_REMARKING_BIT) || (acl_filter->qos_actions&ACL_ACTION_IP_PRECEDENCE_REMARKING_BIT) \
+		|| (acl_filter->qos_actions&ACL_ACTION_DSCP_REMARKING_BIT) || (acl_filter->qos_actions&ACL_ACTION_TOS_TC_REMARKING_BIT) \
+		|| (acl_filter->qos_actions&ACL_ACTION_ACL_CVLANTAG_BIT) || (acl_filter->qos_actions&ACL_ACTION_ACL_SVLANTAG_BIT)) \
+	  )
+#endif	//EDP_ACL_SUPPORT_HOOK_CHECK
+
+
+//1 ===== FIXME: To prevent the data structure of parameter of RG API is changed, use orginal RG data structure temporarily. =====
+#if 0
+#define MAX_ACL_SW_ENTRY_SIZE 512
+#endif
+//1 ===== end FIXME =====
+
+struct table_info
+{
+    int table_idx;
+    char utility_buf[16];
+    char table_buf[16];
+    char chain_buf[16];
+};
+
+struct linux_table_info
+{
+    int table_idx;
+    char name_buf[16];
+};
+
+typedef enum rt_edp_aclSWEntry_internal_check_field_idx_s
+{
+	RT_EDP_ACL_INTERNAL_CHECK_XTABLES_IDX 					= 0,
+	RT_EDP_ACL_INTERNAL_CHECK_EBTABLES_IDX					= 1,
+	RT_EDP_ACL_INTERNAL_CHECK_ETHERTYPE_NCARE_IDX			= 2,
+	RT_EDP_ACL_INTERNAL_CHECK_ETHERTYPE_IPV4_IDX			= 3,
+	RT_EDP_ACL_INTERNAL_CHECK_ETHERTYPE_IPV6_IDX 			= 4,
+	RT_EDP_ACL_INTERNAL_CHECK_PROTO_NCARE_IDX 				= 5,
+	RT_EDP_ACL_INTERNAL_CHECK_PROTO_TCP_IDX 				= 6,
+	RT_EDP_ACL_INTERNAL_CHECK_PROTO_UDP_IDX 				= 7,
+} rt_edp_aclSWEntry_internal_check_field_idx_t;
+
+typedef enum rt_edp_aclSWEntry_internal_check_field_s
+{
+	RT_EDP_ACL_INTERNAL_CHECK_XTABLES 					= (1<<0),
+	RT_EDP_ACL_INTERNAL_CHECK_EBTABLES					= (1<<1),
+	RT_EDP_ACL_INTERNAL_CHECK_ETHERTYPE_NCARE 			= (1<<2),
+	RT_EDP_ACL_INTERNAL_CHECK_ETHERTYPE_IPV4 			= (1<<3),
+	RT_EDP_ACL_INTERNAL_CHECK_ETHERTYPE_IPV6 			= (1<<4),
+	RT_EDP_ACL_INTERNAL_CHECK_PROTO_NCARE 				= (1<<5),
+	RT_EDP_ACL_INTERNAL_CHECK_PROTO_TCP 				= (1<<6),
+	RT_EDP_ACL_INTERNAL_CHECK_PROTO_UDP 				= (1<<7),
+} rt_edp_aclSWEntry_internal_check_field_t;
+
+typedef enum rt_edp_aclSWEntry_internal_check_chain_s
+{
+	RT_EDP_ACL_INTERNAL_CHECK_XTABLES_CHAIN_ALL 			= (1<<0),
+	RT_EDP_ACL_INTERNAL_CHECK_XTABLES_CHAIN_IN				= (1<<1),
+	RT_EDP_ACL_INTERNAL_CHECK_XTABLES_CHAIN_OUT 			= (1<<2),
+	RT_EDP_ACL_INTERNAL_CHECK_XTABLES_CHAIN_FWD 			= (1<<3),
+	RT_EDP_ACL_INTERNAL_CHECK_XTABLES_CHAIN_PRE 			= (1<<4),
+	RT_EDP_ACL_INTERNAL_CHECK_XTABLES_CHAIN_POST 			= (1<<5),
+	RT_EDP_ACL_INTERNAL_CHECK_EBTABLES_CHAIN_ALL 			= (1<<6),
+	RT_EDP_ACL_INTERNAL_CHECK_EBTABLES_CHAIN_IN				= (1<<7),
+	RT_EDP_ACL_INTERNAL_CHECK_EBTABLES_CHAIN_OUT 			= (1<<8),
+	RT_EDP_ACL_INTERNAL_CHECK_EBTABLES_CHAIN_FWD			= (1<<9),
+	RT_EDP_ACL_INTERNAL_CHECK_EBTABLES_CHAIN_PRE			= (1<<10),
+	RT_EDP_ACL_INTERNAL_CHECK_EBTABLES_CHAIN_POST			= (1<<11),
+} rt_edp_aclSWEntry_internal_check_chain_t;
+
+typedef enum rt_edp_aclSWEntry_internal_check_chain_idx_s
+{
+	RT_EDP_ACL_INTERNAL_CHECK_XTABLES_CHAIN_ALL_IDX 			= 0,
+	RT_EDP_ACL_INTERNAL_CHECK_XTABLES_CHAIN_IN_IDX				= 1,
+	RT_EDP_ACL_INTERNAL_CHECK_XTABLES_CHAIN_OUT_IDX 			= 2,
+	RT_EDP_ACL_INTERNAL_CHECK_XTABLES_CHAIN_FWD_IDX 			= 3,
+	RT_EDP_ACL_INTERNAL_CHECK_XTABLES_CHAIN_PRE_IDX 			= 4,
+	RT_EDP_ACL_INTERNAL_CHECK_XTABLES_CHAIN_POST_IDX 			= 5,
+	RT_EDP_ACL_INTERNAL_CHECK_EBTABLES_CHAIN_ALL_IDX 			= 6,
+	RT_EDP_ACL_INTERNAL_CHECK_EBTABLES_CHAIN_IN_IDX				= 7,
+	RT_EDP_ACL_INTERNAL_CHECK_EBTABLES_CHAIN_OUT_IDX 			= 8,
+	RT_EDP_ACL_INTERNAL_CHECK_EBTABLES_CHAIN_FWD_IDX			= 9,
+	RT_EDP_ACL_INTERNAL_CHECK_EBTABLES_CHAIN_PRE_IDX			= 10,
+	RT_EDP_ACL_INTERNAL_CHECK_EBTABLES_CHAIN_POST_IDX			= 11,
+	RT_EDP_ACL_INTERNAL_CHECK_CHAIN_MAX_IDX						= 12,
+} rt_edp_aclSWEntry_internal_check_chain_idx_t;
+
+typedef enum rt_edp_aclSWEntry_internal_check_table_s
+{
+	RT_EDP_ACL_INTERNAL_CHECK_XTABLES_TABLE_ALL 			= (1<<0),
+	RT_EDP_ACL_INTERNAL_CHECK_XTABLES_TABLE_FILTER			= (1<<1),
+	RT_EDP_ACL_INTERNAL_CHECK_XTABLES_TABLE_NAT 			= (1<<2),
+	RT_EDP_ACL_INTERNAL_CHECK_XTABLES_TABLE_MANGLE 			= (1<<3),
+	RT_EDP_ACL_INTERNAL_CHECK_EBTABLES_TABLE_ALL 			= (1<<4),
+	RT_EDP_ACL_INTERNAL_CHECK_EBTABLES_TABLE_FILTER 		= (1<<5),
+	RT_EDP_ACL_INTERNAL_CHECK_EBTABLES_TABLE_NAT 			= (1<<6),
+} rt_edp_aclSWEntry_internal_check_table_t;
+
+typedef enum rt_edp_aclSWEntry_internal_check_table_idx_s
+{
+	RT_EDP_ACL_INTERNAL_CHECK_XTABLES_TABLE_ALL_IDX 			= 0,
+	RT_EDP_ACL_INTERNAL_CHECK_XTABLES_TABLE_FILTER_IDX			= 1,
+	RT_EDP_ACL_INTERNAL_CHECK_XTABLES_TABLE_NAT_IDX 			= 2,
+	RT_EDP_ACL_INTERNAL_CHECK_XTABLES_TABLE_MANGLE_IDX 			= 3,
+	RT_EDP_ACL_INTERNAL_CHECK_EBTABLES_TABLE_ALL_IDX 			= 4,
+	RT_EDP_ACL_INTERNAL_CHECK_EBTABLES_TABLE_FILTER_IDX 		= 5,
+	RT_EDP_ACL_INTERNAL_CHECK_EBTABLES_TABLE_NAT_IDX 			= 6,
+	RT_EDP_ACL_INTERNAL_CHECK_TABLE_MAX_IDX						= 7,
+} rt_edp_aclSWEntry_internal_check_table_idx_t;
+
+//if you update below structure, you should update struct table_info linux_table
+typedef enum rt_edp_aclSWEntry_linux_used_tables_field_s
+{
+	RT_EDP_ACL_USED_IPTABLES_MANGLE_INPUT = (1<<0),
+	RT_EDP_ACL_USED_IPTABLES_MANGLE_OUTPUT = (1<<1),
+	RT_EDP_ACL_USED_IPTABLES_MANGLE_FORWARD = (1<<2),
+	RT_EDP_ACL_USED_IP6TABLES_MANGLE_INPUT = (1<<3),
+	RT_EDP_ACL_USED_IP6TABLES_MANGLE_OUTPUT = (1<<4),
+	RT_EDP_ACL_USED_IP6TABLES_MANGLE_FORWARD = (1<<5),
+	RT_EDP_ACL_USED_EBTABLES_FILTER_FORWARD = (1<<6),
+} rt_edp_aclSWEntry_linux_used_tables_field_t;
+
+typedef enum rt_edp_aclSWEntry_linux_used_tables_index_s
+{
+	RT_EDP_ACL_USED_IPTABLES_MANGLE_INPUT_IDX = 0,
+	RT_EDP_ACL_USED_IPTABLES_MANGLE_OUTPUT_IDX = 1,
+	RT_EDP_ACL_USED_IPTABLES_MANGLE_FORWARD_IDX = 2,
+	RT_EDP_ACL_USED_IP6TABLES_MANGLE_INPUT_IDX = 3,
+	RT_EDP_ACL_USED_IP6TABLES_MANGLE_OUTPUT_IDX = 4,
+	RT_EDP_ACL_USED_IP6TABLES_MANGLE_FORWARD_IDX = 5,
+	RT_EDP_ACL_USED_EBTABLES_FILTER_FORWARD_IDX = 6,
+	RT_EDP_ACL_USED_TABLE_END,
+} rt_edp_aclSWEntry_linux_used_tables_index_t;
+
+#if defined(EDP_ACL_SUPPORT_HOOK_CHECK) && (EDP_ACL_SUPPORT_HOOK_CHECK==1)
+typedef enum rt_edp_cfDirection_e
+{
+	RT_EDP_CF_DOWNSTREAM,
+	RT_EDP_CF_UPSTREAM,
+	RT_EDP_CF_LAN_TO_LAN,
+}rt_edp_cfDirection_t;
+#endif	//EDP_ACL_SUPPORT_HOOK_CHECK
+
+
+#endif //end of #ifndef _RT_EDP_ACL_H

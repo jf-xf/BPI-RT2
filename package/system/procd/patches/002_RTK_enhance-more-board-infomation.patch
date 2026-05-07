@@ -1,0 +1,25 @@
+Index: procd-2022-06-01-7a009685/system.c
+===================================================================
+--- procd-2022-06-01-7a009685.orig/system.c
++++ procd-2022-06-01-7a009685/system.c
+@@ -272,6 +272,20 @@ static int system_board(struct ubus_cont
+ 				key = "target";
+ 			else if (!strcasecmp(key, "DISTRIB_DESCRIPTION"))
+ 				key = "description";
++			else if (!strcasecmp(key, "DISTRIB_MANUFACTURER"))
++				key = "menufaturer";
++			else if (!strcasecmp(key, "DISTRIB_MANUFACTURER_URL"))
++				key = "menufaturerURL";
++			else if (!strcasecmp(key, "DISTRIB_BUG_URL"))
++				key = "bugURL";
++			else if (!strcasecmp(key, "DISTRIB_HOME_URL"))
++				key = "homeURL";
++			else if (!strcasecmp(key, "DISTRIB_SUPPORT_URL"))
++				key = "supportURL";
++			else if (!strcasecmp(key, "DISTRIB_PRODUCT"))
++				key = "product";
++			else if (!strcasecmp(key, "DISTRIB_HWREV"))
++				key = "hwrevision";
+ 			else
+ 				continue;
+ 

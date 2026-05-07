@@ -1,0 +1,21 @@
+Index: procd-2020-03-07-09b9bd82/service/instance.c
+===================================================================
+--- procd-2020-03-07-09b9bd82.orig/service/instance.c
++++ procd-2020-03-07-09b9bd82/service/instance.c
+@@ -373,12 +373,16 @@ instance_run(struct service_instance *in
+ 		closefd(_stdin);
+ 	}
+ 	if (_stdout > -1) {
++	    	#if CONFIG_PACKAGE_logd
+ 		dup2(_stdout, STDOUT_FILENO);
+ 		closefd(_stdout);
++		#endif
+ 	}
+ 	if (_stderr > -1) {
++	    	#if CONFIG_PACKAGE_logd
+ 		dup2(_stderr, STDERR_FILENO);
+ 		closefd(_stderr);
++		#endif
+ 	}
+ 
+ 	if (!in->has_jail && in->user && in->pw_gid && initgroups(in->user, in->pw_gid)) {

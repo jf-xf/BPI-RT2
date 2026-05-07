@@ -1,0 +1,100 @@
+Index: ppp-2.4.9.git-2021-01-04/pppd/main.c
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/main.c
++++ ppp-2.4.9.git-2021-01-04/pppd/main.c
+@@ -726,7 +726,7 @@ setup_signals(void)
+     SIGNAL(SIGSYS, bad_signal);
+ #endif
+ #ifdef SIGTRAP
+-    SIGNAL(SIGTRAP, bad_signal);
++    SIGNAL(SIGTRAP, update_stats);
+ #endif
+ #ifdef SIGVTALRM
+     SIGNAL(SIGVTALRM, bad_signal);
+@@ -1281,6 +1281,37 @@ reset_link_stats(int u)
+     get_time(&start_time);
+ }
+ 
++void update_uptime_file(unsigned int time)
++{
++    char uptimeFile[32], tmpst[32]={0}, *ptr, *tail;
++    struct stat st = {0};
++    FILE *fp;
++
++    strcpy(tmpst, pidfilename);
++    ptr = strrchr(tmpst, '/');
++    ptr+=1;
++    tail = strstr(tmpst, ".pid");
++    strcpy(tail, "\0");
++
++    if (stat(PATH_IF_UPTIME, &st) == -1)
++	mkdir(PATH_IF_UPTIME, 0777);
++
++    strcpy(uptimeFile, PATH_IF_UPTIME);
++    strcat(uptimeFile, "/");
++    strcat(uptimeFile, ptr);
++
++    fp = fopen( uptimeFile, "w" );
++    if(fp)
++    {
++	memset( tmpst, 0, sizeof(tmpst));
++	sprintf( tmpst, "%d", time);
++	fwrite( tmpst, 1 , sizeof(tmpst), fp);
++	fclose(fp);
++    } else
++	fprintf(stderr, "pppd: update_uptime_file failed\n");
++}
++
++
+ /*
+  * update_link_stats - get stats at link termination.
+  */
+@@ -1294,6 +1325,12 @@ update_link_stats(int u)
+ 	|| get_time(&now) < 0)
+ 	return;
+     link_connect_time = now.tv_sec - start_time.tv_sec;
++
++    if(link_connect_time>1600000000)
++	start_time.tv_sec = now.tv_sec - start_time.tv_sec;
++
++    update_uptime_file(link_connect_time);
++
+     link_stats_valid = 1;
+ 
+     link_stats.bytes_in  -= old_link_stats.bytes_in;
+@@ -1573,6 +1610,13 @@ bad_signal(int sig)
+     die(127);
+ }
+ 
++#ifdef SIGTRAP
++void update_stats(void)
++{
++    update_link_stats(0);
++}
++#endif
++
+ /*
+  * safe_fork - Create a child process.  The child closes all the
+  * file descriptors that we don't want to leak to a script.
+Index: ppp-2.4.9.git-2021-01-04/pppd/pppd.h
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/pppd.h
++++ ppp-2.4.9.git-2021-01-04/pppd/pppd.h
+@@ -419,6 +419,7 @@ extern int  option_priority;	/* priority
+ #define PHASE_DISCONNECT	10
+ #define PHASE_HOLDOFF		11
+ #define PHASE_MASTER		12
++#define PATH_IF_UPTIME		"/tmp/pppd-uptime"
+ 
+ /*
+  * The following struct gives the addresses of procedures to call
+@@ -546,6 +547,9 @@ const char *protocol_name(int);
+ void remove_pidfiles(void);
+ void lock_db(void);
+ void unlock_db(void);
++#ifdef SIGTRAP
++void update_stats(void);
++#endif
+ 
+ /* Procedures exported from tty.c. */
+ void tty_init(void);

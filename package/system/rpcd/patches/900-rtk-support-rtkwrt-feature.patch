@@ -1,0 +1,405 @@
+Index: rpcd-2022-02-07-909f2a04/iwinfo.c
+===================================================================
+--- rpcd-2022-02-07-909f2a04.orig/iwinfo.c
++++ rpcd-2022-02-07-909f2a04/iwinfo.c
+@@ -275,6 +275,21 @@ rpc_iwinfo_call_htmodes(const char *name
+ 		if (modes & IWINFO_HTMODE_HE160)
+ 			blobmsg_add_string(&buf, NULL, "HE160");
+ 
++		if (modes & IWINFO_HTMODE_HE20)
++			blobmsg_add_string(&buf, NULL, "HE20");
++
++		if (modes & IWINFO_HTMODE_HE40)
++			blobmsg_add_string(&buf, NULL, "HE40");
++
++		if (modes & IWINFO_HTMODE_HE80)
++			blobmsg_add_string(&buf, NULL, "HE80");
++
++		if (modes & IWINFO_HTMODE_HE80_80)
++			blobmsg_add_string(&buf, NULL, "HE80+80");
++
++		if (modes & IWINFO_HTMODE_HE160)
++			blobmsg_add_string(&buf, NULL, "HE160");
++
+ 		blobmsg_close_array(&buf, c);
+ 	}
+ }
+@@ -292,6 +307,9 @@ rpc_iwinfo_call_hwmodes(const char *name
+ 		if (modes & IWINFO_80211_AD)
+ 			blobmsg_add_string(&buf, NULL, "ad");
+ 
++		if (modes & IWINFO_80211_AX)
++			blobmsg_add_string(&buf, NULL, "ax");
++
+ 		if (modes & IWINFO_80211_AC)
+ 			blobmsg_add_string(&buf, NULL, "ac");
+ 
+Index: rpcd-2022-02-07-909f2a04/uci.c
+===================================================================
+--- rpcd-2022-02-07-909f2a04.orig/uci.c
++++ rpcd-2022-02-07-909f2a04/uci.c
+@@ -15,12 +15,17 @@
+  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+  */
++#define _SUPPORT_EVENT_DELAY_
+ 
+ #include <libgen.h>
+ #include <glob.h>
+ 
+ #include <libubox/blobmsg.h>
+ #include <libubox/blobmsg_json.h>
++#if defined(_SUPPORT_EVENT_DELAY_)
++#include <libubox/list.h>
++#include <libubox/vlist.h>
++#endif
+ 
+ #include <rpcd/uci.h>
+ #include <rpcd/exec.h>
+@@ -33,6 +38,12 @@ static struct ubus_context *apply_ctx;
+ 
+ char apply_sid[RPC_SID_LEN + 1];
+ 
++#if defined(_SUPPORT_EVENT_DELAY_)
++int add_event_delay(const char *name, uloop_timeout_handler cb, struct blob_attr *msg, unsigned int delay);
++static int remove_event_delay(const char *name);
++static void event_uci_commit(struct uloop_timeout *t);
++#endif
++
+ enum {
+ 	RPC_G_CONFIG,
+ 	RPC_G_SECTION,
+@@ -57,6 +68,7 @@ enum {
+ 	RPC_A_CONFIG,
+ 	RPC_A_TYPE,
+ 	RPC_A_NAME,
++	RPC_A_SECTION,
+ 	RPC_A_VALUES,
+ 	RPC_A_SESSION,
+ 	__RPC_A_MAX,
+@@ -66,6 +78,7 @@ static const struct blobmsg_policy rpc_u
+ 	[RPC_A_CONFIG]  = { .name = "config",  .type = BLOBMSG_TYPE_STRING },
+ 	[RPC_A_TYPE]    = { .name = "type",    .type = BLOBMSG_TYPE_STRING },
+ 	[RPC_A_NAME]    = { .name = "name",    .type = BLOBMSG_TYPE_STRING },
++	[RPC_A_SECTION] = { .name = "section", .type = BLOBMSG_TYPE_STRING },
+ 	[RPC_A_VALUES]  = { .name = "values",  .type = BLOBMSG_TYPE_TABLE  },
+ 	[RPC_A_SESSION] = { .name = "ubus_rpc_session",
+ 	                                       .type = BLOBMSG_TYPE_STRING },
+@@ -98,6 +111,7 @@ enum {
+ 	RPC_D_MATCH,
+ 	RPC_D_OPTION,
+ 	RPC_D_OPTIONS,
++	RPC_D_VALUES,
+ 	RPC_D_SESSION,
+ 	__RPC_D_MAX,
+ };
+@@ -109,6 +123,7 @@ static const struct blobmsg_policy rpc_u
+ 	[RPC_D_MATCH]   = { .name = "match",    .type = BLOBMSG_TYPE_TABLE  },
+ 	[RPC_D_OPTION]  = { .name = "option",   .type = BLOBMSG_TYPE_STRING },
+ 	[RPC_D_OPTIONS] = { .name = "options",  .type = BLOBMSG_TYPE_ARRAY  },
++	[RPC_D_VALUES]  = { .name = "values",   .type = BLOBMSG_TYPE_ARRAY },
+ 	[RPC_D_SESSION] = { .name = "ubus_rpc_session",
+ 	                                        .type = BLOBMSG_TYPE_STRING },
+ };
+@@ -134,6 +149,7 @@ static const struct blobmsg_policy rpc_u
+ enum {
+ 	RPC_O_CONFIG,
+ 	RPC_O_SECTIONS,
++	RPC_O_POSITION,
+ 	RPC_O_SESSION,
+ 	__RPC_O_MAX,
+ };
+@@ -141,6 +157,7 @@ enum {
+ static const struct blobmsg_policy rpc_uci_order_policy[__RPC_O_MAX] = {
+ 	[RPC_O_CONFIG]   = { .name = "config",   .type = BLOBMSG_TYPE_STRING },
+ 	[RPC_O_SECTIONS] = { .name = "sections", .type = BLOBMSG_TYPE_ARRAY  },
++	[RPC_O_POSITION] = { .name = "position", .type = BLOBMSG_TYPE_INT32  },
+ 	[RPC_O_SESSION]  = { .name = "ubus_rpc_session",
+ 	                                         .type = BLOBMSG_TYPE_STRING },
+ };
+@@ -148,6 +165,9 @@ static const struct blobmsg_policy rpc_u
+ enum {
+ 	RPC_C_CONFIG,
+ 	RPC_C_SESSION,
++#if defined(_SUPPORT_EVENT_DELAY_)
++	RPC_C_DELAY,
++#endif
+ 	__RPC_C_MAX,
+ };
+ 
+@@ -155,6 +175,9 @@ static const struct blobmsg_policy rpc_u
+ 	[RPC_C_CONFIG]   = { .name = "config",  .type = BLOBMSG_TYPE_STRING },
+ 	[RPC_C_SESSION]  = { .name = "ubus_rpc_session",
+ 	                                        .type = BLOBMSG_TYPE_STRING },
++#if defined(_SUPPORT_EVENT_DELAY_)
++	[RPC_C_DELAY]   = { .name = "delay",  .type = BLOBMSG_TYPE_INT32 },
++#endif
+ };
+ 
+ enum {
+@@ -604,7 +627,8 @@ rpc_uci_getcommon(struct ubus_context *c
+ 	struct blob_attr *tb[__RPC_G_MAX];
+ 	struct uci_package *p = NULL;
+ 	struct uci_ptr ptr = { 0 };
+-
++	int err = 0;
++	
+ 	blobmsg_parse(rpc_uci_get_policy, __RPC_G_MAX, tb,
+ 	              blob_data(msg), blob_len(msg));
+ 
+@@ -631,7 +655,10 @@ rpc_uci_getcommon(struct ubus_context *c
+ 	}
+ 
+ 	if (rpc_uci_lookup(&ptr) || !(ptr.flags & UCI_LOOKUP_COMPLETE))
++	{
++		err = UBUS_STATUS_NOT_FOUND;
+ 		goto out;
++	}
+ 
+ 	blob_buf_init(&buf, 0);
+ 
+@@ -658,7 +685,7 @@ rpc_uci_getcommon(struct ubus_context *c
+ out:
+ 	uci_unload(cursor, p);
+ 
+-	return rpc_uci_status();
++	return err ? err : rpc_uci_status();
+ }
+ 
+ static int
+@@ -711,7 +738,17 @@ rpc_uci_add(struct ubus_context *ctx, st
+ 		return rpc_uci_status();
+ 
+ 	/* add named section */
+-	if (tb[RPC_A_NAME])
++	if (tb[RPC_A_SECTION])
++	{
++		ptr.section = blobmsg_data(tb[RPC_A_SECTION]);
++		ptr.value   = blobmsg_data(tb[RPC_A_TYPE]);
++		ptr.option  = NULL;
++		if (rpc_uci_lookup(&ptr) || !ptr.s){
++			err = UBUS_STATUS_NOT_FOUND;
++			goto out;
++		}
++	}
++	else if (tb[RPC_A_NAME])
+ 	{
+ 		ptr.section = blobmsg_data(tb[RPC_A_NAME]);
+ 		ptr.value   = blobmsg_data(tb[RPC_A_TYPE]);
+@@ -857,7 +894,7 @@ rpc_uci_merge_set(struct blob_attr *opt,
+ 		if (!rpc_uci_format_blob(opt, &ptr->value))
+ 			return UBUS_STATUS_INVALID_ARGUMENT;
+ 
+-		uci_set(cursor, ptr);
++		if(ptr->value[0]) uci_set(cursor, ptr);
+ 	}
+ 	else
+ 	{
+@@ -952,7 +989,7 @@ rpc_uci_set(struct ubus_context *ctx, st
+  *  3) if the blob is NULL, delete entire section
+  */
+ static int
+-rpc_uci_merge_delete(struct blob_attr *opt, struct uci_ptr *ptr)
++rpc_uci_merge_delete(struct blob_attr *opt, struct uci_ptr *ptr, struct blob_attr *value)
+ {
+ 	struct blob_attr *cur;
+ 	int rem, rv;
+@@ -998,6 +1035,20 @@ rpc_uci_merge_delete(struct blob_attr *o
+ 		if (rpc_uci_lookup(ptr) || !ptr->o)
+ 			return UBUS_STATUS_NOT_FOUND;
+ 
++		if(ptr->o->type == UCI_TYPE_LIST && value)
++		{
++			blobmsg_for_each_attr(cur, value, rem)
++			{
++				if (blobmsg_type(cur) != BLOBMSG_TYPE_STRING)
++					continue;
++
++				ptr->value = blobmsg_data(cur);
++
++				uci_del_list(cursor, ptr);
++				rv = 0;
++			}
++		}
++		else
+ 		uci_delete(cursor, ptr);
+ 		return 0;
+ 	}
+@@ -1044,9 +1095,9 @@ rpc_uci_delete(struct ubus_context *ctx,
+ 		ptr.section = blobmsg_data(tb[RPC_D_SECTION]);
+ 
+ 		if (tb[RPC_D_OPTIONS])
+-			err = rpc_uci_merge_delete(tb[RPC_D_OPTIONS], &ptr);
++			err = rpc_uci_merge_delete(tb[RPC_D_OPTIONS], &ptr, NULL);
+ 		else
+-			err = rpc_uci_merge_delete(tb[RPC_D_OPTION], &ptr);
++			err = rpc_uci_merge_delete(tb[RPC_D_OPTION], &ptr, tb[RPC_D_VALUES]);
+ 	}
+ 	else
+ 	{
+@@ -1060,9 +1111,9 @@ rpc_uci_delete(struct ubus_context *ctx,
+ 			ptr.section = e->name;
+ 
+ 			if (tb[RPC_D_OPTIONS])
+-				err = rpc_uci_merge_delete(tb[RPC_D_OPTIONS], &ptr);
++				err = rpc_uci_merge_delete(tb[RPC_D_OPTIONS], &ptr, NULL);
+ 			else
+-				err = rpc_uci_merge_delete(tb[RPC_D_OPTION], &ptr);
++				err = rpc_uci_merge_delete(tb[RPC_D_OPTION], &ptr, tb[RPC_D_VALUES]);
+ 		}
+ 
+ 		if (!err && !ptr.section)
+@@ -1152,6 +1203,10 @@ rpc_uci_order(struct ubus_context *ctx,
+ 
+ 	if (uci_load(cursor, ptr.package, &p))
+ 		return rpc_uci_status();
++	
++	if(tb[RPC_O_POSITION])
++		i = blobmsg_get_u32(tb[RPC_O_POSITION]);
++	if(i<0) i = 0;
+ 
+ 	blobmsg_for_each_attr(cur, tb[RPC_O_SECTIONS], rem)
+ 	{
+@@ -1340,7 +1395,15 @@ rpc_uci_revert_commit(struct ubus_contex
+ 		return UBUS_STATUS_PERMISSION_DENIED;
+ 
+ 	ptr.package = blobmsg_data(tb[RPC_C_CONFIG]);
+-
++#if defined(_SUPPORT_EVENT_DELAY_)
++	if(tb[RPC_C_DELAY] && commit){
++		if(add_event_delay(ptr.package, event_uci_commit, msg, blobmsg_get_u32(tb[RPC_C_DELAY])) != 0)
++			return UBUS_STATUS_UNKNOWN_ERROR;
++		else
++			return UBUS_STATUS_OK;
++	}
++	remove_event_delay(ptr.package);
++#endif
+ 	if (commit)
+ 	{
+ 		if (!uci_load(cursor, ptr.package, &p))
+@@ -1757,6 +1820,114 @@ void rpc_uci_purge_savedirs(void)
+ 	}
+ }
+ 
++#if defined(_SUPPORT_EVENT_DELAY_)
++static struct vlist_tree event_delay_lists;
++static struct ubus_context *__ctx=NULL;
++struct event_delay_s {
++	struct vlist_node node;
++	char name[64];
++	struct uloop_timeout timer;
++	uloop_timeout_handler cb;
++	unsigned int delay;
++	void *data;
++};
++
++static int
++event_delay_cmp(const void *k1, const void *k2, void *ptr)
++{
++	const struct event_delay_s *c1 = k1, *c2 = k2;
++	return memcmp(&c1->name[0], &c2->name[0], sizeof(c1->name));
++}
++
++static void
++event_delay_update(struct vlist_tree *tree,
++			     struct vlist_node *node_new,
++			     struct vlist_node *node_old)
++{
++	struct event_delay_s *event_new=NULL, *event_old=NULL;
++	
++	if(node_new)
++		event_new = container_of(node_new, struct event_delay_s, node);
++	if(node_old)
++		event_old = container_of(node_old, struct event_delay_s, node);
++	
++	if(event_old)
++	{
++		uloop_timeout_cancel(&event_old->timer);
++		event_old->timer.cb = NULL;
++		if(event_old->data) free(event_old->data);
++		free(event_old);
++	}
++	
++	if(event_new)
++	{
++		event_new->timer.cb = event_new->cb;
++		uloop_timeout_set(&event_new->timer, event_new->delay);
++	}
++}
++
++int add_event_delay(const char *name, uloop_timeout_handler cb, struct blob_attr *msg, unsigned int delay)
++{
++	struct event_delay_s *e=NULL;
++	char *json_data=NULL;
++	if(!name || !cb) return -1;
++	
++	e = (struct event_delay_s*)calloc(1, sizeof(struct event_delay_s));
++	if(!e) return -2;
++	
++	strncpy(e->name, name, sizeof(e->name));
++	e->delay = delay;
++	e->cb = cb;
++	if(msg) 
++	{
++		json_data = blobmsg_format_json_indent(msg, true, -1);
++		if(!json_data) goto error;
++		e->data = json_data;
++	}
++	
++	vlist_add(&event_delay_lists, &e->node, e);
++	return 0;
++	
++error:
++	if(json_data) free(json_data);
++	if(e) free(e);
++	return -1;
++}
++
++int remove_event_delay(const char *name)
++{
++	struct event_delay_s *e=NULL, e1;
++	memset(&e1, 0, sizeof(e1));
++	strncpy(e1.name, name, sizeof(e1.name));
++	e = vlist_find(&event_delay_lists, &e1, e, node);
++	if(e){
++		vlist_delete(&event_delay_lists, &e->node);
++	}
++	return 0;
++}
++
++void event_uci_commit(struct uloop_timeout *t)
++{
++	struct event_delay_s *e=NULL;
++	struct uci_ptr ptr = { 0 };
++	struct uci_package *p = NULL;
++	
++	if(t) e = container_of(t, struct event_delay_s, timer);
++	if(e == NULL) return;
++	if(e->name[0])
++	{
++		ptr.package = e->name;
++		if (!uci_load(cursor, ptr.package, &p))
++		{
++			uci_commit(cursor, &p, false);
++			uci_unload(cursor, p);
++			if(__ctx) rpc_uci_trigger_event(__ctx, e->name);
++		}
++	}
++	vlist_delete(&event_delay_lists, &e->node);
++}
++#endif
++
+ int rpc_uci_api_init(struct ubus_context *ctx)
+ {
+ 	static const struct ubus_method uci_methods[] = {
+@@ -1797,6 +1968,9 @@ int rpc_uci_api_init(struct ubus_context
+ 		return UBUS_STATUS_UNKNOWN_ERROR;
+ 
+ 	rpc_session_destroy_cb(&cb);
+-
++#if defined(_SUPPORT_EVENT_DELAY_)
++	vlist_init(&event_delay_lists, event_delay_cmp, event_delay_update);
++	__ctx = ctx;
++#endif
+ 	return ubus_add_object(ctx, &obj);
+ }

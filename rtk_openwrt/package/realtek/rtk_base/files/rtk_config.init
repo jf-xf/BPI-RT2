@@ -1,0 +1,69 @@
+#!/bin/sh /etc/rc.common
+
+START=12  
+
+PNAME=RTK
+CONFIG_STATIC_PATH=/var/config_static
+CONFIG_PATH=/config
+CONFIG_LINK_PATH=/var/config
+DEBUG=1
+
+
+W_LOG()
+{
+	if [ $DEBUG -eq 1 ]; then
+		echo "[${PNAME}] $@" > /dev/console
+	fi
+}
+
+W_ERR()
+{
+	if [ $DEBUG -eq 1 ]; then
+		echo "[${PNAME}][ERR] $@" > /dev/console
+	fi
+}
+
+check_config_partition() 
+{
+	local f
+	W_LOG "Starting check partion for Static-Config ..."
+	f=`cat /proc/mtd | grep static_conf`
+	if [ $? -eq 0 ]; then 
+		mkdir -p ${CONFIG_STATIC_PATH}
+		mountpoint -q ${CONFIG_STATIC_PATH}
+		if [ ! $? -eq 0 ]; then
+			/etc/scripts/mnt_static_cfg.sh "-t squashfs" "static_conf" "${CONFIG_STATIC_PATH}"
+		else
+			W_LOG "The Static-Config was already mouted."
+		fi
+	else
+		W_LOG "not support partion for Static-Config" 
+	fi 
+	
+	W_LOG "Starting check partion for Config  ..."
+	f=`cat /proc/mtd | grep ubi_Config`
+	if [ $? -eq 0 ]; then 
+		mkdir -p ${CONFIG_PATH}
+		mountpoint -q ${CONFIG_PATH}
+		if [ ! $? -eq 0 ]; then
+			mount -t ubifs ubi0:ubi_Config ${CONFIG_PATH}
+			if [ ! $? -eq 0 ]; then
+				W_ERR "Cannot mount partion for Config"
+			fi
+		else
+			W_LOG "The Config was already mouted."
+		fi
+	else
+		W_ERR "not support partion for Config" 
+	fi 
+	test -L ${CONFIG_PATH} || ln -sf ${CONFIG_PATH} ${CONFIG_LINK_PATH} 
+}
+
+start()
+{
+	W_LOG "Check config ..."
+	check_config_partition
+}
+
+
+

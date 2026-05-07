@@ -1,0 +1,40 @@
+
+# Realtek RTL82xx Module configuration
+#
+
+config RTL8261_SUPPORT
+        bool "Enable Realtek RTL8261 support"
+        default n
+        help
+          This enables support for RTL8261 1*10G PHY
+
+config RTL8261_PORT6_PHY_ENABLE
+        bool "Enable RTL8261 on PORT 6 (CA_PORT)"
+        default n
+        depends on RTL8261_SUPPORT
+        help
+          Enable RTL8261 on PORT 6 for CA platform
+
+config RTL8261_PORT6_PHY_ADDR
+        int "RTL8261 PHY Address (Port 6)"
+        range 0 31
+        depends on RTL8261_SUPPORT && RTL8261_PORT6_PHY_ENABLE
+        default "0"
+        help
+          IEEE 802.3 PHY Address (5 bits)
+
+config RTL8261_PORT7_PHY_ENABLE
+        bool "Enable RTL8261 on PORT 7 (CA_PORT)"
+        default n
+        depends on RTL8261_SUPPORT
+        help
+          Enable RTL8261 on PORT 7 for CA platform
+
+config RTL8261_PORT7_PHY_ADDR
+        int "RTL8261 PHY Address (Port 7)"
+        range 0 31
+        depends on RTL8261_SUPPORT && RTL8261_PORT7_PHY_ENABLE
+        default "0"
+        help
+          IEEE 802.3 PHY Address (5 bits)
+

@@ -1,0 +1,61 @@
+Index: linux-5.10.125/arch/arm/mach-realtek/Kconfig
+===================================================================
+--- linux-5.10.125.orig/arch/arm/mach-realtek/Kconfig
++++ linux-5.10.125/arch/arm/mach-realtek/Kconfig
+@@ -1,11 +1,45 @@
+-# SPDX-License-Identifier: GPL-2.0-or-later
+-menuconfig ARCH_REALTEK
+-	bool "Realtek SoCs"
+-	depends on ARCH_MULTI_V7
+-	select ARM_GIC
+-	select ARM_GLOBAL_TIMER
+-	select CLKSRC_ARM_GLOBAL_TIMER_SCHED_CLOCK
+-	select GENERIC_IRQ_CHIP
+-	select RESET_CONTROLLER
+-	help
+-	  This enables support for the Realtek RTD1195 SoC family.
++if ARCH_CORTINA_VENUS || ARCH_REALTEK_TAURUS
++
++menu "RTK Platform selection"
++choice
++        prompt "Board Type"
++        default CORTINA_BOARD_VENUS_ENG
++        help
++          Choose the board type
++
++	config REALTEK_BOARD_TAURUS_ENG
++        bool "Taurus Engineering Board"
++        help
++          Realtek Taurus Engineering Board
++
++	config CORTINA_BOARD_VENUS_ENG
++        bool "Venus Engineering Board"
++        help
++          Cortina Venus Engineering Board
++
++endchoice
++
++choice
++        prompt "CA PON MODE"
++        default CORTINA_PON_MODE_DUAL
++        depends on ARCH_CORTINA
++
++config CORTINA_PON_MODE_DUAL
++        bool "DUAL MODE"
++        help
++          Cortina PON DUAL MODE
++
++config CORTINA_PON_MODE_GPON
++        bool "GPON MODE"
++        help
++          Cortina GPON MODE
++
++config CORTINA_PON_MODE_EPON
++        bool "EPON MODE"
++        help
++          Cortina EPON DUAL MODE
++endchoice
++
++source "arch/arm/mach-realtek/Kconfig.hook"
++endmenu
++endif

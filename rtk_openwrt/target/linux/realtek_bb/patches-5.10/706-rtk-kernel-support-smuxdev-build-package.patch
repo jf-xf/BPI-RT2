@@ -1,0 +1,39 @@
+Index: linux-5.10.138/net/core/dev.c
+===================================================================
+--- linux-5.10.138.orig/net/core/dev.c
++++ linux-5.10.138/net/core/dev.c
+@@ -5250,6 +5250,12 @@ static inline int nf_ingress(struct sk_b
+ 	return 0;
+ }
+ 
++rx_handler_func_t *smux_handler;
++EXPORT_SYMBOL(smux_handler);
++#ifdef CONFIG_PPPOE_MONITOR
++extern int pppoe_dial_monitor_process(struct sk_buff *skb);
++#endif
++
+ static int __netif_receive_skb_core(struct sk_buff **pskb, bool pfmemalloc,
+ 				    struct packet_type **ppt_prev)
+ {
+@@ -5261,6 +5267,12 @@ static int __netif_receive_skb_core(stru
+ 	int ret = NET_RX_DROP;
+ 	__be16 type;
+ 
++	rx_handler_func_t *smuxdev_rx_handler;
++	smuxdev_rx_handler = rcu_dereference(smux_handler);
++	if (smuxdev_rx_handler && smuxdev_rx_handler(&skb) == RX_HANDLER_CONSUMED){
++		return NET_RX_SUCCESS;
++	}
++
+ 	net_timestamp_check(!netdev_tstamp_prequeue, skb);
+ 
+ 	trace_netif_receive_skb(skb);
+@@ -6085,8 +6097,6 @@ static enum gro_result dev_gro_receive(s
+ 	int same_flow;
+ 	int grow;
+ 
+-	if (skb->gro_skip)
+-		goto normal;
+ 
+ 	if (netif_elide_gro(skb->dev))
+ 		goto normal;

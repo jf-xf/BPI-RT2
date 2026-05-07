@@ -1,0 +1,26 @@
+Index: linux-5.10.138/arch/mips/Kbuild.platforms
+===================================================================
+--- linux-5.10.138.orig/arch/mips/Kbuild.platforms
++++ linux-5.10.138/arch/mips/Kbuild.platforms
+@@ -23,6 +23,7 @@ platform-$(CONFIG_PIC32MZDA)		+= pic32/
+ platform-$(CONFIG_MACH_PISTACHIO)	+= pistachio/
+ platform-$(CONFIG_RALINK)		+= ralink/
+ platform-$(CONFIG_RTK_SOC_RTL9607C)     += rtl9607c/
++platform-$(CONFIG_RTK_SOC_RTL8198D)     += rtl9607c/
+ platform-$(CONFIG_MIKROTIK_RB532)	+= rb532/
+ platform-$(CONFIG_SGI_IP22)		+= sgi-ip22/
+ platform-$(CONFIG_SGI_IP27)		+= sgi-ip27/
+Index: linux-5.10.138/arch/mips/mm/cache.c
+===================================================================
+--- linux-5.10.138.orig/arch/mips/mm/cache.c
++++ linux-5.10.138/arch/mips/mm/cache.c
+@@ -61,6 +61,9 @@ void (*_dma_cache_wback_inv)(unsigned lo
+ void (*_dma_cache_wback)(unsigned long start, unsigned long size);
+ void (*_dma_cache_inv)(unsigned long start, unsigned long size);
+ 
++EXPORT_SYMBOL(_dma_cache_wback_inv);
++EXPORT_SYMBOL(_dma_cache_wback);
++EXPORT_SYMBOL(_dma_cache_inv);
+ #endif /* CONFIG_DMA_NONCOHERENT */
+ 
+ /*

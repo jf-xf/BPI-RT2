@@ -1,0 +1,12 @@
+{
+	"realtek/services/service/mcproxy": {
+		"title": "MLDproxy",
+		"action": {
+			"type": "view",
+			"path": "rtk/services/service/mcproxy"
+		},
+		"depends": {
+			"acl": [ "luci-app-rtk-mcproxy" ]
+		}
+	}
+}

@@ -1,0 +1,62 @@
+Source-Makefile: feeds/custom/mac80211_rtk/Makefile
+
+Package: kmod-cfg80211_rtk
+Submenu: Wireless Drivers
+Version: <LINUX_VERSION>-
+Depends: +iw +iwinfo +wireless-regdb @!PACKAGE_kmod-cfg80211
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: kernel
+Category: Kernel modules
+Title: cfg80211 - wireless configuration API
+Maintainer: 
+Source: 
+Type: ipkg
+Kernel-Config: CONFIG_CFG80211=m CONFIG_NL80211_TESTMODE=n CONFIG_CFG80211_REQUIRE_SIGNED_REGDB=n CONFIG_CFG80211_DEVELOPER_WARNINGS=n CONFIG_CFG80211_CERTIFICATION_ONUS=y CONFIG_CFG80211_DEFAULT_PS=n CONFIG_CFG80211_DEBUGFS=n CONFIG_CFG80211_USE_KERNEL_REGDB_KEYS=y CONFIG_CFG80211_CRDA_SUPPORT=y CONFIG_CFG80211_REG_CELLULAR_HINTS=n CONFIG_CFG80211_REG_RELAX_NO_IR=n CONFIG_CFG80211_WEXT=y CONFIG_VIRT_WIFI=n CONFIG_PKCS8_PRIVATE_KEY_PARSER=n CONFIG_PKCS7_TEST_KEY=n CONFIG_SIGNED_PE_FILE_VERIFICATION=n CONFIG_SYSTEM_EXTRA_CERTIFICATE=n CONFIG_SECONDARY_TRUSTED_KEYRING=n
+Description: cfg80211 is the Linux wireless LAN (802.11) configuration API.
+
+@@
+
+Package: kmod-mac80211_rtk
+Submenu: Wireless Drivers
+Version: <LINUX_VERSION>-
+Depends: +kmod-cfg80211_rtk +kmod-crypto-cmac +kmod-crypto-ccm +kmod-crypto-gcm +hostapd-common @!PACKAGE_kmod-mac80211
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: kernel
+Category: Kernel modules
+Title: Linux 802.11 Wireless Networking Stack
+Maintainer: 
+Source: 
+Type: ipkg
+Kernel-Config: CONFIG_MAC80211=m CONFIG_MAC80211_HAS_RC=y CONFIG_MAC80211_RC_MINSTREL=y CONFIG_MAC80211_RC_DEFAULT_MINSTREL=y CONFIG_MAC80211_MESH=y CONFIG_MAC80211_LEDS=y CONFIG_MAC80211_DEBUGFS=y CONFIG_MAC80211_DEBUG_MENU=n CONFIG_MAC80211_HWSIM=n
+Description: Generic IEEE 802.11 Networking Stack (mac80211)
+
+@@
+
+Package: kmod-lib80211_rtk
+Submenu: Wireless Drivers
+Version: <LINUX_VERSION>-
+Depends: +kmod-cfg80211_rtk +kmod-crypto-hash +kmod-crypto-ccm @!PACKAGE_kmod-lib80211
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: kernel
+Category: Kernel modules
+Title: 802.11 Networking stack
+Maintainer: 
+Source: 
+Type: ipkg
+Kernel-Config: CONFIG_LIB80211=m CONFIG_LIB80211_CRYPT_WEP=m CONFIG_LIB80211_CRYPT_CCMP=m CONFIG_LIB80211_CRYPT_TKIP=m 
+Description:  Kernel modules for 802.11 Networking stack
+ Includes:
+ - lib80211
+ - lib80211_crypt_wep
+ - lib80211_crypt_tkip
+ - lib80211_crytp_ccmp
+
+@@
+
+

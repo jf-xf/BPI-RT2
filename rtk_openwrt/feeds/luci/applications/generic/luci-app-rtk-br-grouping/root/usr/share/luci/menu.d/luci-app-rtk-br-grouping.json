@@ -1,0 +1,13 @@
+{
+	"realtek/lan/lan/brgroup": {
+		"title": "Bridge Grouping",
+		"order": 20,
+		"action": {
+			"type": "view",
+			"path": "rtk/lan/lan/brgroup"
+		},
+		"depends": {
+			"acl": [ "luci-app-rtk-br-group" ]
+		}
+	}
+}

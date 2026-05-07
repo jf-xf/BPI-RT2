@@ -1,0 +1,41 @@
+commit 977ea0d8de3cdc7c072c66eb4f718e0012d9a4d0
+Author: charlie_qian <charlie_qian@realsil.com.cn>
+Date:   Wed Jun 3 13:27:16 2020 +0800
+
+    [samba]bug fix:samba size may become 1M
+    
+    Change-Id: If798d0ceac654a1d8886fd3a12f0b40ef07682cb
+
+--- a/source3/smbd/trans2.c
++++ b/source3/smbd/trans2.c
+@@ -40,7 +40,7 @@
+ #include "libsmb/libsmb.h"
+ 
+ #define DIR_ENTRY_SAFETY_MARGIN 4096
+-static char smbfullpath[4096];
++static char smbfullpath[4096] = {0};
+ static char *store_file_unix_basic(connection_struct *conn,
+ 				char *pdata,
+ 				files_struct *fsp,
+@@ -5188,7 +5188,7 @@ static void call_trans2qfilepathinfo(con
+ 	size_t fixed_portion;
+ 	NTSTATUS status = NT_STATUS_OK;
+ 
+-	memset(smbfullpath, 0x0, sizeof(smbfullpath));
++
+ 
+ 	if (!params) {
+ 		reply_nterror(req, NT_STATUS_INVALID_PARAMETER);
+@@ -5441,7 +5441,11 @@ static void call_trans2qfilepathinfo(con
+ 		}
+ 	}
+ 
+-	sprintf(&smbfullpath,"%s/%s", conn->connectpath, smb_fname_str_dbg(smb_fname));
++	if(strcmp(smb_fname_str_dbg(smb_fname), "."))
++	{
++		memset(smbfullpath, 0x0, sizeof(smbfullpath));
++		sprintf(&smbfullpath,"%s/%s", conn->connectpath, smb_fname_str_dbg(smb_fname));
++	}
+ 	DEBUG(3,("call_trans2qfilepathinfo %s (fnum = %d) level=%d call=%d "
+ 		 "total_data=%d\n", smb_fname_str_dbg(smb_fname),
+ 		 fsp ? fsp->fnum : -1, info_level,tran_call,total_data));

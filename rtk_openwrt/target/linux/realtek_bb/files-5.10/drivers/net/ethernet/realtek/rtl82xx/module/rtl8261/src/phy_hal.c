@@ -1,0 +1,336 @@
+/*
+ * Copyright (C) 2009-2018 Realtek Semiconductor Corp.
+ * All Rights Reserved.
+ *
+ * This program is the proprietary software of Realtek Semiconductor
+ * Corporation and/or its licensors, and only be used, duplicated,
+ * modified or distributed under the authorized license from Realtek.
+ *
+ * ANY USE OF THE SOFTWARE OTHER THAN AS AUTHORIZED UNDER
+ * THIS LICENSE OR COPYRIGHT LAW IS PROHIBITED.
+ *
+ * Revision:
+ * Date: 2018-06-15
+ *
+ * Purpose : PHY HAL module.
+ *
+ * Feature : HAL is Hareware Abstraction Layer.
+ *           The module is used to implement Hareware related APIs.
+ *
+ */
+#include <linux/printk.h>
+
+#include <common/rt_type.h>
+#include <common/rt_error.h>
+#include <rtl8261/inc/phy_hal.h>
+
+#ifdef CONFIG_LUNA_G3_SERIES
+#include <aal_phy.h>
+
+#define CA_AAL_MDIO_ST_CODE_C22		1
+#define CA_AAL_MDIO_ST_CODE_C45		0
+
+extern ca_status_t aal_mdio_write(/*CODEGEN_IGNORE_TAG*/
+    CA_IN       ca_device_id_t             device_id,
+    CA_IN      ca_uint8_t              st_code,
+    CA_IN      ca_uint8_t              phy_port_addr,
+    CA_IN      ca_uint8_t              reg_dev_addr,
+    CA_IN      ca_uint16_t              addr,
+    CA_IN      ca_uint16_t              data);
+
+extern ca_status_t aal_mdio_read(/*CODEGEN_IGNORE_TAG*/
+    CA_IN       ca_device_id_t             device_id,
+    CA_IN      ca_uint8_t              st_code,
+    CA_IN      ca_uint8_t              phy_port_addr,
+    CA_IN      ca_uint8_t              reg_dev_addr,
+    CA_IN      ca_uint16_t              addr,
+    CA_OUT     ca_uint16_t             *data);
+
+#else
+
+#endif
+
+uint32                      hwp_useDefHwp = FALSE;
+
+
+
+/* Function Name:
+ *      phy_hal_mii_read
+ * Description:
+ *      Get PHY registers data by Clause 22.
+ * Input:
+ *      unit    - unit id
+ *      port    - port id
+ *      phy_reg - PHY register
+ * Output:
+ *      pData   - pointer buffer of read data
+ * Return:
+ *      RT_ERR_OK     - OK
+ *      RT_ERR_FAILED - Failed
+ * Note:
+ *      1. phy_reg valid range is 0 ~ 31
+ */
+int32
+phy_hal_mii_read(
+    uint32      unit,
+    rtk_port_t  port,
+    uint32      phy_reg,
+    uint32      *pData)
+{
+    printk("%s(%d) is Not Implemented!!\n", __FUNCTION__, __LINE__);
+    return RT_ERR_OK;
+} /* end of phy_hal_mii_read */
+
+/* Function Name:
+ *      phy_hal_mii_write
+ * Description:
+ *      Set PHY registers by Clause 22.
+ * Input:
+ *      unit    - unit id
+ *      port    - port id
+ *      phy_reg - PHY register
+ *      data    - write data
+ * Output:
+ *      None
+ * Return:
+ *      RT_ERR_OK     - OK
+ *      RT_ERR_FAILED - Failed
+ * Note:
+ *      1. phy_reg valid range is 0 ~ 31
+ */
+int32
+phy_hal_mii_write(
+    uint32      unit,
+    rtk_port_t  port,
+    uint32      phy_reg,
+    uint32      data)
+{
+    printk("%s(%d) is Not Implemented!!\n", __FUNCTION__, __LINE__);
+    return RT_ERR_OK;
+} /* end of phy_hal_mii_write */
+
+/* Function Name:
+ *      phy_hal_mmd_read
+ * Description:
+ *      Get PHY registers by Clause 45.
+ *      If the MDC/MDIO controller is Clause 22, the API shall implement Clause 22's register 13 and 14 to access MMD register of the PHY.
+ * Input:
+ *      unit    - unit id
+ *      port    - port id
+ *      mmdAddr - mmd device address
+ *      mmdReg  - mmd reg id
+ * Output:
+ *      pData   - pointer buffer of read data
+ * Return:
+ *      RT_ERR_OK     - OK
+ *      RT_ERR_FAILED - Failed
+ * Note:
+ */
+int32
+phy_hal_mmd_read(
+    uint32      unit,
+    rtk_port_t  port,
+    uint32      mmdAddr,
+    uint32      mmdReg,
+    uint32      *pData)
+{
+#ifdef CONFIG_LUNA_G3_SERIES
+	/**aal_mdio_read:
+	*@breif: Read MDIO slaver device data with 16bits width
+	*@param [in] st_code : Start of Frame (01 for Clause 22;00 for Clause 45)
+	*@param [in] phy_port_addr : PHY Address, 0~31
+	*@param [in] reg_dev_addr  : Register Address, 0~31
+	*@param [in] addr  : extended address for Clause45, normally NOT used
+	*@param [out] data : the Data returned from MDIO slaver
+	*@return: CA_E_OK if successfully, otherwise return CA_E_PARAM
+	*/
+	ca_status_t ret = CA_E_OK;
+
+	ret = aal_mdio_read(unit, CA_AAL_MDIO_ST_CODE_C45, port, (ca_uint8_t)mmdAddr, (ca_uint16_t)mmdReg , (ca_uint16_t *)pData);
+	if (ret != CA_E_OK) {
+    		printk("ERROR - %s(%d): unit[%d] port[%d] mmdAddr[%d] mmdReg[0x%x] *pData[0x%x]\n", __FUNCTION__, __LINE__, unit, port, mmdAddr, mmdReg, *pData);
+		return RT_ERR_FAILED;
+	}
+	else{
+		*pData &= 0xFFFF;
+    		//printk("OK - %s(%d): unit[%d] port[%d] mmdAddr[%d] mmdReg[0x%x] *pData[0x%x]\n", __FUNCTION__, __LINE__, unit, port, mmdAddr, mmdReg, *pData);
+	}
+#else
+#endif
+
+    return RT_ERR_OK;
+
+} /* end of phy_hal_mmd_read */
+
+
+/* Function Name:
+ *      phy_hal_mmd_write
+ * Description:
+ *      Set PHY registers by Clause 45.
+ *      If the MDC/MDIO controller is Clause 22, the API shall implement Clause 22's register 13 and 14 to access MMD register of the PHY.
+ * Input:
+ *      unit    - unit id
+ *      port    - port id
+ *      mmdAddr - mmd device address
+ *      mmdReg  - mmd reg id
+ *      data    - write data
+ * Output:
+ *      None
+ * Return:
+ *      RT_ERR_OK     - OK
+ *      RT_ERR_FAILED - Failed
+ * Note:
+ */
+int32
+phy_hal_mmd_write(
+    uint32      unit,
+    rtk_port_t  port,
+    uint32      mmdAddr,
+    uint32      mmdReg,
+    uint32      data)
+{
+#ifdef CONFIG_LUNA_G3_SERIES
+	/**aal_mdio_write:
+	*@breif: Write data to MDIO slaver device with 16bits width
+	*@param [in] st_code : Start of Frame (01 for Clause 22;00 for Clause 45)
+	*@param [in] phy_port_addr : PHY Address, 0~31
+	*@param [in] reg_dev_addr  : Register Address, 0~31
+	*@param [in] addr  : extended address for Clause45, normally NOT used
+	*@param [in] data  : the Data writen to MDIO slaver
+	*@return: CA_E_OK if successfully, otherwise return CA_E_PARAM
+	*/
+	ca_status_t ret = CA_E_OK;
+
+	ret = aal_mdio_write(unit, CA_AAL_MDIO_ST_CODE_C45, port, mmdAddr, mmdReg, data);
+	if (ret != CA_E_OK) {
+    		printk("ERROR - %s(%d): unit[%d] port[%d] mmdAddr[%d] mmdReg[0x%x] data[0x%x]\n", __FUNCTION__, __LINE__, unit, port, mmdAddr, mmdReg, data);
+		return RT_ERR_FAILED;
+	}
+	//else
+		//printk("OK - %s(%d): unit[%d] port[%d] mmdAddr[%d] mmdReg[0x%x] data[0x%x]\n", __FUNCTION__, __LINE__, unit, port, mmdAddr, mmdReg, data);
+#else
+#endif
+
+    return RT_ERR_OK;
+
+} /* end of phy_hal_mmd_write */
+
+
+/* Function Name:
+ *      phy_hal_miim_pollingEnable_get
+ * Description:
+ *      Get the mac polling PHY status of the specified port.
+ *
+ *      Realtek MAC chip will automatically access MDC/MDIO controller to get (polling) PHY's link, speed, ... status.
+ *      This API is called by RTK PHY driver to disable the ability of hardware auto polling
+ *      because for some PHY function control, it contains a series of PHY accesses and the accesses shall not be interrupted.
+ *      After the series of PHY accesses is done, this API will be called again to recover the hardware auto polling.
+ *
+ *      Implement this API If your hardware MDC/MDIO controller also has ability of auto access PHY.
+ * Input:
+ *      unit     - unit id
+ *      port     - port id
+ * Output:
+ *      pEnabled - pointer buffer of mac polling PHY status
+ * Return:
+ *      RT_ERR_OK     - OK
+ *      RT_ERR_FAILED - Failed
+ * Note:
+ *      None
+ */
+int32
+phy_hal_miim_pollingEnable_get(
+    uint32          unit,
+    rtk_port_t      port,
+    rtk_enable_t    *pEnabled)
+{
+    printk("%s(%d) is Not Implemented!!\n", __FUNCTION__, __LINE__);
+    return RT_ERR_OK;
+} /* end of phy_hal_miim_pollingEnable_get */
+
+/* Function Name:
+ *      phy_hal_miim_pollingEnable_set
+ * Description:
+ *      Set the mac polling PHY status of the specified port.
+ *
+ *      Realtek MAC chip will automatically access MDC/MDIO controller to get (polling) PHY's link, speed, ... status.
+ *      This API is called by RTK PHY driver to disable the ability of hardware auto polling
+ *      because for some PHY function control, it contains a series of PHY accesses and the accesses shall not be interrupted.
+ *      After the series of PHY accesses is done, this API will be called again to recover the hardware auto polling.
+ *
+ *      Implement this API If your hardware MDC/MDIO controller also has ability of auto access PHY.
+ * Input:
+ *      unit    - unit id
+ *      port    - port id
+ *      enabled - mac polling PHY status
+ * Output:
+ *      None
+ * Return:
+ *      RT_ERR_OK     - OK
+ *      RT_ERR_FAILED - Failed
+ * Note:
+ *      None
+ */
+int32
+phy_hal_miim_pollingEnable_set(
+    uint32          unit,
+    rtk_port_t      port,
+    rtk_enable_t    enabled)
+{
+    printk("%s(%d) is Not Implemented!!\n", __FUNCTION__, __LINE__);
+    return RT_ERR_OK;
+} /* end of phy_hal_miim_pollingEnable_set */
+
+
+
+
+/* Function Name:
+ *      phy_hal_miim_portSmiMdxProto_set
+ * Description:
+ *      Configure SMI MDC/MDIO protocol for the specified port's SMI interface
+ * Input:
+ *      unit - unit id
+ *      port - port id
+ *      proto  - protocol as Clause 22 or Clause 45
+ * Output:
+ *      None
+ * Return:
+ *      RT_ERR_OK     - OK
+ *      RT_ERR_FAILED - invalid parameter
+ *      RT_ERR_CHIP_NOT_SUPPORTED - chip not support the change of SMI protocol of the port
+ * Note:
+ *      None
+ */
+int32
+phy_hal_miim_portSmiMdxProto_set(uint32 unit, rtk_port_t port, drv_smi_mdxProtoSel_t proto)
+{
+    printk("%s(%d) is Not Implemented!!\n", __FUNCTION__, __LINE__);
+    return RT_ERR_CHIP_NOT_SUPPORTED;
+}
+
+/* Function Name:
+ *      phy_hal_miim_portSmiMdxProto_get
+ * Description:
+ *      Get SMI MDC/MDIO protocol for the specified port's SMI interface
+ * Input:
+ *      unit - unit id
+ *      port - port id
+ *      proto  - protocol as Clause 22 or Clause 45
+ * Output:
+ *      None
+ * Return:
+ *      RT_ERR_OK     - OK
+ *      RT_ERR_FAILED - invalid parameter
+ * Note:
+ *      None
+ */
+int32
+phy_hal_miim_portSmiMdxProto_get(uint32 unit, rtk_port_t port, drv_smi_mdxProtoSel_t *pProto)
+{
+    *pProto = DRV_SMI_MDX_PROTO_C45;
+    printk("%s(%d) *pProto = %d\n", __FUNCTION__, __LINE__, *pProto);
+    return RT_ERR_OK;
+}
+
+
+

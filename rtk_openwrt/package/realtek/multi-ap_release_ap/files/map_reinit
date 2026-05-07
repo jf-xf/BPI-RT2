@@ -1,0 +1,194 @@
+#!/usr/bin/lua
+
+local uci = require("luci.model.uci").cursor()
+
+local function execute(cmd)
+  print(cmd)
+  os.execute(cmd)
+end
+
+local function fwrite(path, s)
+  if not s then return end
+  local f
+  f = assert(io.open(path, "w+"))
+  f:write(s)
+  f:close()
+end
+
+local function fread(path)
+  local f, s
+  f = assert(io.open(path, "r"))
+  s = f:read("*all")
+  f:close()
+  return s
+end
+
+----------------------
+
+local mapconf = require("rtk.mapconf")
+local lstr = require("rtk.lstr")
+
+local opthelp = [[
+ -f                 Full Reload
+ -l                 Soft Reload
+ -v                 Vendor data Reload
+ -t                 Test Reload
+ -b <band>_<channel>_<bandwidth>_<sideband>         Band MIB set, -1=ignore
+ -c configured_band           Config state set
+Options without required option arguments may be specified multiple times.
+]]
+
+SERVICE_NAME = "rtk_multiap"
+WAN_IF_NAME = "veip0"
+DEFAULT_DEVICE_NAME = "easymesh_rtk"
+
+MAP_CONF_TEMPLATE = "/etc/multiap.conf"
+MAP_SETMIB_CONF = "/var/multiap_setmib.conf"
+
+DPP_CSIGN_KEY_PATH = "/tmp/dpp_csign_key"
+DPP_NET_ACCESS_KEY_PATH = "/tmp/dpp_netaccess_key"
+DPP_PRIVACY_PROTECTION_KEY_PATH = "/tmp/dpp_pp_key"
+DPP_CONNECTOR_PATH_1905 = "/tmp/dpp_map_conn"
+DPP_AKM_PATH = "/tmp/dpp_akm"
+DPP_CONNECTOR_PATH = "/tmp/dpp_"
+
+local function get_prev_mode(radio_name)
+  uci:load("wireless")
+  local prev_htmode = uci:get("wireless", radio_name, "htmode")
+  if not prev_htmode then return nil end
+  return prev_htmode:sub(prev_htmode:find("%u+"))
+end
+
+local function _write_dpp_creds(conf)
+  local function _write_radio_dpp_creds(conf, radio)
+    if conf then
+      for _, v in ipairs(conf["_BSS_DATAS"]) do
+        bss_name = "default_radio" .. radio .. v.bss_index
+        if tonumber(v.authentication_type) == AUTH_WPA2_WPA3_DPP and tonumber(v.bss_index) ~= 5 then
+          -- vxd should receive its akm and conn from wpas event instead
+          ifname = uci:get("wireless", bss_name, "ifname")
+          filename = DPP_AKM_PATH.."_"..ifname
+          fwrite(filename, "dpp+psk+sae")
+          if v.signed_connector then
+            filename = DPP_CONNECTOR_PATH..ifname.."_conn"
+            fwrite(filename, v.signed_connector)
+          end
+        end
+      end
+    end
+  end
+
+  local conf_dpp = conf.dpp
+  if not conf_dpp then return end
+
+  -- write dpp keys into tmp files
+  if conf_dpp["signed_connector_1905"] then
+    fwrite(DPP_CONNECTOR_PATH_1905, conf_dpp["signed_connector_1905"])
+  end
+  if conf_dpp["netaccess_key"] then
+    fwrite(DPP_NET_ACCESS_KEY_PATH, conf_dpp["netaccess_key"])
+  end
+  if conf_dpp["csign_key"] then
+    fwrite(DPP_CSIGN_KEY_PATH, conf_dpp["csign_key"])
+  end
+  if conf_dpp["pp_key"] then
+    fwrite(DPP_PRIVACY_PROTECTION_KEY_PATH, conf_dpp["pp_key"])
+  end
+
+  local conf_radio = conf.radios
+  local bss_name = nil
+
+  -- write dpp akm and conn for radios
+  _write_radio_dpp_creds(conf_radio[MAP_CONFIG_2G], MAP_CONFIG_2G)
+  _write_radio_dpp_creds(conf_radio[MAP_CONFIG_5GL], MAP_CONFIG_5GL)
+  _write_radio_dpp_creds(conf_radio[MAP_CONFIG_5GH], MAP_CONFIG_5GH)
+end
+
+local function _reload_wifi()
+  execute("wifi reload")
+end
+
+--[[
+During the reinit process, creating the interfaces in OpenWRT will cause them
+to be destroyed in an ungraceful manner.(i.e without terminating ongoing
+connections)
+This function is meant to trigger the disconnection of the Backhaul STA from the
+controller's Backhaul BSS.
+--]]
+local function deauth_vxd(bh_band_idx)
+  execute("wpa_cli -i wlan"..bh_band_idx.."-vxd disconnect")
+end
+
+local function main_reload_2(soft)
+  local conf = {}
+  mapconf.fill(conf, fread(MAP_CONF_TEMPLATE))
+  mapconf.fill_fromsetmib(conf, fread(MAP_SETMIB_CONF))
+  mapconf.fill_fromuci(conf)
+  mapconf.fill_radio(conf)
+  mapconf.fill_vlan(conf)
+  deauth_vxd(conf.bh_band_idx)
+
+  mapconf.set_save_uci(conf)
+  _write_dpp_creds(conf)
+  execute("killall hostapd")
+  mapconf.commit_uci("wireless", "rtkmap")
+  print("Apply configuration from controller completed")
+  _reload_wifi()
+  execute(("service %s restart"):format(SERVICE_NAME))
+end
+
+local function main_chnset(s1)
+  local lst = lstr.ssplit(s1, "_")
+  local band, channel, bwidth, sideband = lst[1], lst[2], lst[3], lst[4]
+  band = tonumber(band)
+  channel = tonumber(channel)
+  bwidth = tonumber(bwidth)
+  sideband = tonumber(sideband)
+  local radio_name = mapconf.m_band2_radioname[band]
+  local prev_mode = get_prev_mode(radio_name)
+  if not radio_name then return end
+  if channel and channel ~= -1 then
+    execute("uci set wireless."..radio_name..".channel="..channel..";uci commit")
+  end
+  local htmode
+  if bwidth and bwidth ~= -1 and prev_mode then
+    htmode = prev_mode .. mapconf.m_chw_htmode[bwidth]
+  end
+  if htmode then
+    execute("uci set wireless."..radio_name..".htmode="..htmode..";uci commit")
+  end
+end
+
+local function main_configstateset(state)
+  -- TODO
+end
+
+local function main()
+  local opts, args = require("rtk.optarg").from_opthelp(opthelp)
+  if not opts then
+    print("Usage: " .. _G.arg[0] .. ": [-atflv] [-c OPTARG]")
+    print(opthelp)
+    os.exit(1)
+  end
+
+  print(("%s %s %s %s"):format("" .. (_G.arg[0] or ""), "" .. (_G.arg[1] or ""), "" .. (_G.arg[2] or ""),
+  "" .. (_G.arg[3] or "")))
+  -- /usr/bin/map_reinit -f
+  -- /usr/bin/map_reinit -b 0_1_0_-1
+
+  if opts.b then
+    main_chnset(opts.b)
+  elseif opts.c then
+    main_configstateset(opts.c)
+  elseif opts.f then
+    print("Need full reload!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    main_reload_2(opts.l)
+  elseif opts.l then
+    print("Only need reload!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    main_reload_2(opts.l)
+  else
+    print("Unknown arguments!")
+  end
+end
+
+main()

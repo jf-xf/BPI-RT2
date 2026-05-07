@@ -1,0 +1,146 @@
+
+# Realtek RTL8686 NIC Module configuration
+#
+
+menu "NIC driver function"
+	config GMAC1_USABLE
+		bool "Enable GMAC1                           "
+		depends on RTL8686NIC && RTL9607C_SERIES
+		help
+          Enable GMAC1 function
+
+	config GMAC2_USABLE
+		bool "Enable GMAC2                           "
+		depends on RTL8686NIC && RTL9607C_SERIES
+		help
+          Enable GMAC2 function
+
+    config RX_MRING_INT_SPLIT
+        bool "Support Rx multiple ring interrupt split"
+        depends on RTL8686NIC && !RTK_SINGLE_RX_RING
+        default y
+        help
+          Support Rx multiple ring interrupt split
+
+	config TX_WATCHDOG_TIMEOUT_RESET
+        bool "Device watchdog timeout trigger HW reset"
+        depends on RTL8686NIC
+        default n
+        help
+          device watchdog timeout trigger HW reset
+
+	config RX_NAPI_MODE
+        bool "Support NAPI mode"
+        depends on RTL8686NIC
+        default y
+        help
+          Support NAPI mode
+
+	config TX_HW_LSO
+        bool "Support HW LSO"
+        depends on RTL8686NIC
+        default n
+        help
+          Support HW LSO
+
+	config TX_BACKUP_RING
+        bool "Support Tx try another ring"
+        depends on RTL8686NIC
+        default n
+        help
+          Support Tx try another ring
+
+	config TX_BACKUP_GMAC
+        bool "Support Tx try another GMAC"
+        depends on RTL8686NIC && (GMAC1_USABLE || GMAC2_USABLE)
+        default n
+        help
+          Support Tx try another GMAC
+
+	config TX_INTR_HANDLE
+        bool "Support handle Tx interrupts"
+        depends on RX_MRING_INT_SPLIT && !TX_KICK_RING_USING_POLLING
+        default n
+        help
+          Support handle Tx interrupts
+
+	menu "Tx interrupt function"
+		config TX_RECYCLE_SKB_USING_TOK_INT
+	        bool "Recycle skb by TOK interrupt"
+	        depends on TX_INTR_HANDLE
+	        default n
+	        help
+	          Recycle skb by TOK interrupt
+
+		config TX_KICK_RING_USING_TDU_INT
+	        bool "Kick Tx ring by TDU interrupt"
+	        depends on TX_INTR_HANDLE
+	        default n
+	        help
+	          Kick Tx ring by TDU interrupt
+    endmenu
+
+    config TX_POLL_HANDLE
+        bool "Support handle Tx polling"
+        depends on RX_MRING_INT_SPLIT
+        default y
+        help
+          Support handle Tx polling
+
+    menu "Tx polling function"
+	    config TX_RECYCLE_SKB_USING_POLLING
+	        bool "Recycle skb by polling"
+	        depends on TX_POLL_HANDLE
+	        default n
+	        help
+	          Recycle skb by polling
+
+	    config TX_RECYCLE_SKB_POLLING_10MSECONDS
+			default 1
+			int "Configure polling time to check wheather recycle skb if desc return OWN by CPU, unit is 10 ms"
+			depends on TX_RECYCLE_SKB_USING_POLLING
+
+		config TX_KICK_RING_USING_POLLING
+	        bool "Kick Tx ring by polling"
+	        depends on TX_POLL_HANDLE
+	        default n
+	        help
+	          Kick Tx ring by polling
+
+        config TX_RING_ACTIVE_POLLING_SECONDS
+			default 1
+			int "Configure polling time to check wheather Tx ring is active, unit is sec"
+			depends on TX_KICK_RING_USING_POLLING
+
+		config TX_RING_ACTIVE_POLLING_PACKET_NUM
+			default 50
+			int "Configure packet count each polling used to determine Tx ring is active"
+			depends on TX_KICK_RING_USING_POLLING
+
+		config TX_KICK_RING_POLLING_10MSECONDS
+			default 1
+			int "Configure polling time to check wheather TDU is happend & ring exist OWN by NIC, unit is 10 ms"
+			depends on TX_KICK_RING_USING_POLLING
+    endmenu
+	config RX_WIFI_FF_AGG
+	bool "Support Rx Wifi FastForward Aggregation"
+	depends on RTL8686NIC
+	default n
+	help
+	  Support Rx aggregate Wifi FastForward packets
+
+config RTK_NIC_HWLOOKUP_DEAMSDU_OFFLOAD
+        bool "RTK NIC HWLOOKUP deamsdu offload"
+        default n
+        help
+          This enables kernel support for NI driver tx offloading WNIC deamsdu function.
+          If you would like to have WNIC do not deamsdu and pass to NIC tx, say 'Y'.
+
+config RTK_NIC_HWLOOKUP_SNAP_TRANSFORM_BY_TX_DESC
+        bool "RTK NIC HWLOOKUP snap transform by tx desc"
+        depends on RTK_NIC_HWLOOKUP_DEAMSDU_OFFLOAD
+        default n
+        help
+          This enables kernel support for NI driver tx offloading WNIC snap packets.
+
+endmenu

@@ -1,0 +1,138 @@
+Index: linux-5.10.125/arch/alpha/include/uapi/asm/socket.h
+===================================================================
+--- linux-5.10.125.orig/arch/alpha/include/uapi/asm/socket.h
++++ linux-5.10.125/arch/alpha/include/uapi/asm/socket.h
+@@ -148,4 +148,7 @@
+ 
+ #endif
+ 
++/* for CONFIG_SOCK_RCVMARK */
++#define SO_RCVMARK		101
++
+ #endif /* _UAPI_ASM_SOCKET_H */
+Index: linux-5.10.125/arch/mips/include/uapi/asm/socket.h
+===================================================================
+--- linux-5.10.125.orig/arch/mips/include/uapi/asm/socket.h
++++ linux-5.10.125/arch/mips/include/uapi/asm/socket.h
+@@ -159,4 +159,7 @@
+ 
+ #endif
+ 
++/* for CONFIG_SOCK_RCVMARK */
++#define SO_RCVMARK		101
++
+ #endif /* _UAPI_ASM_SOCKET_H */
+Index: linux-5.10.125/include/net/sock.h
+===================================================================
+--- linux-5.10.125.orig/include/net/sock.h
++++ linux-5.10.125/include/net/sock.h
+@@ -863,6 +863,9 @@ enum sock_flags {
+ 	SOCK_TXTIME,
+ 	SOCK_XDP, /* XDP is attached */
+ 	SOCK_TSTAMP_NEW, /* Indicates 64 bit timestamps always */
++#ifdef CONFIG_SOCK_RCVMARK
++	SOCK_RCVMARK, /* for recvmsg get SKB MARK */
++#endif
+ };
+ 
+ #define SK_FLAGS_TIMESTAMP ((1UL << SOCK_TIMESTAMP) | (1UL << SOCK_TIMESTAMPING_RX_SOFTWARE))
+@@ -2475,6 +2478,11 @@ sock_recv_timestamp(struct msghdr *msg,
+ void __sock_recv_ts_and_drops(struct msghdr *msg, struct sock *sk,
+ 			      struct sk_buff *skb);
+ 
++#ifdef CONFIG_SOCK_RCVMARK
++void sock_recv_mark(struct msghdr *msg, struct sock *sk,
++				  struct sk_buff *skb);
++#endif
++
+ #define SK_DEFAULT_STAMP (-1L * NSEC_PER_SEC)
+ static inline void sock_recv_ts_and_drops(struct msghdr *msg, struct sock *sk,
+ 					  struct sk_buff *skb)
+@@ -2490,6 +2498,9 @@ static inline void sock_recv_ts_and_drop
+ 		sock_write_timestamp(sk, skb->tstamp);
+ 	else if (unlikely(sk->sk_stamp == SK_DEFAULT_STAMP))
+ 		sock_write_timestamp(sk, 0);
++#ifdef CONFIG_SOCK_RCVMARK
++	sock_recv_mark(msg, sk, skb);
++#endif
+ }
+ 
+ void __sock_tx_timestamp(__u16 tsflags, __u8 *tx_flags);
+Index: linux-5.10.125/include/uapi/asm-generic/socket.h
+===================================================================
+--- linux-5.10.125.orig/include/uapi/asm-generic/socket.h
++++ linux-5.10.125/include/uapi/asm-generic/socket.h
+@@ -144,4 +144,7 @@
+ 
+ #endif
+ 
++/* for CONFIG_SOCK_RCVMARK */
++#define SO_RCVMARK		101
++
+ #endif /* __ASM_GENERIC_SOCKET_H */
+Index: linux-5.10.125/net/Kconfig
+===================================================================
+--- linux-5.10.125.orig/net/Kconfig
++++ linux-5.10.125/net/Kconfig
+@@ -114,6 +114,12 @@ config NETWORK_SECMARK
+ 	  to nfmark, but designated for security purposes.
+ 	  If you are unsure how to answer this question, answer N.
+ 
++config SOCK_RCVMARK
++	bool "Support config socket option to get SKB MARK by recvmsg"
++	default n
++	help
++	  This for socket option to config option SO_RCVMARK to get SKB MARK by recvmsg
++
+ config RTK_SKB_MARK2
+        bool "Realtek skb mark2"
+        default y if GPON_FEATURE || EPON_FEATURE
+Index: linux-5.10.125/net/socket.c
+===================================================================
+--- linux-5.10.125.orig/net/socket.c
++++ linux-5.10.125/net/socket.c
+@@ -3604,3 +3604,14 @@ u32 kernel_sock_ip_overhead(struct sock
+ 	}
+ }
+ EXPORT_SYMBOL(kernel_sock_ip_overhead);
++
++#ifdef CONFIG_SOCK_RCVMARK
++void sock_recv_mark(struct msghdr *msg, struct sock *sk,
++				  struct sk_buff *skb)
++{
++	if (sock_flag(sk, SOCK_RCVMARK) && skb)
++		put_cmsg(msg, SOL_SOCKET, SO_RCVMARK,
++			 sizeof(__u32), &skb->mark);
++}
++EXPORT_SYMBOL(sock_recv_mark);
++#endif
+Index: linux-5.10.125/net/core/sock.c
+===================================================================
+--- linux-5.10.125.orig/net/core/sock.c
++++ linux-5.10.125/net/core/sock.c
+@@ -1260,6 +1260,12 @@ set_sndbuf:
+ 		ret = sock_bindtoindex_locked(sk, val);
+ 		break;
+ 
++#ifdef CONFIG_SOCK_RCVMARK
++	case SO_RCVMARK:
++		sock_valbool_flag(sk, SOCK_RCVMARK, valbool);
++		break;
++#endif
++
+ 	default:
+ 		ret = -ENOPROTOOPT;
+ 		break;
+@@ -1626,6 +1632,12 @@ int sock_getsockopt(struct socket *sock,
+ 		v.val = sk->sk_bound_dev_if;
+ 		break;
+ 
++#ifdef CONFIG_SOCK_RCVMARK
++	case SO_RCVMARK:
++		v.val = sock_flag(sk, SOCK_RCVMARK);
++		break;
++#endif
++
+ 	default:
+ 		/* We implement the SO_SNDLOWAT etc to not be settable
+ 		 * (1003.1g 7).

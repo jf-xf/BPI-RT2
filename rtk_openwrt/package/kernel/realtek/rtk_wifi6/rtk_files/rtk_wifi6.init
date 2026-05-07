@@ -1,0 +1,17 @@
+#!/bin/sh /etc/rc.common
+START=13
+PNAME=load_rtk_wifi6_driver
+DEBUG=1
+
+W_LOG()
+{
+	if [ $DEBUG -eq 1 ]; then
+		echo "[${PNAME}] $@" > /dev/console
+	fi
+}
+
+start()
+{
+	W_LOG "Starting ${PNAME}..."
+	test -e /etc/scripts/wifi_modutils.sh && /etc/scripts/wifi_modutils.sh &> /dev/console
+}

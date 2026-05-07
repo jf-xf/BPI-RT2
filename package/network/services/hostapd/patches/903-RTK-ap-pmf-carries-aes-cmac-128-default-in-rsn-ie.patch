@@ -1,0 +1,32 @@
+From 721875702d05c397430f2f66d2466d6f246bd6b0 Mon Sep 17 00:00:00 2001
+From: "lucien.zhliu" <lucien.zhliu@realtek.com>
+Date: Mon, 8 Aug 2022 19:26:44 +0800
+Subject: [PATCH] [hostapd] update
+ 20200815_hostapd_pmf_carries_aes_cmac_128_default_in_rsn_ie
+
+ * JIRA: WQCAP-2030
+---
+ src/ap/wpa_auth_ie.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+ mode change 100644 => 100755 src/ap/wpa_auth_ie.c
+
+diff --git a/src/ap/wpa_auth_ie.c b/src/ap/wpa_auth_ie.c
+old mode 100644
+new mode 100755
+index 524922e..e6a49ee
+--- a/src/ap/wpa_auth_ie.c
++++ b/src/ap/wpa_auth_ie.c
+@@ -326,8 +326,8 @@ int wpa_write_rsn_ie(struct wpa_auth_config *conf, u8 *buf, size_t len,
+ 		pos += PMKID_LEN;
+ 	}
+ 
+-	if (conf->ieee80211w != NO_MGMT_FRAME_PROTECTION &&
+-	    conf->group_mgmt_cipher != WPA_CIPHER_AES_128_CMAC) {
++	if (conf->ieee80211w != NO_MGMT_FRAME_PROTECTION /*&&
++	    conf->group_mgmt_cipher != WPA_CIPHER_AES_128_CMAC*/) {
+ 		if (2 + 4 > buf + len - pos)
+ 			return -1;
+ 		if (pmkid == NULL) {
+-- 
+2.37.1
+

@@ -1,0 +1,157 @@
+include $(APOLLODIR)/Compiler_Flag
+
+srctree=$(KDIR)
+
+EXTRA_CFLAGS += -Wall -Werror
+EXTRA_CFLAGS += $(PON_CFLAGS)
+EXTRA_CFLAGS += -I$(APOLLODIR)/romeDriver
+EXTRA_CFLAGS += -I$(APOLLODIR)/romeDriver/asicDriver
+EXTRA_CFLAGS += -I$(APOLLODIR)/romeDriver/diagshell
+ifeq ($(CONFIG_DEFAULTS_KERNEL_3_18),y)
+	EXTRA_CFLAGS += -I$(srctree)/drivers/net/ethernet/realtek
+else
+	EXTRA_CFLAGS += -I$(srctree)/drivers/net
+endif
+EXTRA_CFLAGS += -DCONFIG_SDK_KERNEL_LINUX
+
+LUNAR_SVN_VERSION=$(shell $(APOLLODIR)/romeDriver/gitGetLogSHA.sh $(KDIR))
+SWITCH_SVN_VERSION=$(shell $(APOLLODIR)/romeDriver/gitGetLogSHA.sh $(SDKDIR))
+DIAG_SVN_VERSION=$(shell $(APOLLODIR)/romeDriver/gitGetLogSHA.sh $(SDKDIR)/src/app/diag_rtk)
+ROMEDRIVER_SVN_VERSION=$(shell $(APOLLODIR)/romeDriver/gitGetLogSHA.sh $(APOLLODIR)/romeDriver)
+USER_SVN_VERSION=$(shell $(APOLLODIR)/romeDriver/gitGetLogSHA.sh $(ROOTDIR)/user)
+EXTRA_CFLAGS +=  -DLUNAR_SVN_VERSION="\""$(LUNAR_SVN_VERSION)"\""
+EXTRA_CFLAGS +=  -DSWITCH_SVN_VERSION="\""$(SWITCH_SVN_VERSION)"\""
+EXTRA_CFLAGS +=  -DDIAG_SVN_VERSION="\""$(DIAG_SVN_VERSION)"\""
+EXTRA_CFLAGS +=  -DROMEDRIVER_SVN_VERSION="\""$(ROMEDRIVER_SVN_VERSION)"\""
+EXTRA_CFLAGS +=  -DUSER_SVN_VERSION="\""$(USER_SVN_VERSION)"\""
+
+EXTRA_CFLAGS += -I$(APOLLODIR)/sdk/include
+EXTRA_CFLAGS += -I$(APOLLODIR)/sdk/system/include
+EXTRA_CFLAGS += -I$(APOLLODIR)/sdk/system/linux
+EXTRA_CFLAGS += -I$(APOLLODIR)/sdk/src/app/diag_rtk/include
+
+CHIP_TYPE :=
+
+ifeq ($(CONFIG_RG_RTL9607C_SERIES),y)
+CHIP_TYPE = CHIP_APOLLOPRO
+endif
+ifeq ($(CONFIG_RG_RTL9603CVD_SERIES),y)
+CHIP_TYPE = CHIP_APOLLOPRO
+endif
+
+
+ifeq ($(CONFIG_HWNAT_RG),y)
+
+ifeq ($(CONFIG_RT_EDP_API),y)
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += rt_edp_api.o
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += rt_edp_proc.o
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += rt_edp_hooks.o
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += rt_edp_debug.o
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += rt_edp_internal.o
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += rt_edp_acl.o
+endif
+
+ifeq ($(CONFIG_RG_RTL9607C_SERIES),y)
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += asicDriver/rtk_rg_apolloPro_asicDriver.o
+endif
+ifeq ($(CONFIG_RG_RTL9603CVD_SERIES),y)
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += asicDriver/rtk_rg_rtl9603cvd_asicDriver.o
+endif
+
+ifeq ($(CONFIG_RG_RTL9602C_SERIES),y)
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += rtk_rg_acl_apolloFE.o
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += rtk_rg_apolloFE_liteRomeDriver.o
+else
+ifeq ($(CHIP_TYPE), CHIP_APOLLOPRO)
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += rtk_rg_apolloPro_acl.o
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += rtk_rg_apolloPro_liteRomeDriver.o
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += asicDriver/rtk_rg_apolloPro_internal.o
+else
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += rtk_rg_acl_apollo.o
+endif
+endif
+obj-$(CONFIG_RTK_L34_ENABLE) += rtk_rg_wlan_internal.o
+obj-$(CONFIG_RTK_L34_ENABLE) += rtk_rg_internal.o
+obj-$(CONFIG_RTK_L34_ENABLE) += rtk_rg_mappingAPI.o
+obj-$(CONFIG_RTK_L34_ENABLE) += rtk_rg_liteRomeDriver.o
+obj-$(CONFIG_RTK_L34_ENABLE) += rtk_rg_apollo_liteRomeDriver.o
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += rtk_rg_fwdEngine.o
+obj-$(CONFIG_RG_IGMP_SNOOPING) += rtk_rg_igmpsnooping.o
+#obj-$(CONFIG_RG_DEBUG) += rtk_rg_debug.o
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += rtk_rg_debug.o
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += rtk_rg_display.o
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += diagshell/rtdrv_rg_netfilter.o
+obj-$(CONFIG_RG_CALLBACK) += rtk_rg_callback.o
+obj-y += rtk_rg_profile.o
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += rtk_rg_alg_tool.o
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += rtk_rg_h323.o
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += rtk_rg_sip.o
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += rtk_rg_rtsp.o
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += rtk_rg_l2tp.o
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += rtk_rg_ipsec.o
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += rtk_rg_ftp.o
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += rtk_rg_tftp.o
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += rtk_rg_pptp.o
+obj-$(CONFIG_RG_WMUX_SUPPORT)	+= rtk_rg_wmux.o
+obj-$(CONFIG_APOLLO_ROMEDRIVER) += rtk_rg_fcc.o
+
+
+else
+
+MODULE_NAME=romeDriver
+obj-m += $(MODULE_NAME).o
+$(MODULE_NAME)-objs:= \
+						rtk_rg_wlan_internal.o \
+                        rtk_rg_internal.o \
+                        rtk_rg_debug.o \
+                        diagshell/rtdrv_rg_netfilter.o \
+                        rtk_rg_display.o \
+                        rtk_rg_mappingAPI.o \
+                        rtk_rg_liteRomeDriver.o \
+                        rtk_rg_apollo_liteRomeDriver.o \
+                        rtk_rg_fwdEngine.o \
+                        rtk_rg_igmpsnooping.o \
+                        rtk_rg_alg_tool.o \
+                        rtk_rg_h323.o \
+                        rtk_rg_sip.o \
+                        rtk_rg_rtsp.o \
+                        rtk_rg_l2tp.o \
+                        rtk_rg_ipsec.o \
+                        rtk_rg_ftp.o \
+                        rtk_rg_tftp.o \
+                        rtk_rg_pptp.o \
+                        rtk_rg_fcc.o
+#remove h323 since it call kernel netfilter's static functions
+
+ifeq ($(CONFIG_RG_RTL9602C_SERIES),y)
+$(MODULE_NAME)-objs += rtk_rg_acl_apolloFE.o
+$(MODULE_NAME)-objs += rtk_rg_apolloFE_liteRomeDriver.o
+else
+ifeq ($(CONFIG_RG_RTL9607C_SERIES),y)
+$(MODULE_NAME)-objs += rtk_rg_apolloPro_acl.o
+$(MODULE_NAME)-objs += rtk_rg_apolloPro_liteRomeDriver.o
+$(MODULE_NAME)-objs += asicDriver/rtk_rg_apolloPro_asicDriver.o
+$(MODULE_NAME)-objs += asicDriver/rtk_rg_apolloPro_internal.o
+else
+$(MODULE_NAME)-objs += rtk_rg_acl_apollo.o
+endif
+endif
+
+ifeq ($(CONFIG_RG_CALLBACK),y)
+$(MODULE_NAME)-objs +=  rtk_rg_callback.o
+endif
+
+ifeq ($(CONFIG_RG_WMUX_SUPPORT),y)
+$(MODULE_NAME)-objs += rtk_rg_wmux.o
+endif
+
+
+all:
+	$(MAKE) -C $(KDIR) M=$(APOLLODIR)/romeDriver ARCH=rlx CROSS_COMPILE=$(CROSS_COMPILE)
+
+install:
+	cp -af $(MODULE_NAME).ko $(ROMFSDIR)/lib/modules
+
+clean:
+	rm -rf *.o *~ core .depend .*.cmd *.mod.c .tmp_versions *.symvers *.ko
+endif

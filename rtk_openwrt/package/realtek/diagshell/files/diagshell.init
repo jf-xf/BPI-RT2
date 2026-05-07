@@ -1,0 +1,22 @@
+#!/bin/sh /etc/rc.common
+START=15
+PNAME=diagshell
+PROG=/bin/diagshell
+DEBUG=1
+
+W_LOG()
+{
+	if [ $DEBUG -eq 1 ]; then
+		echo "[${PNAME}] $@" > /dev/console
+	fi
+}
+
+start()
+{
+	W_LOG "Starting diagshell init..."
+	test -e /etc/scripts/create_scfg_txt.sh && /etc/scripts/create_scfg_txt.sh &> /dev/console
+	test -e /etc/scripts/modutils.sh && /etc/scripts/modutils.sh &> /dev/console
+ 	test -e /etc/insdrv.sh && /etc/insdrv.sh &> /dev/console
+	if [ -f /bin/nice ]; then nice -n -18 /etc/runsdk.sh &> /dev/console; else /etc/runsdk.sh &> /dev/console; fi
+}
+

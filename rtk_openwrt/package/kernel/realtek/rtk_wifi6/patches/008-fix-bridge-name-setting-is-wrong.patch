@@ -1,0 +1,13 @@
+diff --git a/Makefile b/Makefile
+index b743cfc37..c3575de7b 100755
+--- a/Makefile
++++ b/Makefile
+@@ -616,7 +616,7 @@ EXTRA_CFLAGS += -DCONFIG_REDUCE_TX_CPU_LOADING
+ endif
+ 
+ ifeq ($(CONFIG_BR_EXT), y)
+-BR_NAME = br0
++BR_NAME := br0
+ EXTRA_CFLAGS += -DCONFIG_BR_EXT
+ EXTRA_CFLAGS += '-DCONFIG_BR_EXT_BRNAME="'$(BR_NAME)'"'
+ endif

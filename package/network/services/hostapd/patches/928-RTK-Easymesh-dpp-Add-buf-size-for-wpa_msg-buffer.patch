@@ -1,0 +1,61 @@
+From c3524fc14ad44c60843bf0bdc4974f5f32ca4852 Mon Sep 17 00:00:00 2001
+From: "ryan.kuo" <ryan.kuo@realtek.com>
+Date: Fri, 10 Feb 2023 18:47:38 +0800
+Subject: [PATCH] [All][Easymesh-dpp] Add buf size for wpa_msg buffer.
+
+Explanation: wpa_ctrl_request will be triggered sometimes
+and buffer used to receive action message may not be enough
+to hold dpp credentials. Change to at least 512 to avoid
+any potential truncation of dpp creds.
+---
+ src/common/wpa_ctrl.c    | 6 +++---
+ src/common/wpa_helpers.c | 2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+ mode change 100644 => 100755 src/common/wpa_ctrl.c
+ mode change 100644 => 100755 src/common/wpa_helpers.c
+
+diff --git a/src/common/wpa_ctrl.c b/src/common/wpa_ctrl.c
+old mode 100644
+new mode 100755
+index 6b8cac2..bad6fe0
+--- a/src/common/wpa_ctrl.c
++++ b/src/common/wpa_ctrl.c
+@@ -311,7 +311,7 @@ void wpa_ctrl_cleanup(void)
+ struct wpa_ctrl * wpa_ctrl_open(const char *ctrl_path)
+ {
+ 	struct wpa_ctrl *ctrl;
+-	char buf[128];
++	char buf[512] = { 0 };
+ 	size_t len;
+ #ifdef CONFIG_CTRL_IFACE_UDP_REMOTE
+ 	struct hostent *h;
+@@ -586,9 +586,9 @@ retry_send:
+ 
+ static int wpa_ctrl_attach_helper(struct wpa_ctrl *ctrl, int attach)
+ {
+-	char buf[10];
++	char buf[512] = { 0 };
+ 	int ret;
+-	size_t len = 10;
++	size_t len = sizeof(buf);
+ 
+ 	ret = wpa_ctrl_request(ctrl, attach ? "ATTACH" : "DETACH", 6,
+ 			       buf, &len, NULL);
+diff --git a/src/common/wpa_helpers.c b/src/common/wpa_helpers.c
+old mode 100644
+new mode 100755
+index 8e1c09e..9f0bdbf
+--- a/src/common/wpa_helpers.c
++++ b/src/common/wpa_helpers.c
+@@ -35,7 +35,7 @@ static struct wpa_ctrl * wpa_open_ctrl(const char *ifname)
+ int wpa_command(const char *ifname, const char *cmd)
+ {
+ 	struct wpa_ctrl *ctrl;
+-	char buf[128];
++	char buf[512] = { 0 };
+ 	size_t len;
+ 
+ 	printf("wpa_command(ifname='%s', cmd='%s')\n", ifname, cmd);
+-- 
+2.17.1
+

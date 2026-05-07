@@ -1,0 +1,13 @@
+{
+	"realtek/wan/vpn/l2tp": {
+		"title": "L2TP",
+		"action": {
+			"type": "view",
+			"path": "rtk/wan/vpn/l2tp"
+		},
+		"depends": {
+			"acl": [ "luci-mod-rtk-wan-config" ],
+			"acl": [ "luci-app-rtk-l2tp" ]
+		}
+	}
+}

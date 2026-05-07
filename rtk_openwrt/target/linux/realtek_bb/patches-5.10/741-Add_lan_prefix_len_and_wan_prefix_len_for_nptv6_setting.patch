@@ -1,0 +1,109 @@
+--- a/net/ipv6/netfilter/ip6t_NPT.c
++++ b/net/ipv6/netfilter/ip6t_NPT.c
+@@ -92,6 +92,70 @@ static struct ipv6hdr *icmpv6_bounced_ip
+ 				  _bounced_hdr);
+ }
+ 
++#if IS_ENABLED(CONFIG_NF_CONNTRACK) //RTK modify NPT to change nf_conntrack
++#include <net/netfilter/nf_conntrack_helper.h>
++#include <net/netfilter/nf_conntrack_seqadj.h>
++#include <net/netfilter/nf_nat.h>
++#include <net/neighbour.h>
++static unsigned int ip6t_snpt_conntrack(struct sk_buff *skb, const struct xt_action_param *par)
++{
++	enum ip_conntrack_info ctinfo;
++	struct nf_conn *ct;
++	struct nf_conntrack_tuple *reply_tuple;
++
++	ct = nf_ct_get(skb, &ctinfo);
++	
++	if(!(ct && (ctinfo == IP_CT_NEW || ctinfo == IP_CT_RELATED ||
++			    ctinfo == IP_CT_RELATED_REPLY)))
++		return XT_CONTINUE;
++				
++	if(ct->status & IPS_SRC_NAT /*IPS_SRC_NAT_DONE*/) return XT_CONTINUE;
++
++	reply_tuple = &ct->tuplehash[IP_CT_DIR_REPLY].tuple;
++
++	if (memcmp(&reply_tuple->dst.u3.ip6, &ipv6_hdr(skb)->saddr, sizeof(reply_tuple->dst.u3.ip6))) 
++	{
++		memcpy(&reply_tuple->dst.u3.ip6, &ipv6_hdr(skb)->saddr, sizeof(reply_tuple->dst.u3.ip6));
++		ct->status |= (IPS_SRC_NAT /*| IPS_SRC_NAT_DONE*/);
++		
++		if (nfct_help(ct)){
++			nfct_seqadj_ext_add(ct);
++		}
++	}
++
++	return XT_CONTINUE;
++}
++
++static unsigned int ip6t_dnpt_conntrack(struct sk_buff *skb, const struct xt_action_param *par)
++{
++	enum ip_conntrack_info ctinfo;
++	struct nf_conn *ct;
++	struct nf_conntrack_tuple *reply_tuple;
++
++	ct = nf_ct_get(skb, &ctinfo);
++	
++	if(!(ct && (ctinfo == IP_CT_NEW || ctinfo == IP_CT_RELATED ||
++			    ctinfo == IP_CT_RELATED_REPLY)))
++		return XT_CONTINUE;
++				
++	if(ct->status & IPS_DST_NAT /*IPS_DST_NAT_DONE*/) return XT_CONTINUE;
++
++	reply_tuple = &ct->tuplehash[IP_CT_DIR_REPLY].tuple;
++
++	if (memcmp(&reply_tuple->src.u3.ip6, &ipv6_hdr(skb)->daddr, sizeof(reply_tuple->src.u3.ip6))) 
++	{
++		memcpy(&reply_tuple->src.u3.ip6, &ipv6_hdr(skb)->daddr, sizeof(reply_tuple->src.u3.ip6));
++		ct->status |= (IPS_DST_NAT /*| IPS_DST_NAT_DONE*/);
++		
++		if (nfct_help(ct)){
++			nfct_seqadj_ext_add(ct);
++		}
++	}
++
++	return XT_CONTINUE;
++}
++#endif
++
+ static unsigned int
+ ip6t_snpt_tg(struct sk_buff *skb, const struct xt_action_param *par)
+ {
+@@ -106,6 +170,17 @@ ip6t_snpt_tg(struct sk_buff *skb, const
+ 		return NF_DROP;
+ 	}
+ 
++#if IS_ENABLED(CONFIG_NF_CONNTRACK)	//RTK modify NPT to change nf_conntrack
++	ip6t_snpt_conntrack(skb, par);
++#endif
++#if defined(CONFIG_RTK_L34_FLEETCONNTRACK_ENABLE)
++	if(skb && skb->fcIngressData.doLearning)
++	{
++		skb->fcIngressData.nptv6_info.lan_prefix_len = npt->src_pfx_len;
++		skb->fcIngressData.nptv6_info.wan_prefix_len = npt->dst_pfx_len;
++	}
++#endif
++
+ 	/* rewrite dst addr of bounced packet which was sent to dst range */
+ 	bounced_hdr = icmpv6_bounced_ipv6hdr(skb, &_bounced_hdr);
+ 	if (bounced_hdr) {
+@@ -131,6 +206,17 @@ ip6t_dnpt_tg(struct sk_buff *skb, const
+ 		return NF_DROP;
+ 	}
+ 
++#if IS_ENABLED(CONFIG_NF_CONNTRACK)	//RTK modify NPT to change nf_conntrack
++	ip6t_dnpt_conntrack(skb, par);
++#endif
++#if defined(CONFIG_RTK_L34_FLEETCONNTRACK_ENABLE)
++	if(skb && skb->fcIngressData.doLearning)
++	{
++		skb->fcIngressData.nptv6_info.lan_prefix_len = npt->dst_pfx_len;
++		skb->fcIngressData.nptv6_info.wan_prefix_len = npt->src_pfx_len;
++	}
++#endif
++
+ 	/* rewrite src addr of bounced packet which was sent from dst range */
+ 	bounced_hdr = icmpv6_bounced_ipv6hdr(skb, &_bounced_hdr);
+ 	if (bounced_hdr) {

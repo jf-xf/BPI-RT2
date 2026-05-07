@@ -1,0 +1,1830 @@
+Index: odhcpd-2021-08-11-01b4e604/CMakeLists.txt
+===================================================================
+--- odhcpd-2021-08-11-01b4e604.orig/CMakeLists.txt
++++ odhcpd-2021-08-11-01b4e604/CMakeLists.txt
+@@ -37,7 +37,7 @@ if(${DHCPV4_SUPPORT})
+ endif(${DHCPV4_SUPPORT})
+ 
+ add_executable(odhcpd src/odhcpd.c src/config.c src/router.c src/dhcpv6.c src/ndp.c src/dhcpv6-ia.c src/netlink.c ${EXT_SRC})
+-target_link_libraries(odhcpd resolv ubox uci ${libnl} ${EXT_LINK})
++target_link_libraries(odhcpd resolv ubox uci blobmsg_json ${libnl} ${EXT_LINK})
+ 
+ # Installation
+ install(TARGETS odhcpd DESTINATION sbin/)
+Index: odhcpd-2021-08-11-01b4e604/src/config.c
+===================================================================
+--- odhcpd-2021-08-11-01b4e604.orig/src/config.c
++++ odhcpd-2021-08-11-01b4e604/src/config.c
+@@ -34,6 +34,9 @@ struct config config = {.legacy = false,
+ 
+ #define START_DEFAULT	100
+ #define LIMIT_DEFAULT	150
++#if defined(CONFIG_RTK_ODHCPD)
++#define V6_LIMIT_DEFAULT	1000
++#endif
+ 
+ #define HOSTID_LEN_MIN	12
+ #define HOSTID_LEN_MAX	64
+@@ -87,6 +90,15 @@ enum {
+ 	IFACE_ATTR_NDPROXY_ROUTING,
+ 	IFACE_ATTR_NDPROXY_SLAVE,
+ 	IFACE_ATTR_PREFIX_FILTER,
++#if defined(CONFIG_RTK_ODHCPD)
++	IFACE_ATTR_RA_OTHER,
++	IFACE_ATTR_V6_FIXED_ASSIGNED_LENGTH,
++	IFACE_ATTR_V6_PD_ROUTE_TABLEID,
++	IFACE_ATTR_FILTER_MARK,
++	IFACE_ATTR_FILTER_MARK_MASK,
++	IFACE_ATTR_DHCPV6_START,
++	IFACE_ATTR_DHCPV6_LIMIT,
++#endif
+ 	IFACE_ATTR_PREFERRED_LIFETIME,
+ 	IFACE_ATTR_MAX
+ };
+@@ -137,6 +149,15 @@ static const struct blobmsg_policy iface
+ 	[IFACE_ATTR_NDPROXY_ROUTING] = { .name = "ndproxy_routing", .type = BLOBMSG_TYPE_BOOL },
+ 	[IFACE_ATTR_NDPROXY_SLAVE] = { .name = "ndproxy_slave", .type = BLOBMSG_TYPE_BOOL },
+ 	[IFACE_ATTR_PREFIX_FILTER] = { .name = "prefix_filter", .type = BLOBMSG_TYPE_STRING },
++#if defined(CONFIG_RTK_ODHCPD)
++	[IFACE_ATTR_RA_OTHER] = { .name = "ra_other", .type = BLOBMSG_TYPE_INT32 },
++	[IFACE_ATTR_V6_FIXED_ASSIGNED_LENGTH] = { .name = "v6_fixed_assigned_length", .type = BLOBMSG_TYPE_INT32 },
++	[IFACE_ATTR_V6_PD_ROUTE_TABLEID] = { .name = "v6_pd_route_tableid", .type = BLOBMSG_TYPE_INT32 },
++	[IFACE_ATTR_FILTER_MARK] = { .name = "filter_mark", .type = BLOBMSG_TYPE_INT32 },
++	[IFACE_ATTR_FILTER_MARK_MASK] = { .name = "filter_mark_mask", .type = BLOBMSG_TYPE_INT32 },
++	[IFACE_ATTR_DHCPV6_START] = { .name = "dhcpv6_start", .type = BLOBMSG_TYPE_STRING },
++	[IFACE_ATTR_DHCPV6_LIMIT] = { .name = "dhcpv6_limit", .type = BLOBMSG_TYPE_INT32 },
++#endif
+ 	[IFACE_ATTR_PREFERRED_LIFETIME] = { .name = "preferred_lifetime", .type = BLOBMSG_TYPE_STRING },
+ };
+ 
+@@ -219,6 +240,19 @@ static void set_interface_defaults(struc
+ 	iface->ra_mininterval = iface->ra_maxinterval/3;
+ 	iface->ra_lifetime = -1;
+ 	iface->ra_dns = true;
++#if defined(CONFIG_RTK_ODHCPD)
++	iface->ra_other = RA_OTHER_ENABLE;
++	iface->v6_fixed_assigned_length = -1;
++	iface->v6_pd_route_tableid = 0;
++	{
++		char ipv6_str[64]={0};
++		snprintf(ipv6_str, sizeof(ipv6_str), "::%d", START_DEFAULT);
++		inet_pton(AF_INET6, ipv6_str, &iface->dhcpv6_start);
++
++		memcpy(&iface->dhcpv6_end, &iface->dhcpv6_start, sizeof(iface->dhcpv6_start));
++		iface->dhcpv6_end.s6_addr32[3] = htonl(ntohl(iface->dhcpv6_end.s6_addr32[3])+V6_LIMIT_DEFAULT - 1);
++	}
++#endif
+ }
+ 
+ static void clean_interface(struct interface *iface)
+@@ -521,6 +555,32 @@ int config_parse_interface(void *data, s
+ 						false, &iface->addr4);
+ 		if (len > 0)
+ 			iface->addr4_len = len;
++
++#if defined(CONFIG_RTK_ODHCPD)
++		{
++			int _len = -1;
++			if(iface->addr6_len) {
++				struct odhcpd_ipaddr *addrs_new = NULL;
++				_len = ubus_filter_interface_addrs(name, true, iface->addr6_len, iface->addr6, &addrs_new, 0);
++				if(_len >= 0)
++				{
++					free(iface->addr6);
++					iface->addr6 = addrs_new;
++					iface->addr6_len = _len;
++				}
++			}
++			if(iface->addr4_len) {
++				struct odhcpd_ipaddr *addrs_new = NULL;
++				_len = ubus_filter_interface_addrs(name, false, iface->addr4_len, iface->addr4, &addrs_new, 0);
++				if(_len >= 0)
++				{
++					free(iface->addr4);
++					iface->addr4 = addrs_new;
++					iface->addr4_len = _len;
++				}
++			}
++		}
++#endif
+ 	}
+ 
+ 	iface->inuse = true;
+@@ -881,6 +941,39 @@ int config_parse_interface(void *data, s
+ 			       iface_attrs[IFACE_ATTR_RA_PREFERENCE].name, iface->name);
+ 	}
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++	if ((c = tb[IFACE_ATTR_RA_OTHER]))
++		iface->ra_other = blobmsg_get_u32(c);
++	if ((c = tb[IFACE_ATTR_V6_FIXED_ASSIGNED_LENGTH]))
++		iface->v6_fixed_assigned_length = blobmsg_get_u32(c);
++	if ((c = tb[IFACE_ATTR_V6_PD_ROUTE_TABLEID]))
++		iface->v6_pd_route_tableid = blobmsg_get_u32(c);
++
++	/* for filter service */
++	if ((c = tb[IFACE_ATTR_FILTER_MARK])) {
++		iface->filter_mark = blobmsg_get_u32(c);
++		iface->filter_service++;
++	}
++	if ((c = tb[IFACE_ATTR_FILTER_MARK_MASK])) {
++		iface->filter_mark_mask = blobmsg_get_u32(c);
++		iface->filter_service++;
++	}
++	if ((c = tb[IFACE_ATTR_DHCPV6_START])){
++		char ipv6_str[64]={0};
++		snprintf(ipv6_str, sizeof(ipv6_str), "::%s", blobmsg_get_string(c));
++		if(inet_pton(AF_INET6, ipv6_str, &iface->dhcpv6_start) < 1)
++			goto err;
++		memcpy(&iface->dhcpv6_end, &iface->dhcpv6_start, sizeof(iface->dhcpv6_start));
++		iface->dhcpv6_end.s6_addr32[3] = htonl(ntohl(iface->dhcpv6_end.s6_addr32[3])+V6_LIMIT_DEFAULT - 1);
++	}
++
++	if ((c = tb[IFACE_ATTR_DHCPV6_LIMIT])) {
++		unsigned int limit = blobmsg_get_u32(c);
++		memcpy(&iface->dhcpv6_end, &iface->dhcpv6_start, sizeof(iface->dhcpv6_start));
++		iface->dhcpv6_end.s6_addr32[3] = htonl(ntohl(iface->dhcpv6_end.s6_addr32[3])+limit);
++	}
++#endif
++
+ 	if ((c = tb[IFACE_ATTR_PD_MANAGER]))
+ 		strncpy(iface->dhcpv6_pd_manager, blobmsg_get_string(c),
+ 				sizeof(iface->dhcpv6_pd_manager) - 1);
+Index: odhcpd-2021-08-11-01b4e604/src/dhcpv4.c
+===================================================================
+--- odhcpd-2021-08-11-01b4e604.orig/src/dhcpv4.c
++++ odhcpd-2021-08-11-01b4e604/src/dhcpv4.c
+@@ -38,6 +38,13 @@
+ #define PACKET_SIZE(start, end) (((uint8_t *)end - (uint8_t *)start) < DHCPV4_MIN_PACKET_SIZE ? \
+ 				 DHCPV4_MIN_PACKET_SIZE : (uint8_t *)end - (uint8_t *)start)
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++static struct odhcpd_event dhcpv4_server_event;
++static int dhcpv4_server_event_ref = 0;
++static int handle_dhcpv4_filter(void *addr, void *data, size_t len,
++		struct interface *iface, void *dest, uint32_t mark);
++#endif
++
+ static void dhcpv4_netevent_cb(unsigned long event, struct netevent_handler_info *info);
+ static int setup_dhcpv4_addresses(struct interface *iface);
+ static bool addr_is_fr_ip(struct interface *iface, struct in_addr *addr);
+@@ -73,6 +80,133 @@ int dhcpv4_init(void)
+ 	return 0;
+ }
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++int dhcpv4_setup_interface(struct interface *iface, bool enable)
++{
++	int ret = 0;
++
++	enable = enable && (iface->dhcpv4 != MODE_DISABLED);
++	if (enable)
++	{
++		if(dhcpv4_server_event_ref <= 0 || dhcpv4_server_event.uloop.fd < 0)
++		{
++			struct sockaddr_in bind_addr = {AF_INET, htons(DHCPV4_SERVER_PORT),
++						{INADDR_ANY}, {0}};
++			int val = 1;
++
++			memset(&dhcpv4_server_event, 0, sizeof(dhcpv4_server_event));
++			dhcpv4_server_event.uloop.fd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_UDP);
++			if (dhcpv4_server_event.uloop.fd < 0) {
++				syslog(LOG_ERR, "socket(AF_INET): %m");
++				ret = -1;
++				goto out;
++			}
++
++			/* Basic IPv4 configuration */
++			if (setsockopt(dhcpv4_server_event.uloop.fd, SOL_SOCKET, SO_REUSEADDR,
++						&val, sizeof(val)) < 0) {
++				syslog(LOG_ERR, "setsockopt(SO_REUSEADDR): %m");
++				ret = -1;
++				goto out;
++			}
++
++			if (setsockopt(dhcpv4_server_event.uloop.fd, SOL_SOCKET, SO_BROADCAST,
++						&val, sizeof(val)) < 0) {
++				syslog(LOG_ERR, "setsockopt(SO_BROADCAST): %m");
++				ret = -1;
++				goto out;
++			}
++
++			if (setsockopt(dhcpv4_server_event.uloop.fd, IPPROTO_IP, IP_PKTINFO,
++						&val, sizeof(val)) < 0) {
++				syslog(LOG_ERR, "setsockopt(IP_PKTINFO): %m");
++				ret = -1;
++				goto out;
++			}
++
++			val = IPTOS_PREC_INTERNETCONTROL;
++			if (setsockopt(dhcpv4_server_event.uloop.fd, IPPROTO_IP, IP_TOS,
++						&val, sizeof(val)) < 0) {
++				syslog(LOG_ERR, "setsockopt(IP_TOS): %m");
++				ret = -1;
++				goto out;
++			}
++
++			val = IP_PMTUDISC_DONT;
++			if (setsockopt(dhcpv4_server_event.uloop.fd, IPPROTO_IP, IP_MTU_DISCOVER,
++						&val, sizeof(val)) < 0) {
++				syslog(LOG_ERR, "setsockopt(IP_MTU_DISCOVER): %m");
++				ret = -1;
++				goto out;
++			}
++
++			/*if (setsockopt(dhcpv4_server_event.uloop.fd, SOL_SOCKET, SO_BINDTODEVICE,
++						iface->ifname, strlen(iface->ifname)) < 0) {
++				syslog(LOG_ERR, "setsockopt(SO_BINDTODEVICE): %m");
++				ret = -1;
++				goto out;
++			}*/
++
++#ifdef SO_RCVMARK
++			val = 1;
++			if (setsockopt(dhcpv4_server_event.uloop.fd, SOL_SOCKET, SO_RCVMARK,
++						&val, sizeof(val)) < 0) {
++				syslog(LOG_ERR, "setsockopt(SO_RCVMARK): %m");
++			}
++#endif
++
++			if (bind(dhcpv4_server_event.uloop.fd, (struct sockaddr*)&bind_addr,
++						sizeof(bind_addr)) < 0) {
++				syslog(LOG_ERR, "bind(): %m");
++				ret = -1;
++				goto out;
++			}
++
++			dhcpv4_server_event.handle_dgram = handle_dhcpv4;
++			dhcpv4_server_event.handle_filter = handle_dhcpv4_filter;
++			odhcpd_register(&dhcpv4_server_event);
++		}
++
++		if(iface->dhcpv4_event.uloop.fd < 0 || dhcpv4_server_event.uloop.fd != iface->dhcpv4_event.uloop.fd)
++		{
++			dhcpv4_server_event_ref++;
++			memcpy(&iface->dhcpv4_event, &dhcpv4_server_event, sizeof(dhcpv4_server_event));
++		}
++
++		ret = setup_dhcpv4_addresses(iface);
++	} else {
++		while (!list_empty(&iface->dhcpv4_assignments))
++			free_assignment(list_first_entry(&iface->dhcpv4_assignments,
++							struct dhcp_assignment, head));
++
++		if(iface->dhcpv4_event.uloop.fd >= 0 &&
++			dhcpv4_server_event.uloop.fd == iface->dhcpv4_event.uloop.fd)
++		{
++			dhcpv4_server_event_ref--;
++			iface->dhcpv4_event.uloop.fd = -1;
++		}
++	}
++
++	if(dhcpv4_server_event_ref <= 0)
++	{
++		odhcpd_deregister(&dhcpv4_server_event);
++		if(dhcpv4_server_event.uloop.fd >= 0)
++			close(dhcpv4_server_event.uloop.fd);
++		dhcpv4_server_event.uloop.fd = -1;
++		dhcpv4_server_event_ref = 0;
++	}
++
++	return ret;
++
++out:
++	if (ret < 0 && dhcpv4_server_event.uloop.fd >= 0) {
++		close(dhcpv4_server_event.uloop.fd);
++		dhcpv4_server_event.uloop.fd = -1;
++		dhcpv4_server_event_ref = 0;
++	}
++	return ret;
++}
++#else
+ int dhcpv4_setup_interface(struct interface *iface, bool enable)
+ {
+ 	int ret = 0;
+@@ -170,7 +304,7 @@ out:
+ 
+ 	return ret;
+ }
+-
++#endif
+ 
+ static void dhcpv4_netevent_cb(unsigned long event, struct netevent_handler_info *info)
+ {
+@@ -588,6 +722,31 @@ static void dhcpv4_fr_stop(struct dhcp_a
+ 	a->fr_timer.cb = NULL;
+ }
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++static int handle_dhcpv4_filter(void *addr, void *data, size_t len,
++		struct interface *iface, void *dest, uint32_t mark)
++{
++	struct dhcpv4_message *req = data;
++
++	if (iface->dhcpv4 == MODE_DISABLED)
++		return 0;
++
++	if (len < offsetof(struct dhcpv4_message, options) + 4 ||
++			req->op != DHCPV4_BOOTREQUEST || req->hlen != 6)
++		return 0;
++
++	if(iface->filter_service)
++	{
++		if(iface->filter_mark_mask &&
++			(mark & iface->filter_mark_mask) != iface->filter_mark)
++			return 0;
++		return 2;
++	}
++
++	return 1;
++}
++#endif
++
+ static int dhcpv4_send_reply(const void *buf, size_t len,
+ 			     const struct sockaddr *dest, socklen_t dest_len,
+ 			     void *opaque)
+@@ -897,6 +1056,22 @@ void dhcpv4_handle_msg(void *addr, void
+ 			syslog(LOG_ERR, "ioctl(SIOCSARP): %m");
+ 	}
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++	struct iovec iov = {&reply, PACKET_SIZE(&reply, cookie)};
++
++	if (odhcpd_sendv4(sock, &dest, &iov, 1, iface) < 0)
++		syslog(LOG_ERR, "Failed to send %s to %s - %s: %m",
++			dhcpv4_msg_to_string(msg),
++			dest.sin_addr.s_addr == INADDR_BROADCAST ?
++			"ff:ff:ff:ff:ff:ff": odhcpd_print_mac(req->chaddr, req->hlen),
++			inet_ntoa(dest.sin_addr));
++	else
++		syslog(LOG_DEBUG, "Sent %s to %s - %s",
++			dhcpv4_msg_to_string(msg),
++			dest.sin_addr.s_addr == INADDR_BROADCAST ?
++			"ff:ff:ff:ff:ff:ff": odhcpd_print_mac(req->chaddr, req->hlen),
++			inet_ntoa(dest.sin_addr));
++#else
+ 	if (send_reply(&reply, PACKET_SIZE(&reply, cookie),
+ 		       (struct sockaddr*)&dest, sizeof(dest), opaque) < 0)
+ 		syslog(LOG_ERR, "Failed to send %s to %s - %s: %m",
+@@ -910,7 +1085,7 @@ void dhcpv4_handle_msg(void *addr, void
+ 			dest.sin_addr.s_addr == INADDR_BROADCAST ?
+ 			"ff:ff:ff:ff:ff:ff": odhcpd_print_mac(req->chaddr, req->hlen),
+ 			inet_ntoa(dest.sin_addr));
+-
++#endif
+ 
+ #ifdef WITH_UBUS
+ 	if (msg == DHCPV4_MSG_ACK)
+Index: odhcpd-2021-08-11-01b4e604/src/dhcpv6-ia.c
+===================================================================
+--- odhcpd-2021-08-11-01b4e604.orig/src/dhcpv6-ia.c
++++ odhcpd-2021-08-11-01b4e604/src/dhcpv6-ia.c
+@@ -35,6 +35,11 @@
+ #include <libubox/md5.h>
+ #include <libubox/usock.h>
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++#define V6_LIMIT_MAX		0x0fff
++#endif
++
++
+ #define ADDR_ENTRY_VALID_IA_ADDR(iface, i, m, addrs) \
+     ((iface)->dhcpv6_assignall || (i) == (m) || \
+      (addrs)[(i)].prefix > 64)
+@@ -459,6 +464,9 @@ static void __apply_lease(struct dhcp_as
+ 	if (a->flags & OAF_DHCPV6_NA)
+ 		return;
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++	struct interface *iface = a->iface;
++#endif
+ 	for (ssize_t i = 0; i < addr_len; ++i) {
+ 		struct in6_addr prefix;
+ 
+@@ -468,8 +476,13 @@ static void __apply_lease(struct dhcp_as
+ 		prefix = addrs[i].addr.in6;
+ 		prefix.s6_addr32[1] |= htonl(a->assigned_subnet_id);
+ 		prefix.s6_addr32[2] = prefix.s6_addr32[3] = 0;
++#if defined(CONFIG_RTK_ODHCPD)
++		netlink_setup_route(&prefix, (a->managed_size) ? addrs[i].prefix : a->length,
++				iface->ifindex, &a->peer.sin6_addr, 1024, add, iface->v6_pd_route_tableid);
++#else
+ 		netlink_setup_route(&prefix, (a->managed_size) ? addrs[i].prefix : a->length,
+ 				a->iface->ifindex, &a->peer.sin6_addr, 1024, add);
++#endif
+ 	}
+ }
+ 
+@@ -697,6 +710,59 @@ static bool is_reserved_ipv6_iid(uint64_
+ 	return false;
+ }
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++static bool assign_na(struct interface *iface, struct dhcp_assignment *a)
++{
++	uint32_t start = ntohl(iface->dhcpv6_start.s6_addr32[3]);
++	uint32_t end = ntohl(iface->dhcpv6_end.s6_addr32[3]);
++	uint32_t count = end - start + 1;
++	struct dhcp_assignment *c;
++	uint32_t seed = 0;
++
++	/* Preconfigured assignment by static lease */
++	if (a->assigned_host_id) {
++		list_for_each_entry(c, &iface->ia_assignments, head) {
++			if (!(c->flags & OAF_DHCPV6_NA) || c->assigned_host_id > a->assigned_host_id ) {
++				list_add_tail(&a->head, &c->head);
++				return true;
++			} else if (c->assigned_host_id == a->assigned_host_id)
++				return false;
++		}
++	}
++
++	/* Seed RNG with checksum of DUID */
++	for (size_t i = 0; i < a->clid_len; ++i)
++		seed += a->clid_data[i];
++	srandom(seed);
++
++	if(count > V6_LIMIT_MAX)
++		count = V6_LIMIT_MAX;
++
++	for (uint64_t i = 0, try = (((uint32_t)random()) % count) + start; i < count;
++	     ++i, try = (((try - start) + 1) % count) + start) {
++
++		if (is_reserved_ipv6_iid(try))
++			continue;
++
++		if (config_find_lease_by_hostid(try))
++			continue;
++
++		list_for_each_entry(c, &iface->ia_assignments, head) {
++			if (c->length == 0)
++				continue;
++
++			if (!(c->flags & OAF_DHCPV6_NA) || c->assigned_host_id > try) {
++				a->assigned_host_id = try;
++				list_add_tail(&a->head, &c->head);
++				return true;
++			} else if (c->assigned_host_id == try)
++				break;
++		}
++	}
++
++	return false;
++}
++#else
+ static bool assign_na(struct interface *iface, struct dhcp_assignment *a)
+ {
+ 	struct dhcp_assignment *c;
+@@ -762,7 +828,7 @@ static bool assign_na(struct interface *
+ 
+ 	return false;
+ }
+-
++#endif
+ static void handle_addrlist_change(struct netevent_handler_info *info)
+ {
+ 	struct interface *iface = info->iface;
+@@ -1381,9 +1447,14 @@ ssize_t dhcpv6_ia_handle_IAs(uint8_t *bu
+ 						else
+ 							odhcpd_urandom(a->key, sizeof(a->key));
+ 
+-						if (is_pd && iface->dhcpv6_pd)
++						if (is_pd && iface->dhcpv6_pd) {
++#if defined(CONFIG_RTK_ODHCPD)
++							if (iface->v6_fixed_assigned_length > 48 && iface->v6_fixed_assigned_length <= 64)
++								a->length = iface->v6_fixed_assigned_length;
++#endif
+ 							while (!(assigned = assign_pd(iface, a)) &&
+ 							       !a->managed_size && ++a->length <= 64);
++						}
+ 						else if (is_na && iface->dhcpv6_na)
+ 							assigned = assign_na(iface, a);
+ 
+Index: odhcpd-2021-08-11-01b4e604/src/dhcpv6.c
+===================================================================
+--- odhcpd-2021-08-11-01b4e604.orig/src/dhcpv6.c
++++ odhcpd-2021-08-11-01b4e604/src/dhcpv6.c
+@@ -29,6 +29,13 @@
+ #include "dhcpv4.h"
+ #endif
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++static struct odhcpd_event dhcpv6_server_event;
++static int dhcpv6_server_event_ref = 0;
++static int handle_dhcpv6_filter(void *addr, void *data, size_t len,
++		struct interface *iface, void *dest, uint32_t mark);
++#endif
++
+ static void relay_client_request(struct sockaddr_in6 *source,
+ 		const void *data, size_t len, struct interface *iface);
+ static void relay_server_response(uint8_t *data, size_t len);
+@@ -45,6 +52,153 @@ int dhcpv6_init(void)
+ 	return dhcpv6_ia_init();
+ }
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++int dhcpv6_setup_interface(struct interface *iface, bool enable)
++{
++	int ret = 0, err;
++
++	enable = enable && (iface->dhcpv6 != MODE_DISABLED);
++	if(enable)
++	{
++		struct ipv6_mreq mreq;
++		if(dhcpv6_server_event_ref <= 0 || dhcpv6_server_event.uloop.fd < 0)
++		{
++			struct sockaddr_in6 bind_addr = {AF_INET6, htons(DHCPV6_SERVER_PORT),
++						0, IN6ADDR_ANY_INIT, 0};
++			int val = 1;
++
++			memset(&dhcpv6_server_event, 0, sizeof(dhcpv6_server_event));
++			dhcpv6_server_event.uloop.fd = socket(AF_INET6, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_UDP);
++			if (dhcpv6_server_event.uloop.fd < 0) {
++				syslog(LOG_ERR, "socket(AF_INET6): %m");
++				ret = -1;
++				goto out;
++			}
++
++			/* Basic IPv6 configuration */
++			/*if (setsockopt(dhcpv6_server_event.uloop.fd, SOL_SOCKET, SO_BINDTODEVICE,
++						iface->ifname, strlen(iface->ifname)) < 0) {
++				syslog(LOG_ERR, "setsockopt(SO_BINDTODEVICE): %m");
++				ret = -1;
++				goto out;
++			}*/
++
++			if (setsockopt(dhcpv6_server_event.uloop.fd, IPPROTO_IPV6, IPV6_V6ONLY,
++						&val, sizeof(val)) < 0) {
++				syslog(LOG_ERR, "setsockopt(IPV6_V6ONLY): %m");
++				ret = -1;
++				goto out;
++			}
++
++			if (setsockopt(dhcpv6_server_event.uloop.fd, SOL_SOCKET, SO_REUSEADDR,
++						&val, sizeof(val)) < 0) {
++				syslog(LOG_ERR, "setsockopt(SO_REUSEADDR): %m");
++				ret = -1;
++				goto out;
++			}
++
++			if (setsockopt(dhcpv6_server_event.uloop.fd, IPPROTO_IPV6, IPV6_RECVPKTINFO,
++						&val, sizeof(val)) < 0) {
++				syslog(LOG_ERR, "setsockopt(IPV6_RECVPKTINFO): %m");
++				ret = -1;
++				goto out;
++			}
++
++			val = DHCPV6_HOP_COUNT_LIMIT;
++			if (setsockopt(dhcpv6_server_event.uloop.fd, IPPROTO_IPV6, IPV6_MULTICAST_HOPS,
++						&val, sizeof(val)) < 0) {
++				syslog(LOG_ERR, "setsockopt(IPV6_MULTICAST_HOPS): %m");
++				ret = -1;
++				goto out;
++			}
++
++			val = 0;
++			if (setsockopt(dhcpv6_server_event.uloop.fd, IPPROTO_IPV6, IPV6_MULTICAST_LOOP,
++						&val, sizeof(val)) < 0) {
++				syslog(LOG_ERR, "setsockopt(IPV6_MULTICAST_LOOP): %m");
++				ret = -1;
++				goto out;
++			}
++
++#ifdef SO_RCVMARK
++			val = 1;
++			if (setsockopt(dhcpv6_server_event.uloop.fd, SOL_SOCKET, SO_RCVMARK,
++						&val, sizeof(val)) < 0) {
++				syslog(LOG_ERR, "setsockopt(SO_RCVMARK): %m");
++			}
++#endif
++
++			if (bind(dhcpv6_server_event.uloop.fd, (struct sockaddr*)&bind_addr,
++						sizeof(bind_addr)) < 0) {
++				syslog(LOG_ERR, "bind(): %m");
++				ret = -1;
++				goto out;
++			}
++
++			dhcpv6_server_event.handle_dgram = handle_dhcpv6;
++			dhcpv6_server_event.handle_filter = handle_dhcpv6_filter;
++			odhcpd_register(&dhcpv6_server_event);
++		}
++
++		if(iface->dhcpv6_event.uloop.fd < 0 || dhcpv6_server_event.uloop.fd != iface->dhcpv6_event.uloop.fd)
++		{
++			dhcpv6_server_event_ref++;
++			memcpy(&iface->dhcpv6_event, &dhcpv6_server_event, sizeof(dhcpv6_server_event));
++		}
++		if (iface->dhcpv6_event.uloop.fd >= 0) /* fd can be >= 0. */
++		{
++			memset(&mreq, 0, sizeof(mreq));
++			inet_pton(AF_INET6, ALL_DHCPV6_RELAYS, &mreq.ipv6mr_multiaddr);
++			mreq.ipv6mr_interface = iface->ifindex;
++
++			if ((err = setsockopt(iface->dhcpv6_event.uloop.fd, IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP,
++						&mreq, sizeof(mreq))) < 0) {
++				if(errno != EADDRINUSE) syslog(LOG_ERR, "setsockopt(IPV6_ADD_MEMBERSHIP): %m");
++			}
++
++			if (iface->dhcpv6 == MODE_SERVER) {
++				memset(&mreq, 0, sizeof(mreq));
++				inet_pton(AF_INET6, ALL_DHCPV6_SERVERS, &mreq.ipv6mr_multiaddr);
++				mreq.ipv6mr_interface = iface->ifindex;
++
++				if ((err = setsockopt(iface->dhcpv6_event.uloop.fd, IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP,
++							&mreq, sizeof(mreq))) < 0) {
++					if(errno != EADDRINUSE) syslog(LOG_ERR, "setsockopt(IPV6_ADD_MEMBERSHIP): %m");
++				}
++			}
++		}
++	}
++	else
++	{
++		if(iface->dhcpv6_event.uloop.fd >= 0 &&
++			dhcpv6_server_event.uloop.fd == iface->dhcpv6_event.uloop.fd)
++		{
++			dhcpv6_server_event_ref--;
++			iface->dhcpv6_event.uloop.fd = -1;
++		}
++	}
++
++	if(dhcpv6_server_event_ref <= 0)
++	{
++		odhcpd_deregister(&dhcpv6_server_event);
++		if(dhcpv6_server_event.uloop.fd >= 0)
++			close(dhcpv6_server_event.uloop.fd);
++		dhcpv6_server_event.uloop.fd = -1;
++		dhcpv6_server_event_ref = 0;
++	}
++
++	ret = dhcpv6_ia_setup_interface(iface, enable);
++	return ret;
++
++out:
++	if (ret < 0 && dhcpv6_server_event.uloop.fd >= 0) {
++		close(dhcpv6_server_event.uloop.fd);
++		dhcpv6_server_event.uloop.fd = -1;
++		dhcpv6_server_event_ref = 0;
++	}
++	return ret;
++}
++#else
+ int dhcpv6_setup_interface(struct interface *iface, bool enable)
+ {
+ 	int ret = 0;
+@@ -161,7 +315,7 @@ out:
+ 
+ 	return ret;
+ }
+-
++#endif
+ enum {
+ 	IOV_NESTED = 0,
+ 	IOV_DEST,
+@@ -608,6 +762,25 @@ static void handle_client_request(void *
+ 	odhcpd_send(iface->dhcpv6_event.uloop.fd, addr, iov, ARRAY_SIZE(iov), iface);
+ }
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++static int handle_dhcpv6_filter(void *addr, void *data, size_t len,
++		struct interface *iface, void *dest, uint32_t mark)
++{
++	if (iface->dhcpv6 == MODE_SERVER || iface->dhcpv6 == MODE_RELAY)
++	{
++		if(iface->filter_service)
++		{
++			if(iface->filter_mark_mask &&
++				(mark & iface->filter_mark_mask) != iface->filter_mark)
++				return 0;
++			return 2;
++		}
++		else
++			return 1;
++	}
++	return 0;
++}
++#endif
+ 
+ /* Central DHCPv6-relay handler */
+ static void handle_dhcpv6(void *addr, void *data, size_t len,
+Index: odhcpd-2021-08-11-01b4e604/src/ndp.c
+===================================================================
+--- odhcpd-2021-08-11-01b4e604.orig/src/ndp.c
++++ odhcpd-2021-08-11-01b4e604/src/ndp.c
+@@ -290,9 +290,17 @@ static void ping6(struct in6_addr *addr,
+ 	inet_ntop(AF_INET6, addr, ipbuf, sizeof(ipbuf));
+ 	syslog(LOG_DEBUG, "Pinging for %s on %s", ipbuf, iface->name);
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++	netlink_setup_route(addr, 128, iface->ifindex, NULL, 128, true, 0);
++#else
+ 	netlink_setup_route(addr, 128, iface->ifindex, NULL, 128, true);
++#endif
+ 	odhcpd_send(iface->ndp_ping_fd, &dest, &iov, 1, iface);
++#if defined(CONFIG_RTK_ODHCPD)
++	netlink_setup_route(addr, 128, iface->ifindex, NULL, 128, false, 0);
++#else
+ 	netlink_setup_route(addr, 128, iface->ifindex, NULL, 128, false);
++#endif
+ }
+ 
+ /* Send a Neighbor Advertisement. */
+@@ -387,7 +395,11 @@ static void setup_route(struct in6_addr
+ 			ipbuf, iface->name);
+ 
+ 	if (iface->learn_routes)
++#if defined(CONFIG_RTK_ODHCPD)
++		netlink_setup_route(addr, 128, iface->ifindex, NULL, 1024, add, 0);
++#else
+ 		netlink_setup_route(addr, 128, iface->ifindex, NULL, 1024, add);
++#endif
+ }
+ 
+ static void setup_addr_for_relaying(struct in6_addr *addr, struct interface *iface, bool add)
+Index: odhcpd-2021-08-11-01b4e604/src/netlink.c
+===================================================================
+--- odhcpd-2021-08-11-01b4e604.orig/src/netlink.c
++++ odhcpd-2021-08-11-01b4e604/src/netlink.c
+@@ -136,6 +136,11 @@ static void refresh_iface_addr4(int ifin
+ 	ssize_t len = netlink_get_interface_addrs(ifindex, false, &addr);
+ 	bool change = false;
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++	struct odhcpd_ipaddr *addrs_new = NULL, *addrs_tmp = NULL;
++	int _len, _len_tmp;
++#endif
++
+ 	if (len < 0)
+ 		return;
+ 
+@@ -145,6 +150,17 @@ static void refresh_iface_addr4(int ifin
+ 		if (iface->ifindex != ifindex)
+ 			continue;
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++		addrs_new = addrs_tmp = NULL;
++		if (len > 0 && (_len = ubus_filter_interface_addrs(iface->name, false, len, addr, &addrs_new, 1)) >= 0)
++		{
++			addrs_tmp = addr;
++			addr = addrs_new;
++			_len_tmp = len;
++			len = _len;
++		}
++#endif
++
+ 		memset(&event_info, 0, sizeof(event_info));
+ 		event_info.iface = iface;
+ 		event_info.addrs_old.addrs = iface->addr4;
+@@ -166,6 +182,15 @@ static void refresh_iface_addr4(int ifin
+ 
+ 		free(event_info.addrs_old.addrs);
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++		if(addrs_tmp)
++		{
++			addr = addrs_tmp;
++			len = _len_tmp;
++			continue;
++		}
++#endif
++
+ 		if (!len)
+ 			continue;
+ 
+@@ -186,6 +211,10 @@ static void refresh_iface_addr6(int ifin
+ 	ssize_t len = netlink_get_interface_addrs(ifindex, true, &addr);
+ 	time_t now = odhcpd_time();
+ 	bool change = false;
++#if defined(CONFIG_RTK_ODHCPD)
++	struct odhcpd_ipaddr *addrs_new = NULL, *addrs_tmp = NULL;
++	int _len, _len_tmp;
++#endif
+ 
+ 	if (len < 0)
+ 		return;
+@@ -196,6 +225,17 @@ static void refresh_iface_addr6(int ifin
+ 		if (iface->ifindex != ifindex)
+ 			continue;
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++		addrs_new = addrs_tmp = NULL;
++		if (len > 0 && (_len = ubus_filter_interface_addrs(iface->name, true, len, addr, &addrs_new, 1)) >= 0)
++		{
++			addrs_tmp = addr;
++			addr = addrs_new;
++			_len_tmp = len;
++			len = _len;
++		}
++#endif
++
+ 		memset(&event_info, 0, sizeof(event_info));
+ 		event_info.iface = iface;
+ 		event_info.addrs_old.addrs = iface->addr6;
+@@ -219,6 +259,15 @@ static void refresh_iface_addr6(int ifin
+ 
+ 		free(event_info.addrs_old.addrs);
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++		if(addrs_tmp)
++		{
++			addr = addrs_tmp;
++			len = _len_tmp;
++			continue;
++		}
++#endif
++
+ 		if (!len)
+ 			continue;
+ 
+@@ -798,9 +847,15 @@ out:
+ }
+ 
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++int netlink_setup_route(const struct in6_addr *addr, const int prefixlen,
++		const int ifindex, const struct in6_addr *gw,
++		const uint32_t metric, const bool add, uint32_t route_table)
++#else
+ int netlink_setup_route(const struct in6_addr *addr, const int prefixlen,
+ 		const int ifindex, const struct in6_addr *gw,
+ 		const uint32_t metric, const bool add)
++#endif
+ {
+ 	struct nl_msg *msg;
+ 	struct rtmsg rtm = {
+@@ -814,6 +869,16 @@ int netlink_setup_route(const struct in6
+ 	};
+ 	int ret = 0;
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++	if (route_table > 0)
++	{
++		if(route_table < 256)
++			rtm.rtm_table = route_table;
++		else
++			rtm.rtm_table = RT_TABLE_UNSPEC;
++	}
++#endif
++
+ 	msg = nlmsg_alloc_simple(add ? RTM_NEWROUTE : RTM_DELROUTE,
+ 					add ? NLM_F_CREATE | NLM_F_REPLACE : 0);
+ 	if (!msg)
+@@ -825,6 +890,11 @@ int netlink_setup_route(const struct in6
+ 	nla_put_u32(msg, RTA_OIF, ifindex);
+ 	nla_put_u32(msg, RTA_PRIORITY, metric);
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++	if (route_table > 0 && route_table >= 256)
++		nla_put_u32(msg, RTA_TABLE, route_table);
++#endif
++
+ 	if (gw)
+ 		nla_put(msg, RTA_GATEWAY, sizeof(*gw), gw);
+ 
+Index: odhcpd-2021-08-11-01b4e604/src/odhcpd.c
+===================================================================
+--- odhcpd-2021-08-11-01b4e604.orig/src/odhcpd.c
++++ odhcpd-2021-08-11-01b4e604/src/odhcpd.c
+@@ -205,6 +205,18 @@ ssize_t odhcpd_send(int socket, struct s
+ 	char ipbuf[INET6_ADDRSTRLEN];
+ 	inet_ntop(AF_INET6, &dest->sin6_addr, ipbuf, sizeof(ipbuf));
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++	//set special mark
++	socklen_t ret_len = sizeof(uint32_t);;
++	uint32_t mark_org=0, mark=0;
++	if(iface->filter_mark_mask)
++	{
++		getsockopt(socket, SOL_SOCKET, SO_MARK, &mark_org, &ret_len);
++		mark = (iface->filter_mark_mask & mark_org) | (iface->filter_mark_mask & iface->filter_mark);
++		setsockopt(socket, SOL_SOCKET, SO_MARK, &mark, sizeof(mark));
++	}
++#endif
++
+ 	ssize_t sent = sendmsg(socket, &msg, MSG_DONTWAIT);
+ 	if (sent < 0)
+ 		syslog(LOG_ERR, "Failed to send to %s%%%s@%s (%m)",
+@@ -212,9 +224,72 @@ ssize_t odhcpd_send(int socket, struct s
+ 	else
+ 		syslog(LOG_DEBUG, "Sent %zd bytes to %s%%%s@%s",
+ 				sent, ipbuf, iface->name, iface->ifname);
++
++#if defined(CONFIG_RTK_ODHCPD)
++	if(iface->filter_mark_mask)
++	{
++		setsockopt(socket, SOL_SOCKET, SO_MARK, &mark_org, sizeof(mark_org));
++	}
++#endif
++
+ 	return sent;
+ }
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++ssize_t odhcpd_sendv4(int socket, struct sockaddr_in *dest,
++		struct iovec *iov, size_t iov_len,
++		const struct interface *iface)
++{
++	/* Construct headers */
++	uint8_t cmsg_buf[CMSG_SPACE(sizeof(struct in_pktinfo))] = {0};
++	struct msghdr msg = {
++		.msg_name = (void *) dest,
++		.msg_namelen = sizeof(*dest),
++		.msg_iov = iov,
++		.msg_iovlen = iov_len,
++		.msg_control = cmsg_buf,
++		.msg_controllen = sizeof(cmsg_buf),
++		.msg_flags = 0
++	};
++
++	/* Set control data (define destination interface) */
++	struct cmsghdr *chdr = CMSG_FIRSTHDR(&msg);
++	chdr->cmsg_level = IPPROTO_IP;
++	chdr->cmsg_type = IP_PKTINFO;
++	chdr->cmsg_len = CMSG_LEN(sizeof(struct in_pktinfo));
++	struct in_pktinfo *pktinfo = (struct in_pktinfo*)CMSG_DATA(chdr);
++	pktinfo->ipi_ifindex = iface->ifindex;
++
++	//set special mark
++	socklen_t ret_len = sizeof(uint32_t);;
++	uint32_t mark_org=0, mark=0;
++	if(iface->filter_mark_mask)
++	{
++		getsockopt(socket, SOL_SOCKET, SO_MARK, &mark_org, &ret_len);
++		mark = (iface->filter_mark_mask & mark_org) | (iface->filter_mark_mask & iface->filter_mark);
++		setsockopt(socket, SOL_SOCKET, SO_MARK, &mark, sizeof(mark));
++	}
++
++	char ipbuf[INET_ADDRSTRLEN];
++	inet_ntop(AF_INET, &dest->sin_addr, ipbuf, sizeof(ipbuf));
++
++	ssize_t sent = sendmsg(socket, &msg, MSG_DONTWAIT);
++	if (sent < 0)
++		syslog(LOG_ERR, "Failed to send to %s%%%s@%s (%m)",
++				ipbuf, iface->name, iface->ifname);
++	else
++		syslog(LOG_DEBUG, "Sent %zd bytes to %s%%%s@%s",
++				sent, ipbuf, iface->name, iface->ifname);
++
++	if(iface->filter_mark_mask)
++	{
++		setsockopt(socket, SOL_SOCKET, SO_MARK, &mark_org, sizeof(mark_org));
++	}
++
++	return sent;
++}
++#endif
++
+ 
+ static int odhcpd_get_linklocal_interface_address(int ifindex, struct in6_addr *lladdr)
+ {
+@@ -355,6 +430,11 @@ static void odhcpd_receive_packets(struc
+ 		void *dest = NULL;
+ 		struct in6_pktinfo *pktinfo;
+ 		struct in_pktinfo *pkt4info;
++#if defined(CONFIG_RTK_ODHCPD)
++		uint32_t skb_mark = 0;
++		int found_service = 0, filter_service = 0;
++		struct interface *default_iface = NULL;
++#endif
+ 		for (struct cmsghdr *ch = CMSG_FIRSTHDR(&msg); ch != NULL; ch = CMSG_NXTHDR(&msg, ch)) {
+ 			if (ch->cmsg_level == IPPROTO_IPV6 &&
+ 					ch->cmsg_type == IPV6_PKTINFO) {
+@@ -370,6 +450,12 @@ static void odhcpd_receive_packets(struc
+ 					ch->cmsg_type == IPV6_HOPLIMIT) {
+ 				hlim = (int*)CMSG_DATA(ch);
+ 			}
++#if defined(CONFIG_RTK_ODHCPD) && defined(SO_RCVMARK)
++			else if (ch->cmsg_level == SOL_SOCKET &&
++					ch->cmsg_type == SO_RCVMARK) {
++				skb_mark = *((uint32_t*)CMSG_DATA(ch));
++			}
++#endif
+ 		}
+ 
+ 		/* Check hoplimit if received */
+@@ -401,12 +487,36 @@ static void odhcpd_receive_packets(struc
+ 			avl_for_each_element(&interfaces, iface, avl) {
+ 				if (iface->ifindex != destiface)
+ 					continue;
++#if defined(CONFIG_RTK_ODHCPD)
++				if(e->handle_filter)
++				{
++					if((filter_service = e->handle_filter(&addr, data_buf, len, iface, dest, skb_mark)) == 0)
++						continue;
++					else if(filter_service > 1) found_service++;
++					else if(filter_service == 1)
++					{
++						if(default_iface == NULL)
++							default_iface = iface;
++						continue;
++					}
++				}
++#endif
+ 
+ 				syslog(LOG_DEBUG, "Received %zd Bytes from %s%%%s@%s", len,
+ 						ipbuf, iface->name, iface->ifname);
+ 
+ 				e->handle_dgram(&addr, data_buf, len, iface, dest);
+ 			}
++#if defined(CONFIG_RTK_ODHCPD)
++			//if there are
++			if(found_service <= 0 && default_iface)
++			{
++				syslog(LOG_DEBUG, "[Default] Received %zd Bytes from %s%%%s@%s", len,
++						ipbuf, default_iface->name, default_iface->ifname);
++
++				e->handle_dgram(&addr, data_buf, len, default_iface, dest);
++			}
++#endif
+ 		}
+ 
+ 
+Index: odhcpd-2021-08-11-01b4e604/src/odhcpd.h
+===================================================================
+--- odhcpd-2021-08-11-01b4e604.orig/src/odhcpd.h
++++ odhcpd-2021-08-11-01b4e604/src/odhcpd.h
+@@ -53,6 +53,10 @@ extern struct config config;
+ 
+ struct odhcpd_event {
+ 	struct uloop_fd uloop;
++#if defined(CONFIG_RTK_ODHCPD)
++	int (*handle_filter)(void *addr, void *data, size_t len,
++			struct interface *iface, void *dest_addr, uint32_t mark);
++#endif
+ 	void (*handle_dgram)(void *addr, void *data, size_t len,
+ 			struct interface *iface, void *dest_addr);
+ 	void (*handle_error)(struct odhcpd_event *e, int error);
+@@ -295,6 +299,19 @@ struct interface {
+ 	uint32_t ra_retranstime;
+ 	uint32_t ra_hoplimit;
+ 	int ra_mtu;
++
++	//extend field
++#if defined(CONFIG_RTK_ODHCPD)
++	int ra_other;
++	int v6_fixed_assigned_length; //for ipv6 fixed assigned pd length
++	uint32_t v6_pd_route_tableid; //for ipv6 pd policy route table ID
++	uint32_t filter_mark; //for policy filter packet to service
++	uint32_t filter_mark_mask; //for policy filter packet to service
++	uint32_t filter_service;
++	struct in6_addr dhcpv6_start; //the value should be ipv6 host id(the last 64-bit)
++	struct in6_addr dhcpv6_end; //the value should be ipv6 host id(the last 64-bit)
++#endif
++
+ 	uint32_t preferred_lifetime;
+ 
+ 	// DHCP
+@@ -336,6 +353,10 @@ struct interface {
+ 
+ extern struct avl_tree interfaces;
+ extern const struct blobmsg_policy lease_attrs[LEASE_ATTR_MAX];
++#if defined(CONFIG_RTK_ODHCPD)
++#define RA_OTHER_DISABLE	0
++#define RA_OTHER_ENABLE		1
++#endif
+ 
+ inline static void free_assignment(struct dhcp_assignment *a)
+ {
+@@ -419,9 +440,22 @@ int netlink_add_netevent_handler(struct
+ ssize_t netlink_get_interface_addrs(const int ifindex, bool v6,
+ 		struct odhcpd_ipaddr **addrs);
+ int netlink_get_interface_proxy_neigh(int ifindex, const struct in6_addr *addr);
++#if defined(CONFIG_RTK_ODHCPD)
++#ifndef SO_RCVMARK
++#define SO_RCVMARK 101
++#endif
++ssize_t odhcpd_sendv4(int socket, struct sockaddr_in *dest,
++		struct iovec *iov, size_t iov_len,
++		const struct interface *iface);
++int ubus_filter_interface_addrs(const char *name, bool v6, int len, struct odhcpd_ipaddr *addrs, struct odhcpd_ipaddr **addrs_cmp, int refresh);
++int netlink_setup_route(const struct in6_addr *addr, const int prefixlen,
++		const int ifindex, const struct in6_addr *gw,
++		const uint32_t metric, const bool add, uint32_t route_table);
++#else
+ int netlink_setup_route(const struct in6_addr *addr, const int prefixlen,
+ 		const int ifindex, const struct in6_addr *gw,
+ 		const uint32_t metric, const bool add);
++#endif
+ int netlink_setup_proxy_neigh(const struct in6_addr *addr,
+ 		const int ifindex, const bool add);
+ int netlink_setup_addr(struct odhcpd_ipaddr *addr,
+Index: odhcpd-2021-08-11-01b4e604/src/router.c
+===================================================================
+--- odhcpd-2021-08-11-01b4e604.orig/src/router.c
++++ odhcpd-2021-08-11-01b4e604/src/router.c
+@@ -29,6 +29,12 @@
+ #include "router.h"
+ #include "odhcpd.h"
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++static struct odhcpd_event ra_server_event;
++static int ra_server_event_ref = 0;
++static int handle_icmpv6_filter(void *addr, void *data, size_t len,
++		struct interface *iface, void *dest, uint32_t mark);
++#endif
+ 
+ static void forward_router_solicitation(const struct interface *iface);
+ static void forward_router_advertisement(const struct interface *iface, uint8_t *data, size_t len);
+@@ -69,7 +75,189 @@ out:
+ 	return ret;
+ }
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++int router_setup_interface(struct interface *iface, bool enable)
++{
++	int ret = 0, err;
++
++	enable = enable && (iface->ra != MODE_DISABLED);
++
++	if (!fp_route) {
++		ret = -1;
++		goto out;
++	}
++
++	if(enable)
++	{
++		struct icmp6_filter filt;
++		struct ipv6_mreq mreq;
++		int val = 2;
++
++		if(ra_server_event_ref <= 0 || ra_server_event.uloop.fd < 0)
++		{
++			memset(&ra_server_event, 0, sizeof(ra_server_event));
++			/* Open ICMPv6 socket */
++			ra_server_event.uloop.fd = socket(AF_INET6, SOCK_RAW | SOCK_CLOEXEC,
++								  IPPROTO_ICMPV6);
++			if (ra_server_event.uloop.fd < 0) {
++				syslog(LOG_ERR, "socket(AF_INET6): %m");
++				ret = -1;
++				goto out;
++			}
++
++			/*if (setsockopt(ra_server_event.uloop.fd , SOL_SOCKET, SO_BINDTODEVICE,
++					   iface->ifname, strlen(iface->ifname)) < 0) {
++				syslog(LOG_ERR, "setsockopt(SO_BINDTODEVICE): %m");
++				ret = -1;
++				goto out;
++			}*/
++
++			/* Let the kernel compute our checksums */
++			if (setsockopt(ra_server_event.uloop.fd, IPPROTO_RAW, IPV6_CHECKSUM,
++					   &val, sizeof(val)) < 0) {
++				syslog(LOG_ERR, "setsockopt(IPV6_CHECKSUM): %m");
++				ret = -1;
++				goto out;
++			}
++
++			/* This is required by RFC 4861 */
++			val = 255;
++			if (setsockopt(ra_server_event.uloop.fd, IPPROTO_IPV6, IPV6_MULTICAST_HOPS,
++					   &val, sizeof(val)) < 0) {
++				syslog(LOG_ERR, "setsockopt(IPV6_MULTICAST_HOPS): %m");
++				ret = -1;
++				goto out;
++			}
++
++			if (setsockopt(ra_server_event.uloop.fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS,
++					   &val, sizeof(val)) < 0) {
++				syslog(LOG_ERR, "setsockopt(IPV6_UNICAST_HOPS): %m");
++				ret = -1;
++				goto out;
++			}
++
++			/* We need to know the source interface */
++			val = 1;
++			if (setsockopt(ra_server_event.uloop.fd, IPPROTO_IPV6, IPV6_RECVPKTINFO,
++					   &val, sizeof(val)) < 0) {
++				syslog(LOG_ERR, "setsockopt(IPV6_RECVPKTINFO): %m");
++				ret = -1;
++				goto out;
++			}
++
++			if (setsockopt(ra_server_event.uloop.fd, IPPROTO_IPV6, IPV6_RECVHOPLIMIT,
++					   &val, sizeof(val)) < 0) {
++				syslog(LOG_ERR, "setsockopt(IPV6_RECVHOPLIMIT): %m");
++				ret = -1;
++				goto out;
++			}
++
++			/* Don't loop back */
++			val = 0;
++			if (setsockopt(ra_server_event.uloop.fd, IPPROTO_IPV6, IPV6_MULTICAST_LOOP,
++					   &val, sizeof(val)) < 0) {
++				syslog(LOG_ERR, "setsockopt(IPV6_MULTICAST_LOOP): %m");
++				ret = -1;
++				goto out;
++			}
++
++			/* Filter ICMPv6 package types */
++			ICMP6_FILTER_SETBLOCKALL(&filt);
++			ICMP6_FILTER_SETPASS(ND_ROUTER_ADVERT, &filt);
++			ICMP6_FILTER_SETPASS(ND_ROUTER_SOLICIT, &filt);
++			if (setsockopt(ra_server_event.uloop.fd, IPPROTO_ICMPV6, ICMP6_FILTER,
++					   &filt, sizeof(filt)) < 0) {
++				syslog(LOG_ERR, "setsockopt(ICMP6_FILTER): %m");
++				ret = -1;
++				goto out;
++			}
++
++#ifdef SO_RCVMARK
++			val = 1;
++			if (setsockopt(ra_server_event.uloop.fd, SOL_SOCKET, SO_RCVMARK,
++						&val, sizeof(val)) < 0) {
++				syslog(LOG_ERR, "setsockopt(SO_RCVMARK): %m");
++			}
++#endif
++
++			ra_server_event.handle_dgram = handle_icmpv6;
++			ra_server_event.handle_filter = handle_icmpv6_filter;
++			odhcpd_register(&ra_server_event);
++		}
++
++		if(iface->router_event.uloop.fd < 0 || ra_server_event.uloop.fd != iface->router_event.uloop.fd)
++		{
++			ra_server_event_ref++;
++			memcpy(&iface->router_event, &ra_server_event, sizeof(ra_server_event));
++		}
++		else {
++			uloop_timeout_cancel(&iface->timer_rs);
++			iface->timer_rs.cb = NULL;
++
++			memset(&mreq, 0, sizeof(mreq));
++			mreq.ipv6mr_interface = iface->ifindex;
++			inet_pton(AF_INET6, ALL_IPV6_NODES, &mreq.ipv6mr_multiaddr);
++			setsockopt(iface->router_event.uloop.fd, IPPROTO_IPV6, IPV6_DROP_MEMBERSHIP,
++				   &mreq, sizeof(mreq));
++
++			inet_pton(AF_INET6, ALL_IPV6_ROUTERS, &mreq.ipv6mr_multiaddr);
++			setsockopt(iface->router_event.uloop.fd, IPPROTO_IPV6, IPV6_DROP_MEMBERSHIP,
++				   &mreq, sizeof(mreq));
++		}
++
++		memset(&mreq, 0, sizeof(mreq));
++		mreq.ipv6mr_interface = iface->ifindex;
++		inet_pton(AF_INET6, ALL_IPV6_ROUTERS, &mreq.ipv6mr_multiaddr);
+ 
++		if (iface->ra == MODE_RELAY && iface->master) {
++			inet_pton(AF_INET6, ALL_IPV6_NODES, &mreq.ipv6mr_multiaddr);
++			forward_router_solicitation(iface);
++		} else if (iface->ra == MODE_SERVER) {
++			iface->timer_rs.cb = trigger_router_advert;
++			uloop_timeout_set(&iface->timer_rs, 1000);
++		}
++
++		if ((err = setsockopt(iface->router_event.uloop.fd, IPPROTO_IPV6,
++			       IPV6_ADD_MEMBERSHIP, &mreq, sizeof(mreq))) < 0) {
++			if(errno != EADDRINUSE) syslog(LOG_ERR, "setsockopt(IPV6_ADD_MEMBERSHIP): %m");
++		}
++	}
++	else
++	{
++		if(iface->router_event.uloop.fd >= 0 &&
++			ra_server_event.uloop.fd == iface->router_event.uloop.fd)
++		{
++			if (!iface->master) {
++				uloop_timeout_cancel(&iface->timer_rs);
++				iface->timer_rs.cb = NULL;
++
++				trigger_router_advert(&iface->timer_rs);
++			}
++			ra_server_event_ref--;
++			iface->router_event.uloop.fd = -1;
++		}
++	}
++
++	if(ra_server_event_ref <= 0)
++	{
++		odhcpd_deregister(&ra_server_event);
++		if(ra_server_event.uloop.fd >= 0)
++			close(ra_server_event.uloop.fd);
++		ra_server_event.uloop.fd = -1;
++		ra_server_event_ref = 0;
++	}
++
++	return ret;
++
++out:
++	if (ret < 0 && ra_server_event.uloop.fd >= 0) {
++		close(ra_server_event.uloop.fd);
++		ra_server_event.uloop.fd = -1;
++		ra_server_event_ref = 0;
++	}
++	return ret;
++}
++#else
+ int router_setup_interface(struct interface *iface, bool enable)
+ {
+ 	int ret = 0;
+@@ -223,7 +411,7 @@ out:
+ 
+ 	return ret;
+ }
+-
++#endif
+ 
+ static void router_netevent_cb(unsigned long event, struct netevent_handler_info *info)
+ {
+@@ -233,11 +421,20 @@ static void router_netevent_cb(unsigned
+ 	case NETEV_IFINDEX_CHANGE:
+ 		iface = info->iface;
+ 		if (iface && iface->router_event.uloop.fd >= 0) {
++#if defined(CONFIG_RTK_ODHCPD)
++			if(iface->router_event.uloop.fd == ra_server_event.uloop.fd)
++				iface->router_event.uloop.fd = -1;
++			else
++			{
++#endif
+ 			if (iface->router_event.uloop.registered)
+ 				uloop_fd_delete(&iface->router_event.uloop);
+ 
+ 			close(iface->router_event.uloop.fd);
+ 			iface->router_event.uloop.fd = -1;
++#if defined(CONFIG_RTK_ODHCPD)
++			}
++#endif
+ 		}
+ 		break;
+ 	case NETEV_ROUTE6_ADD:
+@@ -763,6 +960,26 @@ static void trigger_router_advert(struct
+ 		uloop_timeout_set(event, msecs);
+ }
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++static int handle_icmpv6_filter(void *addr, void *data, size_t len,
++		struct interface *iface, void *dest, uint32_t mark)
++{
++	if ((iface->ra == MODE_SERVER || iface->ra == MODE_RELAY)
++			&& router_icmpv6_valid(addr, data, len))
++	{
++		if(iface->filter_service)
++		{
++			if(iface->filter_mark_mask &&
++				(mark & iface->filter_mark_mask) != iface->filter_mark)
++				return 0;
++			return 2;
++		}
++		else
++			return 1;
++	}
++	return 0;
++}
++#endif
+ 
+ /* Event handler for incoming ICMPv6 packets */
+ static void handle_icmpv6(void *addr, void *data, size_t len,
+Index: odhcpd-2021-08-11-01b4e604/src/ubus.c
+===================================================================
+--- odhcpd-2021-08-11-01b4e604.orig/src/ubus.c
++++ odhcpd-2021-08-11-01b4e604/src/ubus.c
+@@ -5,6 +5,9 @@
+ #include <arpa/inet.h>
+ 
+ #include <libubox/utils.h>
++#if defined(CONFIG_RTK_ODHCPD)
++#include <libubox/blobmsg_json.h>
++#endif
+ 
+ #include "odhcpd.h"
+ #include "dhcpv6.h"
+@@ -177,6 +180,129 @@ static int handle_dhcpv6_leases(_unused
+ 	return 0;
+ }
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++static int handle_leases(_unused struct ubus_context *ctx, _unused struct ubus_object *obj,
++		_unused struct ubus_request_data *req, _unused const char *method,
++		_unused struct blob_attr *msg)
++{
++	struct interface *iface;
++	time_t now = odhcpd_time();
++	void *j;
++
++	blob_buf_init(&b, 0);
++
++	j = blobmsg_open_array(&b, "dhcp4_leases");
++	avl_for_each_element(&interfaces, iface, avl) {
++		if (iface->dhcpv4 != MODE_SERVER)
++			continue;
++		struct dhcp_assignment *c;
++		list_for_each_entry(c, &iface->dhcpv4_assignments, head) {
++			if (!INFINITE_VALID(c->valid_until) && c->valid_until < now)
++				continue;
++
++			void *m, *l = blobmsg_open_table(&b, NULL);
++
++			blobmsg_add_u32(&b, "expires", INFINITE_VALID(c->valid_until) ?
++						(uint32_t)-1 : (uint32_t)(c->valid_until - now));
++
++			blobmsg_add_string(&b, "hostname", (c->hostname) ? c->hostname : "");
++
++			char *buf = blobmsg_alloc_string_buffer(&b, "macaddr", 18);
++
++			//odhcpd_hexlify(buf, c->hwaddr, sizeof(c->hwaddr));
++			sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x",
++				c->hwaddr[0], c->hwaddr[1], c->hwaddr[2],
++				c->hwaddr[3], c->hwaddr[4], c->hwaddr[5]);
++			blobmsg_add_string_buffer(&b);
++
++			blobmsg_add_u8(&b, "accept-reconf-nonce", c->accept_fr_nonce);
++
++			if (c->reqopts) {
++				int opt = 0;
++				int chars = 0;
++				buf = blobmsg_alloc_string_buffer(&b, "reqopts", strlen(c->reqopts) * 4 + 1);
++				for(; c->reqopts[opt]; opt++)
++					chars += snprintf(buf + chars, 6, "%u,", (uint8_t)c->reqopts[opt]);
++				buf[chars - 1] = '\0';
++				blobmsg_add_string_buffer(&b);
++			}
++
++			m = blobmsg_open_array(&b, "flags");
++			if (c->flags & OAF_BOUND)
++				blobmsg_add_string(&b, NULL, "bound");
++
++			if (c->flags & OAF_STATIC)
++				blobmsg_add_string(&b, NULL, "static");
++
++			if (c->flags & OAF_BROKEN_HOSTNAME)
++				blobmsg_add_string(&b, NULL, "broken-hostname");
++			blobmsg_close_array(&b, m);
++
++			buf = blobmsg_alloc_string_buffer(&b, "address", INET_ADDRSTRLEN);
++			struct in_addr addr = {.s_addr = c->addr};
++			inet_ntop(AF_INET, &addr, buf, INET_ADDRSTRLEN);
++			blobmsg_add_string_buffer(&b);
++			blobmsg_add_string(&b, "ifname", iface->ifname);
++
++			blobmsg_close_table(&b, l);
++		}
++	}
++	blobmsg_close_array(&b, j);
++
++	j = blobmsg_open_array(&b, "dhcp6_leases");
++	avl_for_each_element(&interfaces, iface, avl) {
++		if (iface->dhcpv6 != MODE_SERVER)
++			continue;
++
++		struct dhcp_assignment *a, *border = list_last_entry(
++				&iface->ia_assignments, struct dhcp_assignment, head);
++
++		list_for_each_entry(a, &iface->ia_assignments, head) {
++			if (a == border || (!INFINITE_VALID(a->valid_until) &&
++						a->valid_until < now))
++				continue;
++
++			void *m, *l = blobmsg_open_table(&b, NULL);
++
++			blobmsg_add_u32(&b, "expires", INFINITE_VALID(a->valid_until) ?
++						(uint32_t)-1 : (uint32_t)(a->valid_until - now));
++
++			blobmsg_add_string(&b, "hostname", (a->hostname) ? a->hostname : "");
++
++			char *buf = blobmsg_alloc_string_buffer(&b, "duid", 264);
++
++			odhcpd_hexlify(buf, a->clid_data, a->clid_len);
++			blobmsg_add_string_buffer(&b);
++
++			blobmsg_add_u32(&b, "iaid", ntohl(a->iaid));
++			blobmsg_add_u8(&b, "accept-reconf", a->accept_reconf);
++			if (a->flags & OAF_DHCPV6_NA)
++				blobmsg_add_u64(&b, "assigned", a->assigned_host_id);
++			else
++				blobmsg_add_u16(&b, "assigned", a->assigned_subnet_id);
++
++			m = blobmsg_open_array(&b, "flags");
++			if (a->flags & OAF_BOUND)
++				blobmsg_add_string(&b, NULL, "bound");
++
++			if (a->flags & OAF_STATIC)
++				blobmsg_add_string(&b, NULL, "static");
++			blobmsg_close_array(&b, m);
++
++			m = blobmsg_open_array(&b, a->length == 128 ? "ip6addr": "ipv6prefix");
++			dhcpv6_ia_enum_addrs(iface, a, now, dhcpv6_blobmsg_ia_addr, NULL);
++			blobmsg_close_table(&b, m);
++			blobmsg_add_string(&b, "ifname", iface->ifname);
++			blobmsg_close_table(&b, l);
++		}
++	}
++	blobmsg_close_array(&b, j);
++
++	ubus_send_reply(ctx, req, b.head);
++	return 0;
++}
++#endif
++
+ static int handle_add_lease(_unused struct ubus_context *ctx, _unused struct ubus_object *obj,
+ 		_unused struct ubus_request_data *req, _unused const char *method,
+ 		struct blob_attr *msg)
+@@ -190,6 +316,9 @@ static int handle_add_lease(_unused stru
+ static struct ubus_method main_object_methods[] = {
+ 	{.name = "ipv4leases", .handler = handle_dhcpv4_leases},
+ 	{.name = "ipv6leases", .handler = handle_dhcpv6_leases},
++#if defined(CONFIG_RTK_ODHCPD)
++	{.name = "leases", .handler = handle_leases},
++#endif
+ 	UBUS_METHOD("add_lease", handle_add_lease, lease_attrs),
+ };
+ 
+@@ -221,6 +350,10 @@ enum {
+ 	IFACE_ATTR_DATA,
+ 	IFACE_ATTR_PREFIX,
+ 	IFACE_ATTR_ADDRESS,
++#if defined(CONFIG_RTK_ODHCPD)
++	IFACE_ATTR_V4ADDRESS,
++	IFACE_ATTR_V6PREFIX_ASSIGN,
++#endif
+ 	IFACE_ATTR_MAX,
+ };
+ 
+@@ -231,6 +364,10 @@ static const struct blobmsg_policy iface
+ 	[IFACE_ATTR_DATA] = { .name = "data", .type = BLOBMSG_TYPE_TABLE },
+ 	[IFACE_ATTR_PREFIX] = { .name = "ipv6-prefix", .type = BLOBMSG_TYPE_ARRAY },
+ 	[IFACE_ATTR_ADDRESS] = { .name = "ipv6-address", .type = BLOBMSG_TYPE_ARRAY },
++#if defined(CONFIG_RTK_ODHCPD)
++	[IFACE_ATTR_V4ADDRESS] = { .name = "ipv4-address", .type = BLOBMSG_TYPE_ARRAY },
++	[IFACE_ATTR_V6PREFIX_ASSIGN] = { .name = "ipv6-prefix-assignment", .type = BLOBMSG_TYPE_ARRAY },
++#endif
+ };
+ 
+ static void handle_dump(_unused struct ubus_request *req, _unused int type, struct blob_attr *msg)
+@@ -437,6 +574,279 @@ bool ubus_has_prefix(const char *name, c
+ 	return false;
+ }
+ 
++#if defined(CONFIG_RTK_ODHCPD)
++#define RTK_ODHCPD_UBUS_INVOKE_TIMEOUT 1
++#define RTK_ODHCPD_NETIFD_IFACE_OBJ "network.interface"
++#define RTK_ODHCPD_NETIFD_IFACE_METHOD_STATUS "status"
++
++struct rtk_odhcpd_interface_status
++{
++	struct blob_attr *interface_status_msg;
++};
++
++static int rtk_client_ubus_init(const char *cli_path, struct ubus_context **ppctx)
++{
++	if (ppctx == NULL) return -1;
++
++	*ppctx = ubus_connect(cli_path);
++	if (!*ppctx)
++	{
++		syslog(LOG_ERR, "Unable to connect to ubus!!!");
++		return -1;
++	}
++
++	syslog(LOG_INFO, "Connected id %08x", (*ppctx)->local_id);
++
++	return 0;
++}
++
++static void rtk_odhcpd_ubus_get_interface_status_cb(struct ubus_request *req, int type, struct blob_attr *msg)
++{
++	struct rtk_odhcpd_interface_status *inf_status = (struct rtk_odhcpd_interface_status *)req->priv;
++
++	if (!msg)
++		return;
++
++	/* Copy msg */
++	inf_status->interface_status_msg = blob_memdup(msg);
++
++	return;
++}
++
++static void rtk_odhcpd_ubus_invoke_cb(struct ubus_request *req, int type, struct blob_attr *msg)
++{
++	char *json_format = NULL;
++
++	if (!msg)
++		return;
++	json_format = blobmsg_format_json_indent(msg, true, -1);
++	if (json_format)
++	{
++		syslog(LOG_INFO, "Netifd reply:%s", json_format);
++		free(json_format);
++	}
++	return;
++}
++
++
++static int rtk_odhcpd_ubus_invoke(const char *path, const char *obj_method, struct blob_buf *b_tmp, ubus_data_handler_t cb, void *priv, int timeout)
++{
++	int ret = 0;
++	struct ubus_context *ubus_ctx = NULL;
++	unsigned int id = 0;
++
++	if (cb == NULL)
++		cb = rtk_odhcpd_ubus_invoke_cb;
++
++	if (timeout < 0)
++		timeout = RTK_ODHCPD_UBUS_INVOKE_TIMEOUT * 1000;
++
++	ret = rtk_client_ubus_init(NULL, &ubus_ctx);
++	if (ret == UBUS_STATUS_OK) {
++		ret = ubus_lookup_id(ubus_ctx, path, &id);
++		if (ret != UBUS_STATUS_OK)
++			goto rtk_odhcpd_invoke_fail;
++
++		if (b_tmp && b_tmp->head) {
++			//syslog(LOG_INFO, "ubus call %s %s '%s'", path, obj_method, blobmsg_format_json(b_tmp->head, true));
++			ret = ubus_invoke(ubus_ctx, id, obj_method, b_tmp->head, cb, priv, RTK_ODHCPD_UBUS_INVOKE_TIMEOUT * 1000);
++		}
++		else {
++			//syslog(LOG_INFO, "ubus call %s %s", path, obj_method);
++			ret = ubus_invoke(ubus_ctx, id, obj_method, NULL, cb, priv, RTK_ODHCPD_UBUS_INVOKE_TIMEOUT * 1000);
++		}
++	}
++	else
++		syslog(LOG_ERR, "Connect to ubus failed:%m");
++
++rtk_odhcpd_invoke_fail:
++	if (ubus_ctx)
++		ubus_free(ubus_ctx);
++	if (b_tmp)
++		blob_buf_free(b_tmp);
++
++	return ret;
++}
++
++static int compare_address(bool v6, struct odhcpd_ipaddr *a1, struct odhcpd_ipaddr *a2)
++{
++	uint8_t mask;
++	unsigned long ip4mask = 0;
++	struct in6_addr ip6mask;
++
++	mask = (a1->prefix < a2->prefix) ? a1->prefix : a2->prefix;
++	if(v6)
++	{
++		if(mask > 128) return -1;
++		memset(&ip6mask, 0, sizeof(ip6mask));
++		ip6mask.s6_addr32[0] = htonl(mask <= 32 ? 0xffffffff << (32 - mask) : 0xffffffff);
++        ip6mask.s6_addr32[1] = htonl(mask <= 32 ? 0 : mask > 64 ? 0xffffffff : 0xffffffff << (32 - (mask-32)));
++        ip6mask.s6_addr32[2] = htonl(mask <= 64 ? 0 : mask > 96 ? 0xffffffff : 0xffffffff << (32 - (mask-64)));
++        ip6mask.s6_addr32[3] = htonl(mask <= 96 ? 0 : 0xffffffff << (32 - (mask-96)));
++		if (!(((a1->addr.in6.s6_addr32[0] ^ a2->addr.in6.s6_addr32[0]) & ip6mask.s6_addr32[0]) |
++            ((a1->addr.in6.s6_addr32[1] ^ a2->addr.in6.s6_addr32[1]) & ip6mask.s6_addr32[1]) |
++            ((a1->addr.in6.s6_addr32[2] ^ a2->addr.in6.s6_addr32[2]) & ip6mask.s6_addr32[2]) |
++            ((a1->addr.in6.s6_addr32[3] ^ a2->addr.in6.s6_addr32[3]) & ip6mask.s6_addr32[3])))
++		{
++			if(mask == a1->prefix) return 1;
++			else return 0;
++		}
++	}
++	else
++	{
++		if(mask > 32) return -1;
++		ip4mask = htonl(0xffffffff << (32 - mask));
++		if((a1->addr.in.s_addr & ip4mask) == (a2->addr.in.s_addr & ip4mask)){
++			if(mask == a1->prefix) return 1;
++			else return 0;
++		}
++	}
++
++	return -1;
++}
++
++static int filter_subnets(struct odhcpd_ipaddr *paddr, bool v6, struct blob_attr *dict)
++{
++	enum {
++		_NET_ADDRESS,
++		_NET_MASK,
++		_NET_MAX
++	};
++	static const struct blobmsg_policy policy[_NET_MAX] = {
++		[_NET_ADDRESS] = { "address", BLOBMSG_TYPE_STRING },
++		[_NET_MASK] = { "mask", BLOBMSG_TYPE_INT32 },
++	};
++	struct blob_attr *c;
++	struct odhcpd_ipaddr addr2;
++	char *addr_str;
++	uint8_t mask;
++	uint32_t rem;
++
++	if(!dict || !paddr)
++		return 0;
++
++	blobmsg_for_each_attr(c, dict, rem) {
++		struct blob_attr *tb[_NET_MAX];
++		blobmsg_parse(policy, _NET_MAX, tb, blobmsg_data(c), blobmsg_data_len(c));
++
++		if(tb[_NET_ADDRESS] && tb[_NET_MASK])
++		{
++			addr_str = blobmsg_get_string(tb[_NET_ADDRESS]);
++			mask = blobmsg_get_u32(tb[_NET_MASK]);
++			inet_pton((v6)?AF_INET6:AF_INET, addr_str, &addr2.addr.in6);
++			addr2.prefix = mask;
++			if(compare_address(v6, paddr, &addr2) >= 0)
++				return 1;
++		}
++	}
++	return 0;
++}
++
++static int rtk_odhcpd_get_interface_status_info(struct rtk_odhcpd_interface_status *inf_status_msg, const char *name)
++{
++	int ret = 0;
++	char obj_path[64];
++
++	snprintf(obj_path, sizeof(obj_path), "%s.%s",RTK_ODHCPD_NETIFD_IFACE_OBJ, name);
++	ret = rtk_odhcpd_ubus_invoke(obj_path, RTK_ODHCPD_NETIFD_IFACE_METHOD_STATUS, NULL, rtk_odhcpd_ubus_get_interface_status_cb, (void*)inf_status_msg, -1);
++	if (ret == UBUS_STATUS_OK)
++	{
++		if (inf_status_msg->interface_status_msg) {
++			return 0;
++		}
++		else
++			syslog(LOG_WARNING, "No interface status msg on %s!!!", name);
++	}
++	else
++		syslog(LOG_ERR, "ubus invoke status fail:%m");
++
++	return 1;
++}
++
++int ubus_filter_interface_addrs(const char *name, bool v6, int len, struct odhcpd_ipaddr *addrs, struct odhcpd_ipaddr **addrs_cmp, int refresh)
++{
++	struct blob_attr *c;
++	int rem;
++	struct odhcpd_ipaddr *addrs_tmp, *a1;
++	int idx = -1, i;
++	int found = 0;
++	struct blob_attr *tb[IFACE_ATTR_MAX];
++	struct rtk_odhcpd_interface_status inf_status_msg;
++
++	/* nework.interface dump method use dump msg, refresh case(nework.interface status case)
++	 * doesn't use dump msg. */
++	if (!refresh && !dump)
++		return -1;
++
++	if (len == 0 || addrs == NULL)
++		return -1;
++
++	addrs_tmp = (struct odhcpd_ipaddr*)calloc(len, sizeof(struct odhcpd_ipaddr));
++	if (addrs_tmp == NULL)
++		return -1;
++
++	/* nework.interface status case*/
++	if (refresh) {
++		if (rtk_odhcpd_get_interface_status_info(&inf_status_msg, name) == 0) {
++			blobmsg_parse(iface_attrs, IFACE_ATTR_MAX, tb, blobmsg_data(inf_status_msg.interface_status_msg), blobmsg_data_len(inf_status_msg.interface_status_msg));
++			found =1;
++		}
++	}
++	else { //nework.interface dump case
++		blobmsg_for_each_attr(c, dump, rem) {
++			blobmsg_parse(iface_attrs, IFACE_ATTR_MAX, tb, blobmsg_data(c), blobmsg_data_len(c));
++
++			if (!tb[IFACE_ATTR_INTERFACE] || strcmp(name, blobmsg_get_string(tb[IFACE_ATTR_INTERFACE])))
++				continue;
++			found = 1;
++			break;
++		}
++	}
++
++	if (found)
++	{
++		idx = 0;
++		if (v6)
++		{
++			for(i=0; i<len; i++)
++			{
++				a1 = addrs+i;
++				if (filter_subnets(a1, v6, tb[IFACE_ATTR_ADDRESS]) ||
++					filter_subnets(a1, v6, tb[IFACE_ATTR_PREFIX])  ||
++					filter_subnets(a1, v6, tb[IFACE_ATTR_V6PREFIX_ASSIGN]))
++				{
++					memcpy(addrs_tmp+idx, a1, sizeof(struct odhcpd_ipaddr));
++					idx++;
++				}
++			}
++		}
++		else
++		{
++			for(i=0; i<len; i++)
++			{
++				a1 = addrs+i;
++				if(filter_subnets(a1, v6, tb[IFACE_ATTR_V4ADDRESS]))
++				{
++					memcpy(addrs_tmp+idx, a1, sizeof(struct odhcpd_ipaddr));
++					idx++;
++				}
++			}
++		}
++	}
++
++	if (refresh && inf_status_msg.interface_status_msg)
++		free(inf_status_msg.interface_status_msg);
++
++	if (idx <= 0)
++		free(addrs_tmp);
++	else
++	{
++		if(addrs_cmp) *addrs_cmp = addrs_tmp;
++	}
++
++	return idx;
++}
++#endif
+ 
+ int ubus_init(void)
+ {

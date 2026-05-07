@@ -1,0 +1,818 @@
+Index: ppp-2.4.9.git-2021-01-04/include/linux/if_ppp.h
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/include/linux/if_ppp.h
++++ ppp-2.4.9.git-2021-01-04/include/linux/if_ppp.h
+@@ -130,6 +130,15 @@ struct ifpppcstatsreq {
+ 	struct ppp_comp_stats stats;
+ };
+ 
++#ifdef CONFIG_RTK_PPP_IF_NS
++struct ppp_if_unit_ns {
++    int unit;
++    int ns_fd;
++    char ifname[IFNAMSIZ];
++};
++#define PPPIOCNEWUNITEXT_IOWR('t', 200, struct ppp_if_unit_ns)/* create new ppp unit */
++#endif
++
+ #define ifr__name       b.ifr_ifrn.ifrn_name
+ #define stats_ptr       b.ifr_ifru.ifru_data
+ 
+Index: ppp-2.4.9.git-2021-01-04/pppd/main.c
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/main.c
++++ ppp-2.4.9.git-2021-01-04/pppd/main.c
+@@ -400,6 +400,15 @@ main(int argc, char *argv[])
+ 	end_pr_log();
+     }
+ 
++#ifdef CONFIG_RTK_PPP_IF_NS
++    if(netns[0])
++    {
++	if(init_net_ns(netns) < 0 )
++	    exit(EXIT_OPTION_ERROR);
++	script_setenv("NETNS", netns, 1);
++    }
++#endif
++
+     if (dryrun)
+ 	die(0);
+ 
+@@ -735,7 +744,16 @@ set_ifunit(int iskey)
+     if (req_ifname[0] != '\0')
+ 	slprintf(ifname, sizeof(ifname), "%s", req_ifname);
+     else
++#ifdef CONFIG_RTK_PPP_IF_NS
++    if(pppname[0] != '\0')
++    {
++	slprintf(ifname, sizeof(ifname), "%s", pppname);
++    }
++    else
++#endif
++    {
+ 	slprintf(ifname, sizeof(ifname), "%s%d", PPP_DRV_NAME, ifunit);
++    }
+     info("Using interface %s", ifname);
+     script_setenv("IFNAME", ifname, iskey);
+     slprintf(ifkey, sizeof(ifkey), "%d", ifunit);
+@@ -1831,6 +1849,11 @@ run_program(char *prog, char **args, int
+ 	warn("can't reset priority to 0: %m");
+ #endif
+ 
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_enter_ns();
++    net_bind_ns();
++#endif
++
+     /* run the program */
+     update_script_environment();
+     execve(prog, args, script_env);
+Index: ppp-2.4.9.git-2021-01-04/pppd/options.c
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/options.c
++++ ppp-2.4.9.git-2021-01-04/pppd/options.c
+@@ -156,6 +156,13 @@ bool devnam_fixed;		/* can no longer cha
+ static int logfile_fd = -1;	/* fd opened for log file */
+ static char logfile_name[MAXPATHLEN];	/* name of log file */
+ 
++#ifdef CONFIG_RTK_PPP_IF_NS
++char pppname[32] = {0};
++char netns[32] = {0};
++int netns_fd = -1;
++int def_netns_fd = -1;
++#endif
++
+ /*
+  * Prototypes
+  */
+@@ -395,6 +402,15 @@ option_t general_options[] = {
+ 	"Set pathname of PID file",
+ 	OPT_PRIV|OPT_STATIC, NULL, MAXPATHLEN },
+ 
++#ifdef CONFIG_RTK_PPP_IF_NS
++    { "pppname", o_string, pppname,
++	"PPP interface name",
++	OPT_PRIO | OPT_PRIV | OPT_STATIC, NULL, 32 },
++    { "netns", o_string, netns,
++	"PPP interface of namespace",
++	OPT_PRIO | OPT_PRIV | OPT_STATIC, NULL, 32 },
++#endif
++
+     { NULL }
+ };
+ 
+Index: ppp-2.4.9.git-2021-01-04/pppd/pppd.h
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/pppd.h
++++ ppp-2.4.9.git-2021-01-04/pppd/pppd.h
+@@ -351,6 +351,17 @@ extern int       maxoctets_dir;      /*
+ 				      3 - max(in,out) */
+ extern int       maxoctets_timeout;  /* Timeout for check of octets limit */
+ extern char path_pidfile[MAXPATHLEN]; /* pathname of PID file */
++#ifdef CONFIG_RTK_PPP_IF_NS
++extern char pppname[]; /* ppp interface name */
++extern char netns[];
++extern int netns_fd;
++extern int def_netns_fd;
++int init_net_ns(const char *ns);
++extern int net_enter_ns(void);
++extern int net_exit_ns(void);
++int net_bind_ns(void);
++#endif
++
+ #define PPP_OCTETS_DIRECTION_SUM        0
+ #define PPP_OCTETS_DIRECTION_IN         1
+ #define PPP_OCTETS_DIRECTION_OUT        2
+Index: ppp-2.4.9.git-2021-01-04/pppd/sys-linux.c
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/sys-linux.c
++++ ppp-2.4.9.git-2021-01-04/pppd/sys-linux.c
+@@ -322,6 +322,10 @@ static int modify_flags(int fd, int clea
+ 
+ void sys_init(void)
+ {
++
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_enter_ns();
++#endif
+     /* Get an internet socket for doing socket ioctls. */
+     sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
+     if (sock_fd < 0)
+@@ -333,6 +337,10 @@ void sys_init(void)
+ 	sock6_fd = -errno;	/* save errno for later */
+ #endif
+ 
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_exit_ns();
++#endif
++
+     FD_ZERO(&in_fds);
+     max_in_fd = 0;
+ }
+@@ -657,12 +665,31 @@ static int make_ppp_unit(void)
+ 		warn("Couldn't set /dev/ppp to nonblock: %m");
+ 
+ 	ifunit = req_unit;
++#ifdef CONFIG_RTK_PPP_IF_NS
++	struct ppp_if_unit_ns pp_if_s;
++	pp_if_s.unit = ifunit;
++	pp_if_s.ns_fd = -1;
++	pp_if_s.ifname[0] = '\0';
++	if(netns_fd >= 0) pp_if_s.ns_fd = netns_fd;
++	if(pppname[0]) strcpy(pp_if_s.ifname, pppname);
++	x = ioctl(ppp_dev_fd, PPPIOCNEWUNITEXT, &pp_if_s);
++	if (x < 0 && req_unit >= 0 && errno == EEXIST) {
++	    warn("Couldn't allocate PPP unit %d as it is already in use", req_unit);
++	    ifunit = -1;
++	    pp_if_s.unit = ifunit;
++	    x = ioctl(ppp_dev_fd, PPPIOCNEWUNITEXT, &pp_if_s);
++	}
++	if(x >= 0){
++	    ifunit = pp_if_s.unit;
++	}
++#else
+ 	x = ioctl(ppp_dev_fd, PPPIOCNEWUNIT, &ifunit);
+ 	if (x < 0 && req_unit >= 0 && errno == EEXIST) {
+ 		warn("Couldn't allocate PPP unit %d as it is already in use", req_unit);
+ 		ifunit = -1;
+ 		x = ioctl(ppp_dev_fd, PPPIOCNEWUNIT, &ifunit);
+ 	}
++#endif
+ 	if (x < 0)
+ 		error("Couldn't create new ppp unit: %m");
+ 
+@@ -1239,12 +1266,18 @@ netif_set_mtu(int unit, int mtu)
+ {
+     struct ifreq ifr;
+ 
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_enter_ns();
++#endif
+     memset (&ifr, '\0', sizeof (ifr));
+     strlcpy(ifr.ifr_name, ifname, sizeof (ifr.ifr_name));
+     ifr.ifr_mtu = mtu;
+ 
+     if (ifunit >= 0 && ioctl(sock_fd, SIOCSIFMTU, (caddr_t) &ifr) < 0)
+ 	error("ioctl(SIOCSIFMTU): %m (line %d)", __LINE__);
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_exit_ns();
++#endif
+ }
+ 
+ /*
+@@ -1255,13 +1288,23 @@ netif_get_mtu(int unit)
+ {
+     struct ifreq ifr;
+ 
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_enter_ns();
++#endif
++
+     memset (&ifr, '\0', sizeof (ifr));
+     strlcpy(ifr.ifr_name, ifname, sizeof (ifr.ifr_name));
+ 
+     if (ifunit >= 0 && ioctl(sock_fd, SIOCGIFMTU, (caddr_t) &ifr) < 0) {
+ 	error("ioctl(SIOCGIFMTU): %m (line %d)", __LINE__);
++#ifdef CONFIG_RTK_PPP_IF_NS
++	net_exit_ns();
++#endif
+ 	return 0;
+     }
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_exit_ns();
++#endif
+     return ifr.ifr_mtu;
+ }
+ 
+@@ -1685,6 +1728,11 @@ int sifdefaultroute (int unit, u_int32_t
+     struct rtentry rt, tmp_rt;
+     struct rtentry *del_rt = NULL;
+ 
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_enter_ns();
++#endif
++
++
+     if (default_rt_repl_rest) {
+ 	/* We have already replaced the original defaultroute, if we
+ 	 * are called again, we will delete the current default route
+@@ -1704,6 +1752,9 @@ int sifdefaultroute (int unit, u_int32_t
+ 	    if (!replace) {
+ 		error("not replacing default route to %s [%I]",
+ 			old_def_rt.rt_dev, old_gateway);
++#ifdef CONFIG_RTK_PPP_IF_NS
++		net_exit_ns();
++#endif
+ 		return 0;
+ 	    } else {
+ 		/* we need to copy rt_dev because we need it permanent too: */
+@@ -1737,15 +1788,25 @@ int sifdefaultroute (int unit, u_int32_t
+     if (ioctl(sock_fd, SIOCADDRT, &rt) < 0) {
+ 	if ( ! ok_error ( errno ))
+ 	    error("default route ioctl(SIOCADDRT): %m");
++#ifdef CONFIG_RTK_PPP_IF_NS
++	net_exit_ns();
++#endif
+ 	return 0;
+     }
+     if (default_rt_repl_rest && del_rt)
+ 	if (ioctl(sock_fd, SIOCDELRT, del_rt) < 0) {
+ 	    if ( ! ok_error ( errno ))
+ 		error("del old default route ioctl(SIOCDELRT): %m(%d)", errno);
++#ifdef CONFIG_RTK_PPP_IF_NS
++	    net_exit_ns();
++#endif
+ 	    return 0;
+ 	}
+ 
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_exit_ns();
++#endif
++
+     have_default_route = 1;
+     return 1;
+ }
+@@ -1759,6 +1820,10 @@ int cifdefaultroute (int unit, u_int32_t
+ {
+     struct rtentry rt;
+ 
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_enter_ns();
++#endif
++
+     have_default_route = 0;
+ 
+     memset (&rt, '\0', sizeof (rt));
+@@ -1781,6 +1846,9 @@ int cifdefaultroute (int unit, u_int32_t
+ 	if (still_ppp()) {
+ 	    if ( ! ok_error ( errno ))
+ 		error("default route ioctl(SIOCDELRT): %m");
++#ifdef CONFIG_RTK_PPP_IF_NS
++	    net_exit_ns();
++#endif
+ 	    return 0;
+ 	}
+     }
+@@ -1790,11 +1858,17 @@ int cifdefaultroute (int unit, u_int32_t
+ 	if (ioctl(sock_fd, SIOCADDRT, &old_def_rt) < 0) {
+ 	    if ( ! ok_error ( errno ))
+ 		error("restore default route ioctl(SIOCADDRT): %m(%d)", errno);
++#ifdef CONFIG_RTK_PPP_IF_NS
++	    net_exit_ns();
++#endif
+ 	    return 0;
+ 	}
+ 	default_rt_repl_rest = 0;
+     }
+ 
++#ifdef CONFIG_RTK_PPP_IF_NS
++	net_exit_ns();
++#endif
+     return 1;
+ }
+ 
+@@ -2000,6 +2074,10 @@ int sifproxyarp (int unit, u_int32_t his
+     struct arpreq arpreq;
+     char *forw_path;
+ 
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_enter_ns();
++#endif
++
+     if (has_proxy_arp == 0) {
+ 	memset (&arpreq, '\0', sizeof(arpreq));
+ 
+@@ -2013,6 +2091,9 @@ int sifproxyarp (int unit, u_int32_t his
+ 	if (!get_ether_addr(his_adr, &arpreq.arp_ha, proxy_arp_dev,
+ 			    sizeof(proxy_arp_dev))) {
+ 	    error("Cannot determine ethernet address for proxy ARP");
++#ifdef CONFIG_RTK_PPP_IF_NS
++	    net_exit_ns();
++#endif
+ 	    return 0;
+ 	}
+ 	strlcpy(arpreq.arp_dev, proxy_arp_dev, sizeof(arpreq.arp_dev));
+@@ -2020,6 +2101,9 @@ int sifproxyarp (int unit, u_int32_t his
+ 	if (ioctl(sock_fd, SIOCSARP, (caddr_t)&arpreq) < 0) {
+ 	    if ( ! ok_error ( errno ))
+ 		error("ioctl(SIOCSARP): %m");
++#ifdef CONFIG_RTK_PPP_IF_NS
++	    net_exit_ns();
++#endif
+ 	    return 0;
+ 	}
+ 	proxy_arp_addr = his_adr;
+@@ -2038,6 +2122,10 @@ int sifproxyarp (int unit, u_int32_t his
+ 	}
+     }
+ 
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_exit_ns();
++#endif
++
+     return 1;
+ }
+ 
+@@ -2050,6 +2138,10 @@ int cifproxyarp (int unit, u_int32_t his
+ {
+     struct arpreq arpreq;
+ 
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_enter_ns();
++#endif
++
+     if (has_proxy_arp) {
+ 	has_proxy_arp = 0;
+ 	memset (&arpreq, '\0', sizeof(arpreq));
+@@ -2061,9 +2153,15 @@ int cifproxyarp (int unit, u_int32_t his
+ 	if (ioctl(sock_fd, SIOCDARP, (caddr_t)&arpreq) < 0) {
+ 	    if ( ! ok_error ( errno ))
+ 		warn("ioctl(SIOCDARP): %m");
++#ifdef CONFIG_RTK_PPP_IF_NS
++	    net_exit_ns();
++#endif
+ 	    return 0;
+ 	}
+     }
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_exit_ns();
++#endif
+     return 1;
+ }
+ 
+@@ -2084,6 +2182,10 @@ static int get_ether_addr (u_int32_t ipa
+     struct ifconf ifc;
+     struct ifreq ifs[MAX_IFS];
+ 
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_enter_ns();
++#endif
++
+     u_int32_t bestmask=0;
+     int found_interface = 0;
+ 
+@@ -2092,6 +2194,9 @@ static int get_ether_addr (u_int32_t ipa
+     if (ioctl(sock_fd, SIOCGIFCONF, &ifc) < 0) {
+ 	if ( ! ok_error ( errno ))
+ 	    error("ioctl(SIOCGIFCONF): %m (line %d)", __LINE__);
++#ifdef CONFIG_RTK_PPP_IF_NS
++	net_exit_ns();
++#endif
+ 	return 0;
+     }
+ 
+@@ -2150,6 +2255,9 @@ static int get_ether_addr (u_int32_t ipa
+     memset (&bestifreq.ifr_hwaddr, 0, sizeof (struct sockaddr));
+     if (ioctl (sock_fd, SIOCGIFHWADDR, &bestifreq) < 0) {
+ 	error("SIOCGIFHWADDR(%s): %m", bestifreq.ifr_name);
++#ifdef CONFIG_RTK_PPP_IF_NS
++	net_exit_ns();
++#endif
+ 	return 0;
+     }
+ 
+@@ -2157,6 +2265,10 @@ static int get_ether_addr (u_int32_t ipa
+ 	    &bestifreq.ifr_hwaddr,
+ 	    sizeof (struct sockaddr));
+ 
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_exit_ns();
++#endif
++
+     return 1;
+ }
+ 
+@@ -2170,15 +2282,27 @@ get_if_hwaddr(u_char *addr, char *name)
+ 	struct ifreq ifreq;
+ 	int ret, sock_fd;
+ 
++#ifdef CONFIG_RTK_PPP_IF_NS
++	net_enter_ns();
++#endif
++
+ 	sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
+ 	if (sock_fd < 0)
++	{
++#ifdef CONFIG_RTK_PPP_IF_NS
++		net_exit_ns();
++#endif
+ 		return -1;
++	}
+ 	memset(&ifreq.ifr_hwaddr, 0, sizeof(struct sockaddr));
+ 	strlcpy(ifreq.ifr_name, name, sizeof(ifreq.ifr_name));
+ 	ret = ioctl(sock_fd, SIOCGIFHWADDR, &ifreq);
+ 	close(sock_fd);
+ 	if (ret >= 0)
+ 		memcpy(addr, ifreq.ifr_hwaddr.sa_data, 6);
++#ifdef CONFIG_RTK_PPP_IF_NS
++	net_exit_ns();
++#endif
+ 	return ret;
+ }
+ 
+@@ -2239,6 +2363,10 @@ u_int32_t GetMask (u_int32_t addr)
+     struct ifconf ifc;
+     struct ifreq ifs[MAX_IFS];
+ 
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_enter_ns();
++#endif
++
+     addr = ntohl(addr);
+ 
+     if (IN_CLASSA(addr))	/* determine network mask for address class */
+@@ -2258,6 +2386,9 @@ u_int32_t GetMask (u_int32_t addr)
+     if (ioctl(sock_fd, SIOCGIFCONF, &ifc) < 0) {
+ 	if ( ! ok_error ( errno ))
+ 	    warn("ioctl(SIOCGIFCONF): %m (line %d)", __LINE__);
++#ifdef CONFIG_RTK_PPP_IF_NS
++	net_exit_ns();
++#endif
+ 	return mask;
+     }
+ 
+@@ -2288,6 +2419,9 @@ u_int32_t GetMask (u_int32_t addr)
+ 	mask |= SIN_ADDR(ifreq.ifr_addr);
+ 	break;
+     }
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_exit_ns();
++#endif
+     return mask;
+ }
+ 
+@@ -2671,11 +2805,18 @@ static int setifstate (int u, int state)
+ {
+     struct ifreq ifr;
+ 
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_enter_ns();
++#endif
++
+     memset (&ifr, '\0', sizeof (ifr));
+     strlcpy(ifr.ifr_name, ifname, sizeof (ifr.ifr_name));
+     if (ioctl(sock_fd, SIOCGIFFLAGS, (caddr_t) &ifr) < 0) {
+ 	if (! ok_error (errno))
+ 	    error("ioctl (SIOCGIFFLAGS): %m (line %d)", __LINE__);
++#ifdef CONFIG_RTK_PPP_IF_NS
++	net_exit_ns();
++#endif
+ 	return 0;
+     }
+ 
+@@ -2687,8 +2828,14 @@ static int setifstate (int u, int state)
+     if (ioctl(sock_fd, SIOCSIFFLAGS, (caddr_t) &ifr) < 0) {
+ 	if (! ok_error (errno))
+ 	    error("ioctl(SIOCSIFFLAGS): %m (line %d)", __LINE__);
++#ifdef CONFIG_RTK_PPP_IF_NS
++	net_exit_ns();
++#endif
+ 	return 0;
+     }
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_exit_ns();
++#endif
+     return 1;
+ }
+ 
+@@ -2703,6 +2850,10 @@ int sifaddr (int unit, u_int32_t our_adr
+     struct ifreq   ifr;
+     struct rtentry rt;
+ 
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_enter_ns();
++#endif
++
+     memset (&ifr, '\0', sizeof (ifr));
+     memset (&rt,  '\0', sizeof (rt));
+ 
+@@ -2723,6 +2874,9 @@ int sifaddr (int unit, u_int32_t our_adr
+ 	else {
+ 	    warn("ioctl(SIOCSIFADDR): Address already exists");
+ 	}
++#ifdef CONFIG_RTK_PPP_IF_NS
++	net_exit_ns();
++#endif
+ 	return (0);
+     }
+ /*
+@@ -2733,6 +2887,9 @@ int sifaddr (int unit, u_int32_t our_adr
+ 	if (ioctl(sock_fd, SIOCSIFDSTADDR, (caddr_t) &ifr) < 0) {
+ 	    if (! ok_error (errno))
+ 		error("ioctl(SIOCSIFDSTADDR): %m (line %d)", __LINE__);
++#ifdef CONFIG_RTK_PPP_IF_NS
++	    net_exit_ns();
++#endif
+ 	    return (0);
+ 	}
+     }
+@@ -2747,6 +2904,9 @@ int sifaddr (int unit, u_int32_t our_adr
+ 	if (ioctl(sock_fd, SIOCSIFNETMASK, (caddr_t) &ifr) < 0) {
+ 	    if (! ok_error (errno))
+ 		error("ioctl(SIOCSIFNETMASK): %m (line %d)", __LINE__);
++#ifdef CONFIG_RTK_PPP_IF_NS
++	    net_exit_ns();
++#endif
+ 	    return (0);
+ 	}
+     }
+@@ -2770,6 +2930,9 @@ int sifaddr (int unit, u_int32_t our_adr
+ 	if (ioctl(sock_fd, SIOCADDRT, &rt) < 0) {
+ 	    if (! ok_error (errno))
+ 		error("ioctl(SIOCADDRT) device route: %m (line %d)", __LINE__);
++#ifdef CONFIG_RTK_PPP_IF_NS
++	    net_exit_ns();
++#endif
+ 	    return (0);
+ 	}
+     }
+@@ -2791,6 +2954,9 @@ int sifaddr (int unit, u_int32_t our_adr
+     }
+     our_old_addr = 0;
+ 
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_exit_ns();
++#endif
+     return 1;
+ }
+ 
+@@ -2804,6 +2970,10 @@ int cifaddr (int unit, u_int32_t our_adr
+ {
+     struct ifreq ifr;
+ 
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_enter_ns();
++#endif
++
+     if (kernel_version < KVERSION(2,1,16)) {
+ /*
+  *  Delete the route through the device
+@@ -2827,6 +2997,9 @@ int cifaddr (int unit, u_int32_t our_adr
+ 	if (ioctl(sock_fd, SIOCDELRT, &rt) < 0 && errno != ESRCH) {
+ 	    if (still_ppp() && ! ok_error (errno))
+ 		error("ioctl(SIOCDELRT) device route: %m (line %d)", __LINE__);
++#ifdef CONFIG_RTK_PPP_IF_NS
++	    net_exit_ns();
++#endif
+ 	    return (0);
+ 	}
+     }
+@@ -2839,12 +3012,18 @@ int cifaddr (int unit, u_int32_t our_adr
+     if (ioctl(sock_fd, SIOCSIFADDR, (caddr_t) &ifr) < 0) {
+ 	if (! ok_error (errno)) {
+ 	    error("ioctl(SIOCSIFADDR): %m (line %d)", __LINE__);
++#ifdef CONFIG_RTK_PPP_IF_NS
++	    net_exit_ns();
++#endif
+ 	    return 0;
+ 	}
+     }
+ 
+     our_old_addr = our_adr;
+ 
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_exit_ns();
++#endif
+     return 1;
+ }
+ 
+@@ -2994,10 +3173,18 @@ int sif6addr (int unit, eui64_t our_eui6
+ 	error("IPv6 socket creation failed: %m");
+ 	return 0;
+     }
++
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_enter_ns();
++#endif
++
+     memset(&ifr, 0, sizeof (ifr));
+     strlcpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name));
+     if (ioctl(sock6_fd, SIOCGIFINDEX, (caddr_t) &ifr) < 0) {
+ 	error("sif6addr: ioctl(SIOCGIFINDEX): %m (line %d)", __LINE__);
++#ifdef CONFIG_RTK_PPP_IF_NS
++	net_exit_ns();
++#endif
+ 	return 0;
+     }
+ 
+@@ -3009,6 +3196,9 @@ int sif6addr (int unit, eui64_t our_eui6
+ 
+     if (ioctl(sock6_fd, SIOCSIFADDR, &ifr6) < 0) {
+ 	error("sif6addr: ioctl(SIOCSIFADDR): %m (line %d)", __LINE__);
++#ifdef CONFIG_RTK_PPP_IF_NS
++	net_exit_ns();
++#endif
+ 	return 0;
+     }
+ 
+@@ -3017,6 +3207,9 @@ int sif6addr (int unit, eui64_t our_eui6
+         IN6_LLADDR_FROM_EUI64(remote_addr, his_eui64);
+         if (!append_peer_ipv6_address(ifr.ifr_ifindex, &ifr6.ifr6_addr, &remote_addr)) {
+             error("sif6addr: setting remote peer address failed: %m");
++#ifdef CONFIG_RTK_PPP_IF_NS
++	net_exit_ns();
++#endif
+             return 0;
+         }
+     }
+@@ -3032,10 +3225,17 @@ int sif6addr (int unit, eui64_t our_eui6
+ 
+         if (ioctl(sock6_fd, SIOCADDRT, &rt6) < 0) {
+             error("sif6addr: ioctl(SIOCADDRT): %m (line %d)", __LINE__);
++#ifdef CONFIG_RTK_PPP_IF_NS
++	net_exit_ns();
++#endif
+             return 0;
+         }
+     }
+ 
++#ifdef CONFIG_RTK_PPP_IF_NS
++	net_exit_ns();
++#endif
++
+     return 1;
+ }
+ 
+@@ -3054,10 +3254,16 @@ int cif6addr (int unit, eui64_t our_eui6
+ 	error("IPv6 socket creation failed: %m");
+ 	return 0;
+     }
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_enter_ns();
++#endif
+     memset(&ifr, 0, sizeof(ifr));
+     strlcpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name));
+     if (ioctl(sock6_fd, SIOCGIFINDEX, (caddr_t) &ifr) < 0) {
+ 	error("cif6addr: ioctl(SIOCGIFINDEX): %m (line %d)", __LINE__);
++#ifdef CONFIG_RTK_PPP_IF_NS
++	net_exit_ns();
++#endif
+ 	return 0;
+     }
+ 
+@@ -3074,8 +3280,14 @@ int cif6addr (int unit, eui64_t our_eui6
+ 	else {
+ 	    warn("cif6addr: ioctl(SIOCDIFADDR): No such address");
+ 	}
++#ifdef CONFIG_RTK_PPP_IF_NS
++	net_exit_ns();
++#endif
+ 	return (0);
+     }
++#ifdef CONFIG_RTK_PPP_IF_NS
++    net_exit_ns();
++#endif
+     return 1;
+ }
+ #endif /* INET6 */
+@@ -3406,3 +3618,110 @@ get_time(struct timeval *tv)
+ 
+     return gettimeofday(tv, NULL);
+ }
++
++#ifdef CONFIG_RTK_PPP_IF_NS
++#define _GNU_SOURCE
++#include <linux/sched.h>
++#include <sys/mount.h>
++#include <dirent.h>
++
++#define NETNS_RUN_DIR "/var/run/netns"
++#define NETNS_ETC_DIR "/etc/netns"
++#define BUF_MAX 256
++
++int init_net_ns(const char *ns)
++{
++    char netns_name[BUF_MAX];
++    snprintf(netns_name, sizeof(netns_name), "%s/%s", NETNS_RUN_DIR, ns);
++    netns_name[BUF_MAX-1] = '\0';
++    netns_fd = open(netns_name, O_RDONLY);
++
++    if(netns_fd < 0)
++    {
++	option_error("Cannot find namespace %s(%s)",  ns, netns_name);
++	return -1;
++    }
++
++    def_netns_fd = open("/proc/self/ns/net", O_RDONLY);
++    return 0;
++}
++
++int net_enter_ns(void)
++{
++    if(netns_fd >= 0)
++    {
++	dbglog("Enter to NS(%d, %s)\n", netns_fd, netns);
++	setns(netns_fd, CLONE_NEWNET);
++    }
++    return 0;
++}
++
++int net_exit_ns(void)
++{
++    if(def_netns_fd >=0)
++    {
++	dbglog("Exit NS, and Reset NS(%d)\n", def_netns_fd);
++	setns(def_netns_fd, CLONE_NEWNET);
++    }
++    return 0;
++}
++
++int net_bind_ns(void)
++{
++    char etc_netns_path[BUF_MAX];
++    char netns_name[BUF_MAX];
++    char etc_name[BUF_MAX];
++    struct dirent *entry;
++    DIR *dir;
++
++    if(!(netns_fd >= 0 && netns[0]))
++	return 0;
++
++    if (unshare(CLONE_NEWNS) < 0) {
++	dbglog("unshare failed: %s\n", strerror(errno));
++	return -1;
++    }
++
++    /* Don't let any mounts propagate back to the parent */
++    if (mount("", "/", "none", MS_SLAVE | MS_REC, NULL)) {
++	dbglog("\"mount --make-rslave /\" failed: %s\n",
++		strerror(errno));
++	return -1;
++    }
++
++    snprintf(etc_netns_path, sizeof(etc_netns_path), "%s/%s", NETNS_ETC_DIR, netns);
++
++    etc_netns_path[BUF_MAX-1] = '\0';
++    dbglog("Bind %s to NS(%s) etc folder\n", etc_netns_path, netns);
++
++    dir = opendir(etc_netns_path);
++    if (!dir){
++	dbglog("Cannot bind /etc folder(%s) for namespace(%s)\n", etc_netns_path, netns);
++	return 0;
++    }
++
++    while ((entry = readdir(dir)) != NULL) {
++	if (strcmp(entry->d_name, ".") == 0)
++	    continue;
++	if (strcmp(entry->d_name, "..") == 0)
++	    continue;
++	snprintf(netns_name, sizeof(netns_name), "%s/%s", etc_netns_path, entry->d_name);
++	netns_name[BUF_MAX-1] = '\0';
++	snprintf(etc_name, sizeof(etc_name), "/etc/%s", entry->d_name);
++	etc_name[BUF_MAX-1] = '\0';
++
++	if (mount(netns_name, etc_name, "none", MS_BIND, NULL) < 0) {
++	    dbglog("Bind %s -> %s failed: %s\n",
++		    netns_name, etc_name, strerror(errno));
++	}
++	else
++	{
++	    dbglog("Bind %s -> %s\n", netns_name, etc_name);
++	}
++    }
++
++    closedir(dir);
++
++    return 0;
++}
++#endif

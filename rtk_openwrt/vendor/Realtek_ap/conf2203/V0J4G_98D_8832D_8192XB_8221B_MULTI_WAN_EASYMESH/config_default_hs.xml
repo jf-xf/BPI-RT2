@@ -1,0 +1,5 @@
+<Config_Information_File_HS>
+        <Value Name="PORT_REMAPPING" Value="00,01,02,03,00,00,00,00,00,00"/>
+        <Value Name="WAN_PHY_PORT" Value="6"/>
+        <Value Name="PON_MODE" Value="0"/>
+</Config_Information_File_HS>

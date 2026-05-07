@@ -1,0 +1,88 @@
+diff --git a/src/ap/ap_config.c b/src/ap/ap_config.c
+index e3a1a57..bba35ae 100755
+--- a/src/ap/ap_config.c
++++ b/src/ap/ap_config.c
+@@ -97,7 +97,7 @@ void hostapd_config_defaults_bss(struct hostapd_bss_config *bss)
+ 
+ 	bss->pwd_group = 19; /* ECC: GF(p=256) */
+ 
+-	bss->assoc_sa_query_max_timeout = 1000;
++	bss->assoc_sa_query_max_timeout = 2000;
+ 	bss->assoc_sa_query_retry_timeout = 201;
+ 	bss->group_mgmt_cipher = WPA_CIPHER_AES_128_CMAC;
+ #ifdef EAP_SERVER_FAST
+diff --git a/src/ap/drv_callbacks.c b/src/ap/drv_callbacks.c
+index bd58682..995a5ff 100755
+--- a/src/ap/drv_callbacks.c
++++ b/src/ap/drv_callbacks.c
+@@ -43,6 +43,7 @@
+ #include "fils_hlp.h"
+ #include "neighbor_db.h"
+ 
++#define RTK_CHECK_SA_QUERY_BEFORE_VALIDATE_IE
+ 
+ #ifdef CONFIG_FILS
+ void hostapd_notify_assoc_fils_finish(struct hostapd_data *hapd,
+@@ -216,6 +217,18 @@ int hostapd_notif_assoc(struct hostapd_data *hapd, const u8 *addr,
+ 		 * will not remove the STA immediately.
+ 		 */
+ 		sta->timeout_next = STA_NULLFUNC;
++
++#ifdef RTK_CHECK_SA_QUERY_BEFORE_VALIDATE_IE
++		if (check_sa_query_need(hapd, sta)) {
++			status = WLAN_STATUS_ASSOC_REJECTED_TEMPORARILY;
++
++			p = hostapd_eid_assoc_comeback_time(hapd, sta, p);
++
++			hostapd_sta_assoc(hapd, addr, reassoc, status, buf,
++					  p - buf);
++			return 0;
++		}
++#endif /* RTK_CHECK_SA_QUERY_BEFORE_VALIDATE_IE */
+ 	} else {
+ 		sta = ap_sta_add(hapd, addr);
+ 		if (sta == NULL) {
+@@ -327,6 +340,7 @@ int hostapd_notif_assoc(struct hostapd_data *hapd, const u8 *addr,
+ 		    os_memcmp(ie + 2, "\x00\x50\xf2\x04", 4) == 0) {
+ 			struct wpabuf *wps;
+ 
++#ifndef RTK_CHECK_SA_QUERY_BEFORE_VALIDATE_IE
+ 			if (check_sa_query_need(hapd, sta)) {
+ 				status = WLAN_STATUS_ASSOC_REJECTED_TEMPORARILY;
+ 
+@@ -337,6 +351,7 @@ int hostapd_notif_assoc(struct hostapd_data *hapd, const u8 *addr,
+ 						  buf, p - buf);
+ 				return 0;
+ 			}
++#endif /* RTK_CHECK_SA_QUERY_BEFORE_VALIDATE_IE */
+ 
+ 			sta->flags |= WLAN_STA_WPS;
+ 			wps = ieee802_11_vendor_ie_concat(ie, ielen,
+@@ -433,6 +448,7 @@ int hostapd_notif_assoc(struct hostapd_data *hapd, const u8 *addr,
+ 			goto fail;
+ 		}
+ 
++#ifndef RTK_CHECK_SA_QUERY_BEFORE_VALIDATE_IE
+ 		if (check_sa_query_need(hapd, sta)) {
+ 			status = WLAN_STATUS_ASSOC_REJECTED_TEMPORARILY;
+ 
+@@ -442,6 +458,7 @@ int hostapd_notif_assoc(struct hostapd_data *hapd, const u8 *addr,
+ 					  p - buf);
+ 			return 0;
+ 		}
++#endif /* RTK_CHECK_SA_QUERY_BEFORE_VALIDATE_IE */
+ 
+ 		if (wpa_auth_uses_mfp(sta->wpa_sm))
+ 			sta->flags |= WLAN_STA_MFP;
+diff --git a/src/ap/ieee802_1x.c b/src/ap/ieee802_1x.c
+index cca6ce7..0fb5a0b 100644
+--- a/src/ap/ieee802_1x.c
++++ b/src/ap/ieee802_1x.c
+@@ -117,6 +117,7 @@ void ieee802_1x_set_sta_authorized(struct hostapd_data *hapd,
+ 		res = hostapd_set_authorized(hapd, sta, 1);
+ 		hostapd_logger(hapd, sta->addr, HOSTAPD_MODULE_IEEE8021X,
+ 			       HOSTAPD_LEVEL_DEBUG, "authorizing port");
++		sta->sa_query_timed_out = 0;
+ 	} else {
+ 		ap_sta_set_authorized(hapd, sta, 0);
+ 		res = hostapd_set_authorized(hapd, sta, 0);

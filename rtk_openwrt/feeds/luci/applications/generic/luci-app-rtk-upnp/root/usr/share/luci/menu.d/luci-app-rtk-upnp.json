@@ -1,0 +1,13 @@
+{
+	"realtek/services/service/upnp": {
+		"title": "UPnP",
+		"action": {
+			"type": "view",
+			"path": "rtk/services/service/upnp"
+		},
+		"depends": {
+			"acl": [ "luci-app-rtk-ddns" ],
+			"uci": { "upnpd": true }
+		}
+	}
+}

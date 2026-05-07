@@ -1,0 +1,6 @@
+//8832CR RFE50 version = 69
+//AP_5G_PWRTAB_00
+
+0xFD	0x05069
+
+0xffff 0xffff 			

@@ -1,0 +1,17 @@
+Index: hostapd-2022-01-16-cff80b4f/src/ap/hw_features.c
+===================================================================
+--- hostapd-2022-01-16-cff80b4f.orig/src/ap/hw_features.c
++++ hostapd-2022-01-16-cff80b4f/src/ap/hw_features.c
+@@ -128,8 +128,10 @@ int hostapd_get_hw_features(struct hosta
+ 					HOSTAPD_CHAN_DISABLED;
+ 			}
+ 
+-			if (!feature->channels[j].max_tx_power)
+-				feature->channels[j].flag |= HOSTAPD_CHAN_DISABLED;
++			//Realtek add
++			//not set channel flag to disable when max_tx_power is zero
++			//if (!feature->channels[j].max_tx_power)
++				//feature->channels[j].flag |= HOSTAPD_CHAN_DISABLED;
+ 			
+ 			if (feature->channels[j].flag & HOSTAPD_CHAN_DISABLED)
+ 				continue;

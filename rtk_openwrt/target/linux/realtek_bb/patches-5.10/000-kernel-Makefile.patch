@@ -1,0 +1,28 @@
+Index: linux-5.10.125/Makefile
+===================================================================
+--- linux-5.10.125.orig/Makefile
++++ linux-5.10.125/Makefile
+@@ -940,8 +940,9 @@ KBUILD_CFLAGS  += -fno-stack-check
+ # conserve stack if available
+ KBUILD_CFLAGS   += $(call cc-option,-fconserve-stack)
+ 
++#RTK disable this
+ # Prohibit date/time macros, which would make the build non-deterministic
+-KBUILD_CFLAGS   += -Werror=date-time
++#KBUILD_CFLAGS   += -Werror=date-time
+ 
+ # enforce correct pointer usage
+ KBUILD_CFLAGS   += $(call cc-option,-Werror=incompatible-pointer-types)
+Index: linux-5.10.125/scripts/Makefile.modpost
+===================================================================
+--- linux-5.10.125.orig/scripts/Makefile.modpost
++++ linux-5.10.125/scripts/Makefile.modpost
+@@ -64,7 +64,7 @@ else
+ 
+ ifeq ($(KBUILD_EXTMOD),)
+ 
+-input-symdump := vmlinux.symvers
++input-symdump := vmlinux.symvers $(KBUILD_EXTRA_SYMBOLS)
+ output-symdump := modules-only.symvers
+ 
+ quiet_cmd_cat = GEN     $@

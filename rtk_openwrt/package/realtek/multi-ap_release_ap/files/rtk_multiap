@@ -1,0 +1,67 @@
+#!/bin/sh /etc/rc.common
+START=99
+
+USE_PROCD=1
+
+MAP_STARTUP="/etc/map_startup"
+MAP_IFACE_CHECKER="/etc/map_iface_checker"
+
+MAP_ROLE_DISABLE=0
+MAP_ROLE_CONTROLLER=1
+MAP_ROLE_AGENT=2
+
+start_service() {
+  local profile controller log_level logotest bh_band_idx
+
+  config_load "rtkmap"
+  config_get profile "map" "profile"
+  config_get controller "map" "controller"
+  config_get log_level "map" "log_level"
+  config_get logotest "map" "logotest"
+  config_get bh_band_idx "map" "bh_band_idx"
+
+  if [ "$controller" -eq $MAP_ROLE_DISABLE ]; then
+    eval "$MAP_IFACE_CHECKER disable &"
+    return
+  fi
+
+  local let i=0
+  local log_level_s=""
+  while [ $i -lt $log_level ]; do
+    log_level_s=$log_level_s"v"
+    let i=i+1
+  done
+  [ ! -z "$log_level_s" ] && log_level_s="-"$log_level_s
+
+  local cmd args
+
+  args="$log_level_s -p$profile"
+  [ $logotest -eq "1" ] && args=$args" -t"
+
+  case "$controller" in
+  $MAP_ROLE_CONTROLLER)
+    cmd="$MAP_IFACE_CHECKER start && map_init -l && map_controller $args"
+    ;;
+  $MAP_ROLE_AGENT)
+    cmd="$MAP_IFACE_CHECKER start && map_init -l && map_agent $args"
+    ;;
+  *) ;;
+  esac
+
+  if [ ! -z "$cmd" ]; then
+    procd_open_instance
+    procd_set_param command /bin/sh -c "$cmd"
+    procd_set_param respawn ${respawn_threshold:-3600} ${respawn_timeout:-5} ${respawn_retry:-5}
+    procd_close_instance
+  fi
+}
+
+reload_service() {
+  stop
+  start
+}
+
+service_triggers() {
+  PROCD_RELOAD_DELAY=5000
+  procd_add_reload_trigger "rtkmap" "wireless"
+}

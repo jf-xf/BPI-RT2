@@ -1,0 +1,56 @@
+Index: linux-5.10.138/net/core/skbuff.c
+===================================================================
+--- linux-5.10.138.orig/net/core/skbuff.c
++++ linux-5.10.138/net/core/skbuff.c
+@@ -78,6 +78,10 @@
+ #include <linux/user_namespace.h>
+ #include <linux/indirect_call_wrapper.h>
+ 
++#if defined(CONFIG_RTK_L34_FLEETCONNTRACK_ENABLE)
++#include <net/netfilter/nf_conntrack.h>
++#endif
++
+ #include "datagram.h"
+ 
+ #ifdef CONFIG_RTL865X_ETH_PRIV_SKB
+@@ -823,6 +827,14 @@ static void kfree_skbmem(struct sk_buff
+ {
+ 	struct sk_buff_fclones *fclones;
+ 
++#if defined(CONFIG_RTK_L34_FLEETCONNTRACK_ENABLE)
++	if (skb->fcIngressData.ct)
++	{
++		nf_conntrack_put(&(skb->fcIngressData.ct->ct_general));
++		skb->fcIngressData.ct = NULL;
++	}
++#endif
++
+ 	switch (skb->fclone) {
+ 	case SKB_FCLONE_UNAVAILABLE:
+ 		kmem_cache_free(skbuff_head_cache, skb);
+@@ -852,6 +864,13 @@ fastpath:
+ void skb_release_head_state(struct sk_buff *skb)
+ {
+ 	nf_reset_ct(skb);
++#if defined(CONFIG_RTK_L34_FLEETCONNTRACK_ENABLE)
++	if (skb->fcIngressData.ct)
++	{
++		nf_conntrack_put(&(skb->fcIngressData.ct->ct_general));
++		skb->fcIngressData.ct = NULL;
++	}
++#endif
+ 	skb_dst_drop(skb);
+ 	if (skb->destructor) {
+ 		WARN_ON(in_irq());
+@@ -1167,6 +1186,11 @@ static void __copy_skb_header(struct sk_
+ 		   offsetof(struct sk_buff, __private_header_end) -
+ 		   offsetof(struct sk_buff, __private_header_start));
+ #endif
++#if defined(CONFIG_RTK_L34_FLEETCONNTRACK_ENABLE)
++	if (new->fcIngressData.ct)
++		nf_conntrack_get(&(new->fcIngressData.ct->ct_general));
++#endif
++
+ 	CHECK_SKB_FIELD(protocol);
+ 	CHECK_SKB_FIELD(csum);
+ 	CHECK_SKB_FIELD(hash);

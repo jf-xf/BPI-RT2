@@ -1,0 +1,11 @@
+config ethport 'lan1'
+	option ifname 'eth0.2'
+
+config ethport 'lan2'
+	option ifname 'eth0.3'
+
+config ethport 'lan3'
+	option ifname 'eth0.4'
+
+config ethport 'lan4'
+	option ifname 'eth0.5'

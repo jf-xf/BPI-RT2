@@ -1,0 +1,32 @@
+# Realtek Generic translation
+
+#: modules/generic/luci-mod-rtk-generic/root/usr/share/luci/menu.d/luci-rtk-base.json
+msgid "LAN"
+msgstr ""
+
+msgid "WAN"
+msgstr ""
+
+msgid "Advance"
+msgstr ""
+
+msgid "Admin"
+msgstr ""
+
+#: modules/generic/luci-mod-rtk-generic/root/usr/share/luci/menu.d/luci-rtk-base.json
+#: modules/generic/luci-mod-rtk-lan/htdocs/luci-static/resources/view/rtk/lan/lan/settings.js
+msgid "LAN Interface Settings"
+msgstr ""
+
+#：modules/generic/luci-mod-rtk-admin/root/usr/share/luci/menu.d/luci-mod-rtk-admin.json
+msgid "Backup/Restore"
+msgstr ""
+
+#: modules/generic/luci-mod-rtk-admin/htdocs/luci-static/resources/view/rtk/admin/admin/config.js
+msgid "Backup and Restore Settings"
+msgstr ""
+
+#：modules/generic/luci-mod-rtk-admin/root/usr/share/luci/menu.d/luci-mod-rtk-admin.json
+#: modules/generic/luci-mod-rtk-admin/htdocs/luci-static/resources/view/rtk/admin/admin/firmware.js
+msgid "Firmware Upgrade"
+msgstr ""

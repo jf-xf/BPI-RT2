@@ -1,0 +1,9 @@
+#
+# VoIP Solution
+#
+menu "RTK VoIP"
+
+source "rtk_voip/kernel/Kconfig"
+source "rtk_voip/aipc_char/Kconfig"
+
+endmenu

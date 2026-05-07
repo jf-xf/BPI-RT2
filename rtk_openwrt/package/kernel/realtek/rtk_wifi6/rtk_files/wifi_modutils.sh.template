@@ -1,0 +1,105 @@
+#!/bin/sh
+
+# fem type check
+fem_type_w0=`mib get HW_WLAN0_FEM_TYPE | grep HW_WLAN0_FEM_TYPE | cut -d '=' -f 2-`
+fem_type_w1=`mib get HW_WLAN1_FEM_TYPE | grep HW_WLAN1_FEM_TYPE | cut -d '=' -f 2-`
+fem_type_enabled=FEM_TYPE_ENABLED
+
+if [ "$fem_type_enabled" == "1" ]; then
+	if [ "$fem_type_w0" != "" ]; then
+		fem_param_w0="WLAN0_EFEM_TYPE=$fem_type_w0"
+	fi
+
+	if [ "$fem_type_w1" != "" ]; then
+		fem_param_w1="WLAN1_EFEM_TYPE=$fem_type_w1"
+	fi
+fi
+
+# boardid check
+bootargs_boardid=`nv getenv bootargs_boardid | cut -d '=' -f 2-`
+boardid=$(( bootargs_boardid & 0xff ))
+wifi6_value=$(( boardid & 2 ))
+wifi5_value=$(( boardid & 1 ))
+#echo "bootargs_boardid=$bootargs_boardid"
+#echo "boardid=$boardid"
+#echo "wifi6_value=$wifi6_value"
+#echo "wifi5_value=$wifi5_value"
+
+# multi dtb enabled
+multi_dtb_enabled=MULTI_DTB_ENABLED
+
+wifi6_module_check(){
+	ifconfig -a wlan0 > /dev/null 2>&1
+	wlan0_nexist=$?
+	ifconfig -a wlan1 > /dev/null 2>&1
+	wlan1_nexist=$?
+	if [ "$wlan0_nexist" == "0" ] && [ "$wlan1_nexist" == "0" ]; then
+		#both interface success
+		return 1
+	elif [ "$wlan0_nexist" == "1" ] && [ "$wlan1_nexist" == "1" ]; then
+		rtk_wifi6_exist=`lsmod | grep rtk_wifi6`
+		if [ "$rtk_wifi6_exist" != "" ]; then
+			echo "remove rtk_wifi6 module"
+			rmmod rtk_wifi6
+		fi
+		#both interface failed
+		return 0
+	else
+		#init only one interface
+		return 0
+	fi
+}
+
+if [ -f /lib/modules/`uname -r`/extra/drivers/net/wireless/realtek/g6_wifi_driver/rtk_wifi6.ko ] || \
+	[ -f /lib/modules/`uname -r`/kernel/drivers/net/wireless/realtek/g6_wifi_driver/rtk_wifi6.ko ] || \
+	[ -f /lib/modules/`uname -r`/rtk_wifi6.ko ]; then
+	echo "load rtk_wifi6 module fem_type_enabled=${fem_type_enabled}, "
+	if [ "$bootargs_boardid" == "" ] || [ $wifi6_value -eq 2 ]; then
+		#echo "insmod rtk_wifi6 rtw_drv_log_level=0 rtw_vht_enable=2 rtw_he_enable=2 $fem_param_w0 $fem_param_w1"
+		if [ -f /config/txmode ]; then
+			insmod rtk_wifi6 rtw_drv_log_level=0 rtw_vht_enable=2 rtw_he_enable=2 rtw_tx_mode=`cat /config/txmode` $fem_param_w0 $fem_param_w1
+		else
+			insmod rtk_wifi6 rtw_drv_log_level=0 rtw_vht_enable=2 rtw_he_enable=2 $fem_param_w0 $fem_param_w1
+		fi
+		if [ "$multi_dtb_enabled" == "1" ]; then
+			wifi6_module_check
+		fi
+	fi
+elif [ -f /lib/modules/`uname -r`/extra/drivers/net/wireless/realtek/g6_wifi_driver/8852ae.ko ] || \
+	[ -f /lib/modules/`uname -r`/kernel/drivers/net/wireless/realtek/g6_wifi_driver/8852ae.ko ]; then
+
+	if [ -f /config/txmode ]; then
+		insmod 8852ae rtw_drv_log_level=0 rtw_vht_enable=2 rtw_he_enable=2 rtw_tx_mode=`cat /config/txmode`
+		# insmod 8852ae rtw_fw_file_path=/etc/RTL8852Afw_AP_v52.bin rtw_drv_log_level=0 rtw_vht_enable=2 rtw_he_enable=2 rtw_tx_mode=`cat /config/txmode`
+	else
+		insmod 8852ae rtw_drv_log_level=0 rtw_vht_enable=2 rtw_he_enable=2
+		# insmod 8852ae rtw_fw_file_path=/etc/RTL8852Afw_AP_v52.bin rtw_drv_log_level=0 rtw_vht_enable=2 rtw_he_enable=2
+	fi
+elif [ -f /lib/modules/`uname -r`/extra/drivers/net/wireless/realtek/g6_wifi_driver/8852ce.ko ] || \
+	[ -f /lib/modules/`uname -r`/kernel/drivers/net/wireless/realtek/g6_wifi_driver/8852ce.ko ]; then
+
+	if [ -f /config/txmode ]; then
+		insmod 8852ce rtw_drv_log_level=0 rtw_vht_enable=2 rtw_he_enable=2 rtw_tx_mode=`cat /config/txmode`
+	else
+		insmod 8852ce rtw_drv_log_level=0 rtw_vht_enable=2 rtw_he_enable=2
+	fi
+fi
+
+if [ -f /lib/modules/`uname -r`/extra/drivers/net/wireless/realtek/rtl8192cd/rtl8192cd.ko ]; then
+	if [ "$bootargs_boardid" == "" ]; then
+		wifi6_module_check
+		if [ $? -eq 0 ]; then
+			insmod rtl8192cd
+		fi
+	fi
+	if [ "$bootargs_boardid" != "" ] && [ $wifi5_value -eq 1 ]; then
+		if [ $bootargs_boardid -eq 65535 ];then
+			wifi6_module_check
+			if [ $? -eq 0 ]; then
+				insmod rtl8192cd
+			fi
+		else
+			insmod rtl8192cd
+		fi
+	fi
+fi

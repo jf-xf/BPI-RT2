@@ -1,0 +1,83 @@
+Index: linux-5.10.138/drivers/net/ethernet/realtek/rtk_fc_system.c
+===================================================================
+--- linux-5.10.138.orig/drivers/net/ethernet/realtek/rtk_fc_system.c
++++ linux-5.10.138/drivers/net/ethernet/realtek/rtk_fc_system.c
+@@ -39,10 +39,19 @@ static int is_rtk_nic_dev(struct net_dev
+ #endif
+ 
+ #if defined(CONFIG_RTL_MULTI_ETH_WAN)
++#ifdef CONFIG_VLAN_8021Q
++extern struct rtnl_link_ops vlan_link_ops;
++#endif
++
+ static int is_rtk_wan_dev(struct net_device *dev)
+ {
+ 	u32 flags = rtk_netdev_get_flags(dev);
+-	if(((flags&RTK_IFF_DOMAIN_WAN) || strstr(dev->name, "ppp"))
++	
++	if(((flags&RTK_IFF_DOMAIN_WAN) || strstr(dev->name, "ppp")
++#ifdef CONFIG_VLAN_8021Q
++		|| (dev->rtnl_link_ops == &vlan_link_ops)
++#endif
++		)
+ 		&& (dev->flags & IFF_UP) && netif_carrier_ok(dev)
+ 	){
+ 		return 1;
+@@ -123,4 +132,4 @@ int rtk_dev_update_stats(struct net_devi
+ }
+ 
+ EXPORT_SYMBOL(rtk_dev_update_stats);
+-#endif
+\ No newline at end of file
++#endif
+Index: linux-5.10.138/drivers/net/ppp/ppp_generic.c
+===================================================================
+--- linux-5.10.138.orig/drivers/net/ppp/ppp_generic.c
++++ linux-5.10.138/drivers/net/ppp/ppp_generic.c
+@@ -52,6 +52,9 @@
+ #include <linux/nsproxy.h>
+ #include <net/net_namespace.h>
+ #include <net/netns/generic.h>
++#ifdef CONFIG_RTK_L34_FLEETCONNTRACK_ENABLE
++extern int rtk_dev_update_stats(struct net_device *dev, struct rtnl_link_stats64 *stats);
++#endif
+ 
+ #define PPP_VERSION	"2.4.2"
+ 
+@@ -1442,6 +1445,10 @@ ppp_get_stats64(struct net_device *dev,
+ 	stats64->rx_dropped       = dev->stats.rx_dropped;
+ 	stats64->tx_dropped       = dev->stats.tx_dropped;
+ 	stats64->rx_length_errors = dev->stats.rx_length_errors;
++
++#ifdef CONFIG_RTK_L34_FLEETCONNTRACK_ENABLE
++	rtk_dev_update_stats(dev, stats64);
++#endif
+ }
+ 
+ static int ppp_dev_init(struct net_device *dev)
+Index: linux-5.10.138/net/8021q/vlan_dev.c
+===================================================================
+--- linux-5.10.138.orig/net/8021q/vlan_dev.c
++++ linux-5.10.138/net/8021q/vlan_dev.c
+@@ -32,6 +32,10 @@
+ #include <linux/if_vlan.h>
+ #include <linux/netpoll.h>
+ 
++#ifdef CONFIG_RTK_L34_FLEETCONNTRACK_ENABLE
++extern int rtk_dev_update_stats(struct net_device *dev, struct rtnl_link_stats64 *stats);
++#endif
++
+ /*
+  *	Create the VLAN header for an arbitrary protocol layer
+  *
+@@ -718,6 +722,10 @@ static void vlan_dev_get_stats64(struct
+ 	}
+ 	stats->rx_errors  = rx_errors;
+ 	stats->tx_dropped = tx_dropped;
++
++#ifdef CONFIG_RTK_L34_FLEETCONNTRACK_ENABLE
++	rtk_dev_update_stats(dev, stats);
++#endif
+ }
+ 
+ #ifdef CONFIG_NET_POLL_CONTROLLER

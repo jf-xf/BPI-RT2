@@ -1,0 +1,3 @@
+config UIMAGE_MULTI_DTB
+	bool 'Multiple DTB in uImage'
+	depends on TARGET_realtek_bb_rtl9617c || TARGET_realtek_bb_rtl9607f

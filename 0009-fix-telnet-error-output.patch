@@ -1,0 +1,25 @@
+From be2d3edc6b3c6b9761712eb71732a586fbfc82b0 Mon Sep 17 00:00:00 2001
+From: Qubot <1445788683@qq.com>
+Date: Tue, 27 Jan 2026 17:56:22 +0800
+Subject: [PATCH 09/12] fix telnet error output
+
+---
+ package/utils/busybox/files/telnet | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/package/utils/busybox/files/telnet b/package/utils/busybox/files/telnet
+index f1f0a36f..66515942 100755
+--- a/package/utils/busybox/files/telnet
++++ b/package/utils/busybox/files/telnet
+@@ -8,7 +8,7 @@ PROG=/usr/sbin/telnetd
+ 
+ start_service() {
+ 	procd_open_instance
+-	procd_set_param command $PROG -l /bin/login -F
++	procd_set_param command $PROG -l /bin/login
+ 	procd_close_instance
+ }
+ 
+-- 
+2.34.1
+

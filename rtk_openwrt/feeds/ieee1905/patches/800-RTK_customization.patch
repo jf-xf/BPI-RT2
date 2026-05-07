@@ -1,0 +1,13 @@
+Index: ieee1905-4.10.33/src/main.c
+===================================================================
+--- ieee1905-4.10.33.orig/src/main.c
++++ ieee1905-4.10.33/src/main.c
+@@ -42,7 +42,7 @@ int main(int argc, char **argv)
+ 		.daemonize = false,
+ 		.conffile = IEEE1905_CONFFILE,
+ 		.confpath = IEEE1905_CONFFILE_PATH,
+-		.debug_level = 2,
++		.debug_level = 0,
+ 		.syslogging = false,
+ 		.logfile = NULL,
+ 		.logfile_isfifo = false,

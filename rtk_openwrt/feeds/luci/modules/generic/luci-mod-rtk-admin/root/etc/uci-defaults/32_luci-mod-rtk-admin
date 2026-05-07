@@ -1,0 +1,33 @@
+#!/bin/sh
+
+test_user_p=$(grep user /etc/passwd)
+test_user_s=$(grep user /etc/shadow)
+
+# Add 'user' account
+if [ -z ${test_user_p} ]; then
+	echo "user:x:100:100:user:/tmp:/bin/ash" >> /etc/passwd
+fi
+
+if [ -z ${test_user_s} ]; then
+	echo "user:x:0:0:99999:7:::" >> /etc/shadow
+fi
+
+# Add 'user' login section in /etc/config/rpcd
+uci get rpcd.user 1>/dev/null 2>/dev/null || {
+uci -q batch <<EOF
+	set rpcd.user=login
+	set rpcd.user.username='user'
+	set rpcd.user.password='\$p\$user'
+	add_list rpcd.user.read='*'
+	add_list rpcd.user.write=luci-mod-rtk-admin-reboot
+	commit rpcd
+EOF
+}
+
+uci -q batch <<-EOF
+	set system.@system[0].log_file='/www/system.log'
+	set system.@system[0].displaylevel='8'
+	commit system
+EOF
+
+exit 0

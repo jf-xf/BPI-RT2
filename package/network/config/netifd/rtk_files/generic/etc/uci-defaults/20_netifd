@@ -1,0 +1,61 @@
+#!/bin/sh
+
+uci -q batch <<-EOF >/dev/null
+        set network.globals.IPRULE_PRIORITY_ADDR='29000'
+        set network.globals.IPRULE_PRIORITY_ADDR_MASK='29001'
+        set network.globals.IPRULE_PRIORITY_NW='90000'
+        set network.globals.IPRULE_PRIORITY_REJECT='4200000000'
+
+        set network.RU_STATIC_RT=rule
+        set network.RU_STATIC_RT.priority='27900'
+        set network.RU_STATIC_RT.invert='0'
+        set network.RU_STATIC_RT.lookup='257'
+
+        set network.RU_LAN_RT=rule
+        set network.RU_LAN_RT.priority='28000'
+        set network.RU_LAN_RT.invert='0'
+        set network.RU_LAN_RT.lookup='260'
+
+        set network.RU_STATIC_RT_6=rule6
+        set network.RU_STATIC_RT_6.priority='27900'
+        set network.RU_STATIC_RT_6.invert='0'
+        set network.RU_STATIC_RT_6.lookup='257'
+
+        set network.RU_LAN_RT_6=rule6
+        set network.RU_LAN_RT_6.priority='28000'
+        set network.RU_LAN_RT_6.invert='0'
+        set network.RU_LAN_RT_6.lookup='260'
+
+        set network.RU_LAN_PD_RT_6=rule6
+        set network.RU_LAN_PD_RT_6.priority='27945'
+        set network.RU_LAN_PD_RT_6.invert='0'
+        set network.RU_LAN_PD_RT_6.lookup='258'
+
+	set network.RO_LAN_local_6=route6
+	set network.RO_LAN_local_6.target='fe80::'
+	set network.RO_LAN_local_6.netmask='64'
+	set network.RO_LAN_local_6.metric='256'
+	set network.RO_LAN_local_6.interface='lan'
+	set network.RO_LAN_local_6.table='260'
+	set network.RO_LAN_local_6.proto='kernel'
+
+        set network.rtkglobals=rtkglobals
+        set network.rtkglobals.ipv6='1'
+        set network.rtkglobals.pdmode='wanpd'
+        set network.rtkglobals.dnsv6mode='proxy'
+        set network.rtkglobals.wlan_block='0'
+
+        rename network.@device[0]='D_lan'
+        set network.D_lan.ageing_time='7200'
+        set network.D_lan.addr_gen_mode='0'
+
+	set network.lan.ip4table='main'
+	set network.lan.ip4table2='260'
+	set network.lan.ip6table='main'
+	set network.lan.ip6table2='260'
+
+        commit network
+EOF
+
+exit 0
+

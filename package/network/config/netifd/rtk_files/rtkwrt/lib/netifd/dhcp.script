@@ -1,0 +1,144 @@
+#!/bin/sh
+[ -z "$1" ] && echo "Error: should be run by udhcpc" && exit 1
+
+. /lib/functions.sh
+. /lib/netifd/netifd-proto.sh
+
+set_classless_routes() {
+	local max=128
+	while [ -n "$1" -a -n "$2" -a $max -gt 0 ]; do
+		proto_add_ipv4_route "${1%%/*}" "${1##*/}" "$2" "$ip"
+		max=$(($max-1))
+		shift 2
+	done
+}
+
+setup_interface () {
+	proto_init_update "*" 1
+	proto_add_ipv4_address "$ip" "${subnet:-255.255.255.0}"
+	# TODO: apply $broadcast
+
+	local ip_net
+	eval "$(ipcalc.sh "$ip/$mask")";ip_net="$NETWORK"
+
+	local i
+	for i in $router; do
+		local gw_net
+		eval "$(ipcalc.sh "$i/$mask")";gw_net="$NETWORK"
+
+		[ "$ip_net" != "$gw_net" ] && proto_add_ipv4_route "$i" 32 "" "$ip"
+		proto_add_ipv4_route 0.0.0.0 0 "$i" "$ip"
+
+		local r
+		for r in $CUSTOMROUTES; do
+			proto_add_ipv4_route "${r%%/*}" "${r##*/}" "$i" "$ip"
+		done
+	done
+
+	# CIDR STATIC ROUTES (rfc3442)
+	[ -n "$staticroutes" ] && set_classless_routes $staticroutes
+	[ -n "$msstaticroutes" ] && set_classless_routes $msstaticroutes
+
+	for i in $dns; do
+		proto_add_dns_server "$i"
+	done
+	for i in $domain; do
+		proto_add_dns_search "$i"
+	done
+
+	proto_add_data
+	[ -n "$ZONE" ]     && json_add_string zone "$ZONE"
+	[ -n "$ntpsrv" ]   && json_add_string ntpserver "$ntpsrv"
+	[ -n "$timesvr" ]  && json_add_string timeserver "$timesvr"
+	[ -n "$hostname" ] && json_add_string hostname "$hostname"
+	[ -n "$message" ]  && json_add_string message "$message"
+	[ -n "$timezone" ] && json_add_int timezone "$timezone"
+	[ -n "$lease" ]    && json_add_int leasetime "$lease"
+	proto_close_data
+
+	proto_send_update "$INTERFACE"
+
+	if [ "$IFACE6RD" != 0 -a -n "$ip6rd" ]; then
+		local v4mask="${ip6rd%% *}"
+		ip6rd="${ip6rd#* }"
+		local ip6rdprefixlen="${ip6rd%% *}"
+		ip6rd="${ip6rd#* }"
+		local ip6rdprefix="${ip6rd%% *}"
+		ip6rd="${ip6rd#* }"
+		local ip6rdbr="${ip6rd%% *}"
+
+		[ -n "$ZONE" ] || ZONE=$(fw3 -q network $INTERFACE 2>/dev/null)
+		#[ -z "$IFACE6RD" -o "$IFACE6RD" = 1 ] && IFACE6RD=${INTERFACE}_6
+		# We use ${INTERFACE}_t for 6rd name
+		[ -z "$IFACE6RD" -o "$IFACE6RD" = 1 ] && IFACE6RD=${INTERFACE}_t
+
+		json_init
+		json_add_string name "$IFACE6RD"
+		json_add_string ifname "@$INTERFACE"
+		json_add_string proto "6rd"
+		json_add_string peeraddr "$ip6rdbr"
+		json_add_int ip4prefixlen "$v4mask"
+		json_add_string ip6prefix "$ip6rdprefix"
+		json_add_int ip6prefixlen "$ip6rdprefixlen"
+		json_add_string tunlink "$INTERFACE"
+		[ -n "$IFACE6RD_DELEGATE" ] && json_add_boolean delegate "$IFACE6RD_DELEGATE"
+		[ -n "$ZONE6RD" ] || ZONE6RD=$ZONE
+		[ -n "$ZONE6RD" ] && json_add_string zone "$ZONE6RD"
+		[ -n "$MTU6RD" ] && json_add_string mtu "$MTU6RD"
+
+		#RTK Add fwmask/fwmark, route_table_id and static dnsv6 info
+		wan_data=$(ubus call network.interface."$INTERFACE" status)
+		wan_mark=$(jsonfilter -s "$wan_data" -e '@["policy-route-info"].wan_mark')
+		wan_mask=$(jsonfilter -s "$wan_data" -e '@["policy-route-info"].wan_mask')
+		ip4table=$(jsonfilter -s "$wan_data" -e '@["ip4table"]')
+		ip6table=$(jsonfilter -s "$wan_data" -e '@["ip6table"]')
+		ip4table2=$(jsonfilter -s "$wan_data" -e '@["policy-route-info"].ip4table2')
+		ip6table2=$(jsonfilter -s "$wan_data" -e '@["policy-route-info"].ip6table2')
+		
+		[ "$wan_mark" -gt 0 ] && json_add_int wan_mark "$wan_mark"
+		[ "$wan_mask" -gt 0 ] && json_add_int wan_mask "$wan_mask"
+		[ -z "$ip6table" ] || json_add_string ip6table "$ip6table"
+		[ -z "$ip4table" ] || json_add_string ip4table "$ip4table"
+		[ -z "$ip6table2" ] || json_add_string ip6table2 "$ip6table2"
+		[ -z "$ip4table2" ] || json_add_string ip4table2 "$ip4table2"
+		
+		# dnsv6_6rd_file=$RTK_DNS6_RESOLV_FILE"."$INTERFACE
+		# dnsv6_6rd_list=""
+		# if [ -f $dnsv6_6rd_file ]; then
+		# 	for dnsv6_6rd in $(cat $dnsv6_6rd_file)
+		# 	do
+		# 		append PROTO_6RD_DNS "$dnsv6_6rd"
+		# 	done
+		# fi
+		# if [ -n "$PROTO_6RD_DNS" ]; then
+		# 	json_add_array "dns"
+		# 	for dnsv6_6rd in $PROTO_6RD_DNS
+		# 	do
+		# 		json_add_string "" $dnsv6_6rd
+		# 	done
+		# 	json_close_array
+		# fi
+
+		json_close_object
+		ubus call network add_dynamic "$(json_dump)"
+	fi
+}
+
+deconfig_interface() {
+	proto_init_update "*" 0
+	proto_send_update "$INTERFACE"
+}
+
+case "$1" in
+	deconfig)
+		deconfig_interface
+	;;
+	renew|bound)
+		setup_interface
+	;;
+esac
+
+# user rules
+[ -f /etc/udhcpc.user ] && . /etc/udhcpc.user "$@"
+
+exit 0

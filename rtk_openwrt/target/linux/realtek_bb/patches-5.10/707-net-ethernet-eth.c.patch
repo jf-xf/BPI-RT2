@@ -1,0 +1,15 @@
+Index: linux-5.10.138/net/ethernet/eth.c
+===================================================================
+--- linux-5.10.138.orig/net/ethernet/eth.c
++++ linux-5.10.138/net/ethernet/eth.c
+@@ -192,10 +192,6 @@ __be16 eth_type_trans(struct sk_buff *sk
+ 		} else {
+ 			skb->pkt_type = PACKET_OTHERHOST;
+ 		}
+-
+-		if (eth_check_local_mask(eth->h_dest, dev->dev_addr,
+-					 dev->local_addr_mask))
+-			skb->gro_skip = 1;
+ 	}
+ 
+ 	/*

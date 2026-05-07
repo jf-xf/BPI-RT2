@@ -1,0 +1,479 @@
+//
+// Copyright (C) 2011 Realtek Semiconductor Corp.
+// All Rights Reserved.
+//
+// This program is the proprietary software of Realtek Semiconductor
+// Corporation and/or its licensors, and only be used, duplicated,
+// modified or distributed under the authorized license from Realtek.
+//
+// ANY USE OF THE SOFTWARE OTHER THAN AS AUTHORIZED UNDER
+// THIS LICENSE OR COPYRIGHT LAW IS PROHIBITED.
+//
+// $Revision: 68395 $
+// $Date: 2016-05-27 16:38:35 +0800 (Fri, 27 May 2016) $
+//
+// Purpose : Define diag shell commands for acl.
+//
+// Feature : The file have include the following module and sub-modules
+//           1) Reset/display/configure acl rule structure and then add this rule.
+//           2) Get/delete acl rule by rule index.
+//
+
+//rt_acl configuration
+//add configuration
+//entry configuration
+rt_acl add entry
+
+//rt_acl configuration
+//get configuration
+//entry configuration
+//entry index
+rt_acl get entry <UINT:entry_index>
+
+//rt_acl configuration
+//del configuration
+//entry configuration
+//entry index
+rt_acl del entry <UINT:entry_index>
+
+//rt_acl configuration
+//show configuration
+rt_acl show
+
+//rt_acl configuration
+//clear configuration
+rt_acl clear
+
+
+//
+// ACL Configuration
+//
+
+//rt_acl configuration
+//set configuration
+//acl_weight configuration
+//weight for sorting
+rt_acl set acl_weight <INT:acl_weight>
+
+//
+// Pattern Configuration
+//
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_port_mask configuration
+//portmask, <0x000-0xfff>
+rt_acl set pattern ingress_port_mask <HEX:portmask>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//care_port_unitype_pptp configuration
+//disable
+//enable
+rt_acl set pattern care_port_unitype_pptp ( disable | enable )
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_wlan_mbssid_mask configuration
+//wlan0 configuration
+//wlan mbssid mask, <0x000-0xfff>
+rt_acl set pattern ingress_wlan_mbssid_mask wlan0 <HEX:wlan0_mbssid_mask>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_wlan_mbssid_mask configuration
+//wlan0 configuration
+//wlan mbssid mask, <0x000-0xfff>
+//wlan1 configuration
+//wlan mbssid mask, <0x000-0xfff>
+rt_acl set pattern ingress_wlan_mbssid_mask wlan0 <HEX:wlan0_mbssid_mask> wlan1 <HEX:wlan1_mbssid_mask>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_wlan_mbssid_mask configuration
+//wlan0 configuration
+//wlan mbssid mask, <0x000-0xfff>
+//wlan1 configuration
+//wlan mbssid mask, <0x000-0xfff>
+//wlan2 configuration
+//wlan mbssid mask, <0x000-0xfff>
+rt_acl set pattern ingress_wlan_mbssid_mask wlan0 <HEX:wlan0_mbssid_mask> wlan1 <HEX:wlan1_mbssid_mask> wlan2 <HEX:wlan2_mbssid_mask>
+
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_smac configuration
+//smac, A:B:C:D:E:F
+rt_acl set pattern ingress_smac <MACADDR:smac>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_smac_mask configuration
+//smac mask, ex FF:FF:FF:FF:FF:FF
+rt_acl set pattern ingress_smac_mask <MACADDR:smac_mask>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_dmac configuration
+//dmac, A:B:C:D:E:F
+rt_acl set pattern ingress_dmac <MACADDR:dmac>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_dmac_mask configuration
+//dmac mask, ex FF:FF:FF:FF:FF:FF
+rt_acl set pattern ingress_dmac_mask <MACADDR:dmac_mask>
+
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_ethertype configuration
+//ethtype, 0x0800
+rt_acl set pattern ingress_ethertype <HEX:ethertype>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_ethertype_mask configuration
+//ethertype mask, ex 0xffff
+rt_acl set pattern ingress_ethertype_mask <HEX:ethertype_mask>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_stagif configuration
+//stag or not, 0:must not have stag  1:must have stag
+rt_acl set pattern ingress_stagif <UINT:stagif>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_stag_vid configuration
+//stag vid
+rt_acl set pattern ingress_stag_vid <UINT:stag_vid>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_stag_pri configuration
+//stag_pri, 0~7
+rt_acl set pattern ingress_stag_pri <UINT:stag_pri>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_stag_dei configuration
+//stag_dei, 0~1
+rt_acl set pattern ingress_stag_dei <UINT:stag_dei>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_ctagif configuration
+//ctag or not, 0:must not have stag  1:must have stag
+rt_acl set pattern ingress_ctagif <UINT:ctagif>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_ctag_vid configuration
+//vid, <0-4095>
+rt_acl set pattern ingress_ctag_vid <UINT:vid>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_ctag_pri configuration
+//pri, <0-7>
+rt_acl set pattern ingress_ctag_pri <UINT:pri>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_ctag_cfi configuration
+//cfi, <0-1>
+rt_acl set pattern ingress_ctag_cfi <UINT:cfi>
+
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_ipv4_tagif configuration
+//ipv4 tag or not
+rt_acl set pattern ingress_ipv4_tagif <UINT:ipv4_tagif>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_src_ipv4_addr_start configuration
+//source ip low bound 
+//ingress_src_ipv4_addr_end configuration
+//source ip up bound
+rt_acl set pattern ingress_src_ipv4_addr_start <IPV4ADDR:sip_low_bound> ingress_src_ipv4_addr_end <IPV4ADDR:sip_up_bound>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_dest_ipv4_addr_start configuration
+//destination ip low bound 
+//ingress_dest_ipv4_addr_end configuration
+//destination ip up bound 
+rt_acl set pattern ingress_dest_ipv4_addr_start  <IPV4ADDR:dip_low_bound> ingress_dest_ipv4_addr_end  <IPV4ADDR:dip_up_bound>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_ipv4_dscp configuration
+//dscp, <0-63>
+rt_acl set pattern ingress_ipv4_dscp <UINT:dscp>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_ipv4_tos configuration
+//dscp, <0-255>
+rt_acl set pattern ingress_ipv4_tos <UINT:tos>
+
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_ipv6_tagif configuration
+//ipv6 tag or not
+rt_acl set pattern ingress_ipv6_tagif <UINT:ipv6_tagif>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_src_ipv6_addr configuration
+//source ipv6 address
+rt_acl set pattern ingress_src_ipv6_addr  <IPV6ADDR:src_ipv6_addr> 
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_src_ipv6_addr_mask configuration
+//source ipv6 address mask
+rt_acl set pattern ingress_src_ipv6_addr_mask  <IPV6ADDR:src_ipv6_addr_mask> 
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_dest_ipv6_addr configuration
+//destination ipv6 address
+rt_acl set pattern ingress_dest_ipv6_addr  <IPV6ADDR:dest_ipv6_addr> 
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_dest_ipv6_addr_mask configuration
+//destination ipv6 address mask
+rt_acl set pattern ingress_dest_ipv6_addr_mask  <IPV6ADDR:dest_ipv6_addr_mask> 
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_ipv6_dscp configuration
+//dscp, <0-63>
+rt_acl set pattern ingress_ipv6_dscp <UINT:dscp>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_ipv6_tc configuration
+//tc, <0-255>
+rt_acl set pattern ingress_ipv6_tc <UINT:tc>
+
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_l4_protocal_value
+//protocal_value, ex: 1(icmp) 2(igmp) 6(tcp) 17(udp)
+rt_acl set pattern ingress_l4_protocal_value <HEX:protocal>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_l4_protocal
+//protocal, 0:UDP 1:TCP 2:ICMP
+rt_acl set pattern ingress_l4_protocal <UINT:protocal>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_src_l4_port_start configuration
+//layer4 source port low bound, 0~65535
+//ingress_src_l4_port_end configuration
+//layer4 source port up bound, 0~65535
+rt_acl set pattern ingress_src_l4_port_start <UINT:l4sport_low_bound> ingress_src_l4_port_end <UINT:l4sport_up_bound>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_dest_l4_port_start configuration
+//layer4 destination port low bound, 0~65535
+//ingress_dest_l4_port_end configuration
+//layer4 destination port up bound, 0~65535
+rt_acl set pattern ingress_dest_l4_port_start <UINT:l4dport_low_bound> ingress_dest_l4_port_end <UINT:l4dport_up_bound>
+
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_stream_id configuration
+//stream id
+rt_acl set pattern ingress_stream_id <UINT:stream_id>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_stream_id_mask configuration
+//stream id mask, ex 0xffff
+rt_acl set pattern ingress_stream_id_mask <HEX:stream_id_mask>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_tcp_flags configuration
+//tcp flags
+rt_acl set pattern ingress_tcp_flags <UINT:tcp_flags>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_tcp_flags_mask configuration
+//tcp flags mask, ex 0xff
+rt_acl set pattern ingress_tcp_flags_mask <HEX:tcp_flags_mask>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_packet_length_start configuration
+//packet length low bound, 0~65542
+//ingress_packet_length_end configuration
+//packet length up bound, 0~65542
+rt_acl set pattern ingress_packet_length_start <UINT:pkt_length_low_bound> ingress_packet_length_end <UINT:pkt_length_up_bound>
+
+//rt_acl configuration
+//set configuration
+//pattern configuration
+//ingress_arp_target_ip configuration
+//arp target ip 
+rt_acl set pattern ingress_arp_target_ip  <IPV4ADDR:arp_target_ip> 
+
+//
+// Action Configuration
+//
+
+//rt_acl configuration
+//set configuration
+//action configuration
+//FORWARD configuration
+//drop
+rt_acl set action FORWARD drop
+
+//rt_acl configuration
+//set configuration
+//action configuration
+//FORWARD configuration
+//trap
+rt_acl set action FORWARD trap
+
+//rt_acl configuration
+//set configuration
+//action configuration
+//FORWARD configuration
+//trap to switch P7
+rt_acl set action FORWARD trap_to_slavecpu
+
+//rt_acl configuration
+//set configuration
+//action configuration
+//FORWARD configuration
+//trap to ps
+rt_acl set action FORWARD trap_to_ps
+
+//rt_acl configuration
+//set configuration
+//action configuration
+//FORWARD configuration
+//permit
+rt_acl set action FORWARD permit
+
+//rt_acl configuration
+//set configuration
+//action configuration
+//FORWARD configuration
+//redirect
+//port
+//port_idx
+rt_acl set action FORWARD redirect port <UINT:port_idx>
+
+//rt_acl configuration
+//set configuration
+//action configuration
+//PRIORITY configuration
+//trap-priority configuration
+//priority, <0-7>
+rt_acl set action PRIORITY trap-priority <UINT:priority>
+
+//rt_acl configuration
+//set configuration
+//action configuration
+//PRIORITY configuration
+//acl-priority configuration
+//priority, <0-7>
+rt_acl set action PRIORITY acl-priority <UINT:priority>
+
+//rt_acl configuration
+//set configuration
+//action configuration
+//METER configuration
+//share-meter configuration
+//meter_idx
+rt_acl set action METER share-meter <UINT:meter_idx>
+
+//rt_acl configuration
+//set configuration
+//action configuration
+//LOGGING configuration
+//mib configuration
+//mib_idx
+rt_acl set action LOGGING mib <UINT:mib_idx>
+
+//
+// Reserved ACL Configuration
+//
+
+//rt_acl configuration
+//reserved_status configuration
+//get configuration
+//reserved_type
+rt_acl reserved_status get <UINT:reserved_type>
+
+//rt_acl configuration
+//reserved_status configuration
+//get configuration
+//all
+rt_acl reserved_status get all
+
+//rt_acl configuration
+//reserved_status configuration
+//set configuration
+//reserved_type
+//status configuration
+//disable
+//enable
+rt_acl reserved_status set <UINT:reserved_type> status  ( disable | enable )
+

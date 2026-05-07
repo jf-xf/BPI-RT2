@@ -1,0 +1,79 @@
+Index: busybox-default/busybox-1.35.0/networking/ntpd.c
+===================================================================
+--- a/networking/ntpd.c
++++ b/networking/ntpd.c
+@@ -109,6 +109,12 @@
+ #include <math.h>
+ #include <netinet/ip.h> /* For IPTOS_DSCP_AF21 definition */
+ #include <sys/timex.h>
++
++#include <sys/ioctl.h>
++#include <net/if.h>
++#include <netinet/in.h>
++#include <string.h>
++
+ #ifndef IPTOS_DSCP_AF21
+ # define IPTOS_DSCP_AF21 0x48
+ #endif
+@@ -477,6 +483,36 @@ struct globals {
+ #define VERB5 if (MAX_VERBOSE >= 5 && G.verbose >= 5)
+ #define VERB6 if (MAX_VERBOSE >= 6 && G.verbose >= 6)
+ 
++int do_ioctl(unsigned int cmd, struct ifreq *ifr)
++{
++	int skfd, ret;
++
++	if ((skfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
++		perror("socket");
++		return (-1);
++	}
++
++	ret = ioctl(skfd, cmd, ifr);
++	close(skfd);
++	return ret;
++}
++
++int getInFlags(const char *interface, int *flags)
++{
++	struct ifreq ifr;
++	int found=0;
++
++	ifr.ifr_name[sizeof(ifr.ifr_name)-1]='\0';
++	strncpy(ifr.ifr_name, interface, sizeof(ifr.ifr_name)-1);
++
++	if (do_ioctl(SIOCGIFFLAGS, &ifr) == 0) {
++		if (flags)
++			*flags = ifr.ifr_flags;
++		found = 1;
++	}
++
++	return found;
++}
+ 
+ static double LOG2D(int a)
+ {
+@@ -875,6 +911,8 @@ hashes_differ(peer_t *p, const msg_t *ms
+ static void
+ send_query_to_peer(peer_t *p)
+ {
++	int flag = 0;
++
+ 	if (!p->p_lsa)
+ 		return;
+ 
+@@ -908,7 +946,14 @@ send_query_to_peer(peer_t *p)
+ 		 * receives only packets sent to this port.
+ 		 */
+ 		PROBE_LOCAL_ADDR
+-		xbind(fd, &local_lsa->u.sa, local_lsa->len);
++		if (G.if_name) {
++			while(getInFlags(G.if_name, &flag)==0 || (flag & IFF_UP)==0 || (flag & IFF_RUNNING)==0) { //wait the device created successly
++				sleep(2);
++			}
++			setsockopt_bindtodevice(fd, G.if_name); //It is that setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, G.if_name, sizeof(G.if_name))
++		}
++		else
++			xbind(fd, &local_lsa->u.sa, local_lsa->len);
+ 		PROBE_LOCAL_ADDR
+ #if ENABLE_FEATURE_IPV6
+ 		if (family == AF_INET)

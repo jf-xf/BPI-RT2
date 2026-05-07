@@ -1,0 +1,382 @@
+#!/usr/bin/lua
+
+local function execute(cmd)
+  print(cmd)
+  os.execute(cmd)
+end
+
+local function fexist(path)
+  local f = io.open(path, "r")
+  if f then
+    f:close()
+    return true
+  else
+    return false
+  end
+end
+
+local function fwrite(path, s)
+  if not s then return end
+  local f
+  f = assert(io.open(path, "w+"))
+  f:write(s)
+  f:close()
+end
+
+local function fread(path)
+  local f, s
+  f = assert(io.open(path, "r"))
+  s = f:read("*all")
+  f:close()
+  return s
+end
+
+local function fremove(path)
+  os.remove(path)
+end
+
+----------------------
+
+local mapconf = require("rtk.mapconf")
+local lstr = require("rtk.lstr")
+
+local opthelp = [[
+ -l                 Soft
+Options without required option arguments may be specified multiple times.
+]]
+
+SERVICE_NAME = "rtk_multiap"
+WAN_IF_NAME = "veip0"
+DEFAULT_DEVICE_NAME = "easymesh_rtk"
+DEFAULT_VLAN_NAME = "vlan1"
+
+MAP_CONF_TEMPLATE = "/etc/multiap.conf"
+MAP_CONF = "/var/multiap.conf"
+MAP_MIB_CONF = "/var/multiap_mib.conf"
+MAP_SETMIB_CONF = "/var/multiap_setmib.conf"
+WPA_CONF_FTS = "/var/run/wpa_supplicant-%s.conf"
+MAP_VLAN_SETTING = "/tmp/map_vlan_setting"
+MAP_VLAN_NEED_RESET = "/tmp/map_vlan_need_reset"
+MAP_VLAN_RESET = "/tmp/map_vlan_reset"
+WPS_STATS_FILE = "/var/wpas_wps_stas"
+
+SIDE_BAND_NONE = -1
+SIDE_BAND_LOWER = 1
+SIDE_BAND_UPPER = 0
+
+math.randomseed(os.time())
+
+function string.random(len)
+  if len == 0 then return "" end
+  local charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
+  local ans = ""
+  for i = 1, len do
+    local pos = math.random(1, #charset)
+    ans = ans .. charset:sub(pos, pos)
+  end
+  return ans
+end
+
+local function get_prev_mode(radio_name)
+  local uci = require("luci.model.uci").cursor()
+  uci:load("wireless")
+  local prev_htmode = uci:get("wireless", radio_name, "htmode")
+  if not prev_htmode then return nil end
+  return prev_htmode:sub(prev_htmode:find("%u+"))
+end
+
+local function _set_internaltesting(conf)
+  local function _f1(conf_radio, ssid)
+    if not conf_radio or not conf_radio._BSS_DATAS then return end
+    v = conf_radio._BSS_DATAS[1]
+    if v.network_key then return end
+    v.ssid = ssid
+    v.authentication_type = AUTH_WPA2
+    v.network_key = "12345678"
+  end
+  if conf.__internal_testing ~= '1' or conf.role ~= MAP_ROLE_CONTROLLER then return end
+  _f1(conf.radios[MAP_CONFIG_2G], "test_2g")
+  _f1(conf.radios[MAP_CONFIG_5GL], "test_5gl")
+  _f1(conf.radios[MAP_CONFIG_5GH], "test_5gh")
+end
+
+local m_bhidx_vxd = {
+  [0] = "wlan0-vxd",
+  [1] = "wlan1-vxd",
+  [2] = "wlan2-vxd"
+}
+
+local m_bhidx_vap = {
+  [0] = "wlan0-vap0",
+  [1] = "wlan1-vap0",
+  [2] = "wlan2-vap0"
+}
+
+local function _set_bh_interfaces(role, bh_band_idx, backhaul_bss_index, conf_radios)
+  local function __forall(conf_radio, f)
+    if not conf_radio or not conf_radio._BSS_DATAS then return end
+    for i, v in ipairs(conf_radio._BSS_DATAS) do
+      local res = f(v)
+      if res ~= nil then return res end
+    end
+  end
+  local function _setall(conf_radio, bss_type)
+    __forall(conf_radio, function(v)
+      v.network_type_s = bss_type
+      v.need_configure = 1
+    end)
+  end
+  local function _finalise_network_type(conf_radio)
+    __forall(conf_radio, function(v)
+      v.network_type = v.network_type_s or v.network_type
+    end)
+  end
+  local function _get_bss(conf_radio, ifname)
+    return __forall(conf_radio, function(v)
+      if v.ifname == ifname then
+        return v
+      end
+    end)
+  end
+  local function _setone(v, bss_type)
+    if not v then return end
+    if not bss_type then
+      v.is_enabled = 0
+      v.network_type_s = 0
+    else
+      v.is_enabled = 1
+      v.network_type_s = bss_type
+    end
+    if bss_type == MAP_NETWORK_BACKHAUL_AP and not string.find(v.ssid, "EasymeshBH-") then
+      v.authentication_type = AUTH_WPA2
+      v.ssid = "EasymeshBH-" .. string.random(8)
+      v.network_key = string.random(15)
+    end
+    v.need_configure = 1
+  end
+  local m_bhidx_band = mapconf.m_ifidx_band
+  local m_bhidx_vap2 = {}
+  -- determine backhaul vap from backhaul_bss_index
+  for idx, vap in pairs(m_bhidx_vap) do
+    if backhaul_bss_index and backhaul_bss_index > 0 then
+      vap = vap:gsub("vap0", "vap"..(backhaul_bss_index - 1))
+    end
+    m_bhidx_vap2[idx] = vap
+  end
+  -- disable vap it if it is backhaul
+  for idx, vap in pairs(m_bhidx_vap2) do
+    local v = _get_bss(conf_radios[m_bhidx_band[idx]], vap)
+    if v and v.network_type == MAP_NETWORK_BACKHAUL_AP then _setone(v) end
+  end
+  -- disable all backhaul vxd interfaces
+  for idx, vxd in pairs(m_bhidx_vxd) do
+    _setone(_get_bss(conf_radios[m_bhidx_band[idx]], vxd))
+  end
+  if bh_band_idx < 0 then
+    -- ETH backhaul, do nothing
+  elseif role == MAP_ROLE_AGENT then
+    -- enable and set backhaul sta as backhaul sta
+    _setone(_get_bss(conf_radios[m_bhidx_band[bh_band_idx]], m_bhidx_vxd[bh_band_idx]), MAP_NETWORK_BACKHAUL_STA)
+  elseif role == MAP_ROLE_CONTROLLER then
+    -- set all interfaces with the same band as backhaul interface as fronthaul ap
+    _setall(conf_radios[m_bhidx_band[bh_band_idx]], MAP_NETWORK_FRONTHAUL_AP)
+    -- enable and set target backhaul ap as backhaul ap
+    _setone(_get_bss(conf_radios[m_bhidx_band[bh_band_idx]], m_bhidx_vap2[bh_band_idx]), MAP_NETWORK_BACKHAUL_AP)
+  end
+  for i, cr in pairs(conf_radios) do
+    _finalise_network_type(cr)
+  end
+end
+
+local function _set_every_interfaces(role, conf_radios)
+  local function _set_bss(conf_radio, ifname)
+    if not conf_radio then return end
+    conf_radio.ieee80211k = 1
+    conf_radio.bss_transition = 1
+    if not conf_radio._BSS_DATAS then return end
+    local bsss = conf_radio._BSS_DATAS
+    for i, v in ipairs(bsss) do
+      v.ieee80211k = 1
+      v.bss_transition = 1
+    end
+  end
+  local m_bhidx_band = mapconf.m_ifidx_band
+  if role ~= MAP_ROLE_DISABLED then
+    for _, band in pairs(m_bhidx_band) do
+      _set_bss(conf_radios[band])
+    end
+  end
+end
+
+local function _fix_vlan_config(conf)
+  local function get_ssids(conf)
+    local ssids = {}
+    for k,v in pairs(mapconf.m_band_radioname) do
+      local conf_radio = conf.radios[k]
+      if conf_radio and conf_radio._BSS_DATAS then
+        for _,d in ipairs(conf_radio._BSS_DATAS) do
+          if d.is_enabled == 1 and d.network_type ~= MAP_NETWORK_BACKHAUL_AP then
+            table.insert(ssids, d.ssid)
+          end
+        end
+      end
+    end
+    return ssids
+  end
+
+  local function get_m_ssid_vlanname(conf)
+    local d = {}
+    for i,v in ipairs(conf.vlans) do
+      for _,s in ipairs(v.ssids) do
+        d[s] = v.name
+      end
+    end
+    return d
+  end
+
+  local vlan1 = DEFAULT_VLAN_NAME..string.random(8)
+  local ssids = get_ssids(conf)
+  local m_ssid_vlanname = get_m_ssid_vlanname(conf)
+  local ssids_free = {}
+  for i,s in ipairs(ssids) do
+    if not m_ssid_vlanname[s] then
+      m_ssid_vlanname[s] = vlan1
+      table.insert(ssids_free, s)
+    end
+  end
+
+  local m_vlanname_vlans = {}
+  for k,v in pairs(m_ssid_vlanname) do
+    m_vlanname_vlans[v] = m_vlanname_vlans[v] or { name = v, ssids = {} }
+    table.insert(m_vlanname_vlans[v].ssids, k)
+  end
+
+  local new_vlans = {}
+  for k,v in pairs(m_vlanname_vlans) do
+    table.insert(new_vlans, v)
+  end
+
+  conf.vlans = new_vlans
+  if not m_vlanname_vlans[conf.primary_vlan_name] then
+    conf.primary_vlan_name = nil
+  end
+  if not conf.primary_vlan_name then
+    if #ssids_free > 0 then
+      conf.primary_vlan_name = vlan1
+    elseif #new_vlans > 0 then
+      conf.primary_vlan_name = new_vlans[1].name
+    else
+      -- TODO
+    end
+  end
+end
+
+local function _write_map_confs(conf)
+  fwrite(MAP_CONF, mapconf.stringify(conf))
+  fwrite(MAP_MIB_CONF, mapconf.stringify_mib(conf))
+end
+
+local function _write_vlan_setting(conf)
+  fwrite(MAP_VLAN_SETTING, mapconf.stringify_vlan(conf))
+  fwrite(MAP_VLAN_NEED_RESET, "1")
+end
+
+local function _write_extrafiles()
+  os.remove(WPS_STATS_FILE)
+  fwrite(WPS_STATS_FILE, "PBC Status: Disabled\nLast WPS result: None\n")
+end
+
+local function _set_ebtables()
+  execute("ebtables -N wlan_map_block -P RETURN")
+  execute("ebtables -D FORWARD -j wlan_map_block")
+  execute("ebtables -I FORWARD -j wlan_map_block")
+  execute("ebtables -F wlan_map_block")
+  execute("ebtables -A wlan_map_block -d 01:80:c2:00:00:13 -j DROP")
+
+  execute("ebtables -N map_portmapping -P RETURN")
+  execute("ebtables -D FORWARD -j map_portmapping")
+  execute("ebtables -A FORWARD -j map_portmapping")
+  execute("ebtables -N STP_BR_CHECK -P RETURN")
+  execute("ebtables -N STP_BR_OUT_CHECK -P RETURN")
+end
+
+local function _set_brctl(role, bridge_name, wan_if_name)
+  execute(("brctl stp %s on"):format(bridge_name))
+  if role == MAP_ROLE_CONTROLLER then -- controller
+    execute(("brctl setbridgeprio %s 0"):format(bridge_name))
+  elseif role == MAP_ROLE_AGENT then  -- agent
+    execute(("brctl setbridgeprio %s 61440"):format(bridge_name))
+  else
+    execute(("brctl setbridgeprio %s 32768"):format(bridge_name))
+  end
+end
+
+local function _reload_wifi()
+  execute("wifi reload")
+end
+
+local function _reload_multiap()
+  execute("service "..SERVICE_NAME.." restart")
+end
+
+local function main_reload_1(soft)
+  local conf = {}
+  mapconf.fill(conf, fread(MAP_CONF_TEMPLATE))
+  mapconf.fill_fromuci(conf)
+  mapconf.fill_vlan(conf)
+  mapconf.fill_radio(conf)
+  mapconf.fill_dpp(conf)
+
+  if not conf.radios then return end
+  _set_ebtables()
+  if conf.stp_monitor_enable == '1' then
+    _set_brctl(conf.role, conf.bridge_name) --, WAN_IF_NAME)
+  end
+  if not soft then
+    --if conf.role == MAP_ROLE_AGENT then conf.proto = "dhcp" else conf.proto = "static" end
+    _set_internaltesting(conf)
+    _set_bh_interfaces(conf.role, conf.bh_band_idx, conf.backhaul_bss_index, conf.radios)
+    _set_every_interfaces(conf.role, conf.radios)
+    if not conf.device_name then conf.device_name = DEFAULT_DEVICE_NAME end
+    mapconf.set_save_uci(conf)
+    mapconf.commit_uci("wireless")
+    _reload_wifi()
+    _reload_multiap()
+  else
+    --mapconf.set_mib(conf)
+    if fexist(MAP_VLAN_RESET) and fexist(MAP_VLAN_NEED_RESET) and fread(MAP_VLAN_NEED_RESET) == "1" then
+      execute("sh "..MAP_VLAN_RESET)
+      fremove(MAP_VLAN_RESET)
+      fremove(MAP_VLAN_NEED_RESET)
+    end
+    if conf.enable_vlan == 1 then
+      print("Fixing VLAN configs")
+      _fix_vlan_config(conf)
+      mapconf.set_save_uci_vlan(conf)
+      mapconf.commit_uci("rtkmap")
+      _write_vlan_setting(conf)
+      execute("map_vlan_config")
+    elseif conf.role == MAP_ROLE_AGENT and fexist(MAP_VLAN_SETTING) then
+      execute("map_vlan_config")
+    end
+    print("Generating multiap confs")
+    _write_map_confs(conf)
+    _write_extrafiles()
+  end
+end
+
+local function main()
+  local opts, args = require("rtk.optarg").from_opthelp(opthelp)
+  if not opts then
+    print("Usage: " .. _G.arg[0] .. ": [-atflv] [-c OPTARG]")
+    print(opthelp)
+    os.exit(1)
+  end
+
+  print(("%s %s %s %s"):format("" .. (_G.arg[0] or ""), "" .. (_G.arg[1] or ""), "" .. (_G.arg[2] or ""),
+  "" .. (_G.arg[3] or "")))
+
+  main_reload_1(opts.l)
+end
+
+main()

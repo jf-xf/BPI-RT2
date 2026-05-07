@@ -1,0 +1,14 @@
+#!/bin/sh
+
+uci -q batch <<-EOT
+	delete firewall.xl2tpd
+	set firewall.xl2tpd=include
+	set firewall.xl2tpd.enabled=0
+	set firewall.xl2tpd.type=script
+	set firewall.xl2tpd.path=/usr/share/xl2tpd/firewall.include
+	set firewall.xl2tpd.family=any
+	set firewall.xl2tpd.reload=1
+	commit firewall
+EOT
+
+exit 0

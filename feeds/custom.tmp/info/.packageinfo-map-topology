@@ -1,0 +1,26 @@
+Source-Makefile: feeds/custom/map-topology/Makefile
+Build-Depends: ieee1905
+
+Package: map-topology
+Version: 2.5.0.15
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libubox +ubus +libpthread +libuci +libeasy +libavahi-nodbus-support +libnetfilter-conntrack +libnfnetlink +libmnl +ieee1905 +map-plugin
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: opt
+Category: Utilities
+Repository: base
+Title: Utility to build topology of a multi-AP network
+Maintainer: 
+Source: map-topology-2.5.0.15-ad2df376c558d16286f21308759342cb470f3efd.tar.xz
+License: BSD-3-Clause
+LicenseFiles: LICENSE
+Type: ipkg
+Description: 	Constructs network topology and show it as json structure over UBUS
+
+@@
+Config:
+	source "rtk_openwrt/feeds/map-topology/Config.in"
+@@
+
+

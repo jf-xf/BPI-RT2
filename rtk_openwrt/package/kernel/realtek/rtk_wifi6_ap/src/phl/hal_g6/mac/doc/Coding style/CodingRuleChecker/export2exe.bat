@@ -1,0 +1,1 @@
+pyinstaller -F HalmacCodingCheckRuleEntry.py --hidden-import os --hidden-import glob --hidden-import re --hidden-import collections --hidden-import pandas --hidden-import xlsxwriter --hidden-import argparser --hidden-import time --hidden-import progressbar

@@ -1,0 +1,460 @@
+Index: linux-5.10.125/include/linux/netfilter/nf_conntrack_sip.h
+===================================================================
+--- linux-5.10.125.orig/include/linux/netfilter/nf_conntrack_sip.h
++++ linux-5.10.125/include/linux/netfilter/nf_conntrack_sip.h
+@@ -195,4 +195,23 @@ int ct_sip_get_sdp_header(const struct n
+ 			  enum sdp_header_types term,
+ 			  unsigned int *matchoff, unsigned int *matchlen);
+ 
++#if IS_ENABLED(CONFIG_RTK_QOS_SUPPORT_RTP)
++extern struct list_head qos_rtp_list;
++struct rtp_struct {
++struct list_head list;
++__be32 ip ;   //ip before nat
++__be16 port ; //port before nat
++unsigned char dir;
++};
++extern struct rtp_struct *rtk_qos_rtp_alloc(unsigned int ip,unsigned short port,unsigned char dir);
++extern int rtk_qos_rtp_list_add(struct rtp_struct *rs);
++extern struct rtp_struct *rtk_qos_rtp_list_find(unsigned int ip,unsigned short port);
++extern int rtk_qos_rtp_list_rm(struct rtp_struct *rs);
++extern int rtk_qos_rtp_add_by_ct(struct nf_conn *ct);
++extern int rtk_qos_rtp_delete_by_ct(struct nf_conn *ct);
++extern int rtk_qos_rtp_list_flush(void);
++extern void sendSigToBoa(void);
++#endif /* CONFIG_RTK_QOS_SUPPORT_RTP */
++
++
+ #endif /* __NF_CONNTRACK_SIP_H__ */
+Index: linux-5.10.125/net/netfilter/Kconfig
+===================================================================
+--- linux-5.10.125.orig/net/netfilter/Kconfig
++++ linux-5.10.125/net/netfilter/Kconfig
+@@ -422,6 +422,10 @@ config NF_NAT_SIP
+ 	depends on NF_CONNTRACK && NF_NAT
+ 	default NF_NAT && NF_CONNTRACK_SIP
+ 
++config RTK_QOS_SUPPORT_RTP
++        tristate "rtp qos support"
++        depends on NF_CONNTRACK_SIP && NF_NAT_SIP
++
+ config NF_NAT_TFTP
+ 	tristate
+ 	depends on NF_CONNTRACK && NF_NAT
+Index: linux-5.10.125/net/netfilter/nf_conntrack_core.c
+===================================================================
+--- linux-5.10.125.orig/net/netfilter/nf_conntrack_core.c
++++ linux-5.10.125/net/netfilter/nf_conntrack_core.c
+@@ -581,6 +581,10 @@ void nf_ct_tmpl_free(struct nf_conn *tmp
+ }
+ EXPORT_SYMBOL_GPL(nf_ct_tmpl_free);
+ 
++#if IS_ENABLED(CONFIG_RTK_QOS_SUPPORT_RTP)
++extern int rtk_qos_rtp_delete_by_ct(struct nf_conn *ct);
++#endif
++
+ static void destroy_gre_conntrack(struct nf_conn *ct)
+ {
+ #ifdef CONFIG_NF_CT_PROTO_GRE
+@@ -607,6 +611,12 @@ destroy_conntrack(struct nf_conntrack *n
+ 	if (unlikely(nf_ct_protonum(ct) == IPPROTO_GRE))
+ 		destroy_gre_conntrack(ct);
+ 
++#if IS_ENABLED(CONFIG_RTK_QOS_SUPPORT_RTP)
++        if(test_bit(IPS_EXPECTED_BIT, &ct->status)){
++                rtk_qos_rtp_delete_by_ct(ct);
++        }
++#endif
++
+ 	local_bh_disable();
+ 	/* Expectations will have been removed in clean_from_lists,
+ 	 * except TFTP can create an expectation on the first packet,
+Index: linux-5.10.125/net/netfilter/nf_conntrack_sip.c
+===================================================================
+--- linux-5.10.125.orig/net/netfilter/nf_conntrack_sip.c
++++ linux-5.10.125/net/netfilter/nf_conntrack_sip.c
+@@ -1657,9 +1657,367 @@ static const struct nf_conntrack_expect_
+ 	},
+ };
+ 
++#if IS_ENABLED(CONFIG_RTK_QOS_SUPPORT_RTP)
++#include <linux/syscalls.h> // for sys_kill()
++#include <linux/proc_fs.h>
++#if 0
++#define DEBUGP printk
++#else
++#define DEBUGP(format, args...)
++#endif
++static int boa_pid;
++LIST_HEAD(qos_rtp_list);
++static DEFINE_SPINLOCK(ip_qos_rtp_lock);
++static DEFINE_RWLOCK(ip_qos_rtp_rw_lock);
++/*
++  *sendSigToBoa: send signal to boa
++*/
++void sendSigToBoa(void)
++{
++       sys_kill(boa_pid,SIGUSR2);
++}
++
++/*
++  *rtk_qos_rtp_matches: find if rtp_struct has existed
++  *1:match 0:miss
++*/
++int rtk_qos_rtp_matches(struct rtp_struct *s1,struct rtp_struct* s2)
++{
++       if((s1->ip==s2->ip)&&(s1->port==s2->port))
++               return 1;
++       return 0;
++}
++
++/*
++  *rtk_qos_rtp_alloc: alloc memory for rtp_struct
++  *used when add rtp_struct
++*/
++struct rtp_struct * rtk_qos_rtp_alloc(unsigned int ip,unsigned short port,unsigned char dir)
++{
++       struct rtp_struct *rs=NULL;
++       rs=(struct rtp_struct*)kmalloc(sizeof(struct rtp_struct),GFP_KERNEL);
++       if(rs){
++               rs->ip=ip;
++               rs->port=port;
++               rs->dir=dir;
++       }
++       return rs;
++}
++
++/*
++  *rtk_qos_rtp_free: free memory for rtp_struct
++  *used when delete rtp_struct
++*/
++void rtk_qos_rtp_free(struct rtp_struct *rs)
++{
++       if(rs) kfree(rs);
++       rs=NULL;
++}
++
++/*
++  *rtk_qos_rtp_list_add: only add rtp ip+port info to list
++  *don't inform boa because rtp flow has not reach.
++  *-1:add fail  0:add success  1:exist
++*/
++int rtk_qos_rtp_list_add(struct rtp_struct *rs)
++{
++       int ret=-1;
++       struct rtp_struct *i;
++
++       if(!rs) return ret;
++       DEBUGP("add rtp_struct:ip=%u.%u.%u.%u:%hu \n",NIPQUAD((rs)->ip), ntohs((rs)->port));
++       spin_lock_bh(&ip_qos_rtp_lock);
++       //write_lock(&ip_qos_rtp_rw_lock);
++
++       list_for_each_entry(i, &qos_rtp_list, list) {
++               if (rtk_qos_rtp_matches(i, rs))
++               {
++                       rtk_qos_rtp_free( rs);
++                       ret=1;
++                       goto out;
++               }
++
++       }
++       list_add(&rs->list, &qos_rtp_list);
++       ret = 0;
++out:
++       //write_unlock(&ip_qos_rtp_rw_lock);
++       spin_unlock_bh(&ip_qos_rtp_lock);
++       return ret;
++}
++
++/*
++  *rtk_qos_rtp_list_find: find rts_struct by ip+port
++*/
++struct rtp_struct *rtk_qos_rtp_list_find(unsigned int ip,unsigned short port)
++{
++       struct rtp_struct *i;
++       spin_lock_bh(&ip_qos_rtp_lock);
++       //read_lock(&ip_qos_rtp_rw_lock);
++       list_for_each_entry(i, &qos_rtp_list, list) {
++               if (i->ip==ip&&i->port==port)   {
++                       //read_unlock(&ip_qos_rtp_rw_lock);
++                       spin_unlock_bh(&ip_qos_rtp_lock);
++                       return i;
++               }
++       }
++       //read_unlock(&ip_qos_rtp_rw_lock);
++       spin_unlock_bh(&ip_qos_rtp_lock);
++       return NULL;
++}
++
++/*
++  *rtk_qos_rtp_list_rm: delete rtp_struct from qos_rtp_list
++  *-1:rm failed or nofound 0: rm success
++*/
++int rtk_qos_rtp_list_rm(struct rtp_struct *rs)
++{
++       int ret=-1;
++       struct rtp_struct *i;
++       if(rs==NULL) return ret;
++
++       DEBUGP("prepare to delete rtp_struct:%p ip=%u.%u.%u.%u:%hu \n",rs,NIPQUAD((rs)->ip), ntohs((rs)->port));
++       spin_lock_bh(&ip_qos_rtp_lock);
++       //write_lock(&ip_qos_rtp_rw_lock);
++       list_for_each_entry(i, &qos_rtp_list, list) {
++               if (rtk_qos_rtp_matches(i, rs))
++                       goto out;
++       }
++       goto nofound;
++out:
++       list_del(&rs->list);
++       DEBUGP("has deleted rtp_struct:%p ip=%u.%u.%u.%u:%hu \n",rs,NIPQUAD((rs)->dip), ntohs((rs)->dport));
++       rtk_qos_rtp_free( rs);
++       ret = 0;
++nofound:
++       //write_unlock(&ip_qos_rtp_rw_lock);
++       spin_unlock_bh(&ip_qos_rtp_lock);
++       return ret;
++}
++
++/*
++  *rtk_qos_rtp_list_flush: delete all rtp_struct from qos_rtp_list and free them
++*/
++int rtk_qos_rtp_list_flush(void)
++{
++       struct rtp_struct *i=NULL;
++
++       spin_lock_bh(&ip_qos_rtp_lock);
++       //write_lock(&ip_qos_rtp_rw_lock);
++       while(!list_empty(&qos_rtp_list)){
++               i=list_first_entry(&qos_rtp_list,struct rtp_struct,list);
++
++               if(i){
++                       list_del(&i->list);
++                       rtk_qos_rtp_free(i);
++               }
++       }
++       //write_unlock(&ip_qos_rtp_rw_lock);
++       spin_unlock_bh(&ip_qos_rtp_lock);
++       sendSigToBoa();
++       return 0;
++}
++
++/*
++  *rtk_qos_rtp_add_by_ct: add rtp_struct by ct information and send signal to boa
++*/
++int rtk_qos_rtp_add_by_ct(struct nf_conn *ct)
++{
++       struct rtp_struct *rs=NULL;
++       int i=0,ret=-1;
++
++       WARN_ON(!ct);
++       if(test_bit(IPS_EXPECTED_BIT, &ct->status)){
++               //both orignal and reply direction, need to check
++               for(i=IP_CT_DIR_ORIGINAL;i<IP_CT_DIR_MAX;i++){
++                       rs=rtk_qos_rtp_alloc(ct->tuplehash[i].tuple.src.u3.ip,ct->tuplehash[i].tuple.src.u.udp.port,i); //record sip/sport,because dip/dport may has changed by n
++
++                       if(rs){
++                               ret=rtk_qos_rtp_list_add(rs);
++                               if(ret==-1){
++                                       printk("[%s:%d]add qos rtp failed!\n",__FUNCTION__,__LINE__);
++                                       goto out;
++                               }
++                       }
++                       else{
++                               printk("[%s:%d]alloc qos rtp failed!\n",__FUNCTION__,__LINE__);
++                               goto out;
++                       }
++               }
++               sendSigToBoa();   //inform boa to set rtp qos rule
++       }
++out:
++       return 0;
++}
++/*
++  *rtk_qos_rtp_delete_by_ct: delete rtp ip+port and inform boa if ct is deleted
++*/
++int rtk_qos_rtp_delete_by_ct(struct nf_conn *ct)
++{
++       struct rtp_struct *rs=NULL,*j=NULL;;
++       union nf_inet_addr addr;
++       unsigned long newtime;
++        __be16 port;
++        int i=0,count=0,ret=-1;
++
++       WARN_ON(!ct);
++
++       //for expect nf_conntrack, find if releated rtp information
++       if(test_bit(IPS_EXPECTED_BIT, &ct->status)){
++               //both orignal and reply direction, need to check
++               for(i=IP_CT_DIR_ORIGINAL;i<IP_CT_DIR_MAX;i++){
++                       addr=ct->tuplehash[i].tuple.src.u3;
++                       port=ct->tuplehash[i].tuple.src.u.udp.port;
++                       rs=rtk_qos_rtp_list_find(addr.ip,port);
++                       if(rs==NULL)
++                               continue;
++                       ret=rtk_qos_rtp_list_rm(rs);
++                       if(ret==0)
++                               count++;
++                       else{
++                               printk("[%s:%d]remove qos rtp failed!\n",__FUNCTION__,__LINE__);
++                               goto out;
++                       }
++               }
++               if(count>0)
++                       sendSigToBoa();
++       }
++out:
++       return 0;
++}
++
++//proc
++//create proc
++static void *rtk_qr_seq_start(struct seq_file *s, loff_t *pos)
++{
++       struct list_head *e = &qos_rtp_list;
++       loff_t i;
++
++       /* strange seq_file api calls stop even if we fail,
++        * thus we need to grab lock since stop unlocks */
++       spin_lock_bh(&ip_qos_rtp_lock);
++       //read_lock(&ip_qos_rtp_rw_lock);
++
++       if (list_empty(e))
++               return NULL;
++
++       for (i = 0; i <= *pos; i++) {
++               e = e->next;
++               if (e == &qos_rtp_list)
++                       return NULL;
++       }
++       return e;
++}
++
++static void *rtk_qr_seq_next(struct seq_file *s, void *v, loff_t *pos)
++{
++       struct list_head *e = v;
++
++       ++*pos;
++       e = e->next;
++
++       if (e == &qos_rtp_list)
++               return NULL;
++
++       return e;
++}
++
++static void rtk_qr_seq_stop(struct seq_file *s, void *v)
++{
++       //read_unlock(&ip_qos_rtp_rw_lock);
++       spin_unlock_bh(&ip_qos_rtp_lock);
++}
++
++static int rtk_qr_seq_show(struct seq_file *s, void *v)
++{
++       struct rtp_struct *rs = v;
++       seq_printf(s, "ip=%x port=%hu dir=%u",(rs)->ip, ntohs((rs)->port),rs->dir);
++       seq_putc(s, '\n');
++       return 0;
++}
++
++static struct seq_operations rtk_qr_seq_ops = {
++       .start = rtk_qr_seq_start,
++       .next  = rtk_qr_seq_next,
++       .stop  = rtk_qr_seq_stop,
++       .show  = rtk_qr_seq_show
++};
++
++static int rtk_qr_open(struct inode *inode, struct file *file)
++{
++       return seq_open(file, &rtk_qr_seq_ops);
++}
++
++static struct file_operations rtk_qr_file_ops = {
++       .owner   = THIS_MODULE,
++       .open    = rtk_qr_open,
++       .read    = seq_read,
++       .llseek  = seq_lseek,
++       .release = seq_release,
++};
++
++
++static struct ctl_table sip_table[]= {
++       {
++                .procname      = "boa_pid",
++               .data           = &boa_pid,
++               .maxlen = sizeof(boa_pid),
++               .mode           = 0644,
++               .proc_handler   = &proc_dointvec
++        },
++        {}
++};
++
++static struct ctl_table sip_root_table[]= {
++       {
++               .procname       = "net",
++               .mode           = 0644,
++               .child          = sip_table
++        },
++        {}
++};
++
++int rtk_rs_proc_init(struct net *net)
++{
++       struct proc_dir_entry* qos_rtp_proc;
++       struct ctl_table_header *sip_table_header;
++       qos_rtp_proc = proc_create("ip_qos_rtp", 0440, net->proc_net,
++                        &rtk_qr_file_ops);
++       if (!qos_rtp_proc)
++               return -ENOMEM;
++       sip_table_header = register_sysctl_table(sip_root_table);
++       return 0;
++}
++void rtk_rs_proc_exit(struct net *net)
++{
++       remove_proc_entry("ip_qos_rtp", net->proc_net);
++}
++static int nf_conntrack_sip_net_init(struct net *net)
++{
++       return rtk_rs_proc_init(net);
++}
++static void nf_conntrack_sip_net_exit(struct net *net)
++{
++       rtk_rs_proc_exit(net);
++}
++static struct pernet_operations nf_conntrack_sip_net_ops = {
++       .init = nf_conntrack_sip_net_init,
++       .exit = nf_conntrack_sip_net_exit,
++};
++#endif /* CONFIG_RTK_QOS_SUPPORT_RTP */
++
+ static void __exit nf_conntrack_sip_fini(void)
+ {
+-	nf_conntrack_helpers_unregister(sip, ports_c * 4);
++#if IS_ENABLED(CONFIG_RTK_QOS_SUPPORT_RTP)
++	int ret;
++#endif
++
++       nf_conntrack_helpers_unregister(sip, ports_c * 4);
++#if IS_ENABLED(CONFIG_RTK_QOS_SUPPORT_RTP)
++	ret = register_pernet_subsys(&nf_conntrack_sip_net_ops);
++	if(ret!=0)
++		return ret;
++#endif
+ }
+ 
+ static int __init nf_conntrack_sip_init(void)
+Index: linux-5.10.125/net/netfilter/nf_nat_sip.c
+===================================================================
+--- linux-5.10.125.orig/net/netfilter/nf_nat_sip.c
++++ linux-5.10.125/net/netfilter/nf_nat_sip.c
+@@ -368,6 +368,11 @@ static void nf_nat_sip_expected(struct n
+ 	/* Perform SRC manip. */
+ 	if (range_set_for_snat)
+ 		nf_nat_setup_info(ct, &range, NF_NAT_MANIP_SRC);
++
++#if IS_ENABLED(CONFIG_RTK_QOS_SUPPORT_RTP)
++	if(ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.src.u.udp.port!=SIP_PORT && ct->tuplehash[IP_CT_DIR_REPLY].tuple.src.u.udp.port!=SIP_PORT)
++		rtk_qos_rtp_add_by_ct(ct);
++#endif
+ }
+ 
+ static unsigned int nf_nat_sip_expect(struct sk_buff *skb, unsigned int protoff,

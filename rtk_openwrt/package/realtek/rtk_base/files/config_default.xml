@@ -1,0 +1,5 @@
+<Config_Information_File_8671>
+<Value Name="DEVICE_TYPE" Value="1"/>
+<Value Name="DUAL_MGMT_MODE" Value="1"/>
+<Value Name="OMCI_WAN_QOS_QUEUE_NUM" Value="1"/>
+</Config_Information_File_8671>

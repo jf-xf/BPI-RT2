@@ -1,0 +1,288 @@
+//
+// Copyright (C) 2012 Realtek Semiconductor Corp.
+// All Rights Reserved.
+//
+// This program is the proprietary software of Realtek Semiconductor
+// Corporation and/or its licensors, and only be used, duplicated,
+// modified or distributed under the authorized license from Realtek.
+//
+// ANY USE OF THE SOFTWARE OTHER THAN AS AUTHORIZED UNDER
+// THIS LICENSE OR COPYRIGHT LAW IS PROHIBITED.
+//
+// $Revision: 68395 $
+// $Date: 2016-05-27 16:38:35 +0800 (Fri, 27 May 2016) $
+//
+// Purpose : Definition of RT API of Misc Extension.
+//
+// Feature : The file have include the following module and sub-modules
+//           1) Configuration of mac leraning limit control commands.
+//			 2) Configuration of wan access limit control commands.
+//
+
+//rt_misc configuration
+//set configuration
+//macAddrLearningLimit configuration
+//wlan_idx configuration
+//wlan_idx, 0:wlan0 1:wlan1
+//device_idx configuration
+//device_idx
+//learningLimitNumber configuration
+//learningLimitNumber
+rt_misc set macAddrLearningLimit wlan_idx <UINT:wlan_idx> device_idx <UINT:device_idx> learningLimitNumber <UINT:learningLimitNumber>
+
+//rt_misc configuration
+//set configuration
+//macAddrLearningLimit configuration
+//wlan_idx configuration
+//wlan_idx, 0:wlan0 1:wlan1
+//device_idx configuration
+//device_idx
+//learningLimitNumber configuration
+//learningLimitNumber unlimit
+rt_misc set macAddrLearningLimit wlan_idx <UINT:wlan_idx> device_idx <UINT:device_idx> unlimit
+
+//rt_misc configuration
+//get configuration
+//macAddrLearningLimit configuration
+//wlan_idx configuration
+//wlan_idx, 0:wlan0 1:wlan1
+//device_idx configuration
+//device_idx
+rt_misc get macAddrLearningLimit wlan_idx <UINT:wlan_idx> device_idx <UINT:device_idx>
+
+//rt_misc configuration
+//set configuration
+//wanAccessLimit configuration
+//portmask configuration
+//portmask, <0x000-0xfff>
+//wlan_idx_0 configuration
+//wlan mbssid mask, <0x000-0xfff>
+//limitNumber configuration
+//limitNumber
+//limitField configuration
+//field, 0:by MAC  1:by IP
+rt_misc set wanAccessLimit portmask <HEX:portmask> wlan_idx_0 <HEX:wlan0_mbssid_mask> limitNumber <UINT:limitNumber> limitField <UINT:field>
+
+//rt_misc configuration
+//set configuration
+//wanAccessLimit configuration
+//portmask configuration
+//portmask, <0x000-0xfff>
+//wlan_idx_0 configuration
+//wlan mbssid mask, <0x000-0xfff>
+//wlan_idx_1 configuration
+//wlan mbssid mask, <0x000-0xfff>
+//limitNumber configuration
+//limitNumber
+//limitField configuration
+//field, 0:by MAC  1:by IP
+rt_misc set wanAccessLimit portmask <HEX:portmask> wlan_idx_0 <HEX:wlan0_mbssid_mask> wlan_idx_1 <HEX:wlan1_mbssid_mask> limitNumber <UINT:limitNumber> limitField <UINT:field>
+
+//rt_misc configuration
+//set configuration
+//wanAccessLimit configuration
+//portmask configuration
+//portmask, <0x000-0xfff>
+//wlan_idx_0 configuration
+//wlan mbssid mask, <0x000-0xfff>
+//wlan_idx_1 configuration
+//wlan mbssid mask, <0x000-0xfff>
+//wlan_idx_2 configuration
+//wlan mbssid mask, <0x000-0xfff>
+//limitNumber configuration
+//limitNumber
+//limitField configuration
+//field, 0:by MAC  1:by IP
+rt_misc set wanAccessLimit portmask <HEX:portmask> wlan_idx_0 <HEX:wlan0_mbssid_mask> wlan_idx_1 <HEX:wlan1_mbssid_mask> wlan_idx_2 <HEX:wlan2_mbssid_mask> limitNumber <UINT:limitNumber> limitField <UINT:field>
+
+//rt_misc configuration
+//set configuration
+//wanAccessLimit configuration
+//unlimit configuration
+rt_misc set wanAccessLimit unlimit
+
+//rt_misc configuration
+//get configuration
+//wanAccessLimit configuration
+rt_misc get wanAccessLimit
+
+//rt_misc configuration
+//set configuration
+//burstPacket configuration
+//destPort configuration
+//destPort
+//burstCount configuration
+//burstCount, set 0 to stop current burst
+//burstRate configuration
+//burstRate, 0~100
+//pktLen configuration
+//pktLen
+//pktData configuration
+//pktData
+rt_misc set burstPacket destPort <UINT:destPort> burstCount <UINT:burstCount> burstRate <UINT:burstRate> pktLen <UINT:pktLen> pktData <STRING:pktData>
+
+//rt_misc configuration
+//set configuration
+//burstPacket configuration
+//destPort configuration
+//gpon
+//streamID configuration
+//streamID
+//burstCount configuration
+//burstCount, set 0 to stop current burst
+//burstRate configuration
+//burstRate, 0~100
+//pktLen configuration
+//pktLen
+//pktData configuration
+//pktData
+rt_misc set burstPacket destPort gpon streamID <UINT:streamID> burstCount <UINT:burstCount> burstRate <UINT:burstRate> pktLen <UINT:pktLen> pktData <STRING:pktData>
+
+//rt_misc configuration
+//set configuration
+//burstPacket configuration
+//destPort configuration
+//destPort
+//infiniteMode configuration
+//burstRate configuration
+//burstRate, 0~100
+//pktLen configuration
+//pktLen
+//pktData configuration
+//pktData
+rt_misc set burstPacket destPort <UINT:destPort> infiniteMode burstRate <UINT:burstRate> pktLen <UINT:pktLen> pktData <STRING:pktData>
+
+//rt_misc configuration
+//set configuration
+//burstPacket configuration
+//destPort configuration
+//gpon
+//streamID configuration
+//streamID
+//infiniteMode configuration
+//burstRate configuration
+//burstRate, 0~100
+//pktLen configuration
+//pktLen
+//pktData configuration
+//pktData
+rt_misc set burstPacket destPort gpon streamID <UINT:streamID> infiniteMode burstRate <UINT:burstRate> pktLen <UINT:pktLen> pktData <STRING:pktData>
+
+//rt_misc configuration
+//set configuration
+//burstPacket configuration
+//disabled configuration
+rt_misc set burstPacket disabled
+
+//rt_misc configuration
+//set configuration
+//wanPhyPortMask configuration
+//portMask, <0x000-0xff>
+rt_misc set wanPhyPortMask <HEX:portMask>
+
+//rt_misc configuration
+//get configuration
+//wanPhyPortMask configuration
+rt_misc get wanPhyPortMask
+
+//rt_misc configuration
+//add configuration
+//wanFastFwdDev configuration
+//device name string (FC fastFwd device)
+rt_misc add wanFastFwdDev <STRING:dev_name>
+
+//rt_misc configuration
+//del configuration
+//wanFastFwdDev configuration
+//device name string (FC fastFwd device)
+rt_misc del wanFastFwdDev <STRING:dev_name>
+
+
+//rt_misc configuration
+//add configuration
+//vlanGroupMacLimit configuration
+//port configuration
+//port
+//learningLimitNumber configuration
+//learningLimitNumber
+rt_misc add vlanGroupMacLimit port <UINT:port> learningLimitNumber <UINT:learningLimitNumber>
+
+//rt_misc configuration
+//set configuration
+//vlanGroupMacLimit configuration
+//groupIndex configuration
+//groupIndex
+//vlan configuration
+//vlanId
+rt_misc set vlanGroupMacLimit groupIndex <UINT:groupIndex> vlan <UINT:vlanId>
+
+//rt_misc configuration
+//set configuration
+//vlanGroupMacLimit configuration
+//groupIndex configuration
+//groupIndex
+//vlan configuration
+//untag
+rt_misc set vlanGroupMacLimit groupIndex <UINT:groupIndex> vlan untag
+
+//rt_misc configuration
+//set configuration
+//vlanGroupMacLimit configuration
+//groupIndex configuration
+//groupIndex
+//learningLimitNumber configuration
+//learningLimitNumber
+rt_misc set vlanGroupMacLimit groupIndex <UINT:groupIndex> learningLimitNumber <UINT:learningLimitNumber>
+
+//rt_misc configuration
+//get configuration
+//vlanGroupMacLimit configuration
+//groupIndex configuration
+//groupIndex
+rt_misc get vlanGroupMacLimit groupIndex <UINT:groupIndex>
+
+//rt_misc configuration
+//del configuration
+//vlanGroupMacLimit configuration
+//groupIndex configuration
+//groupIndex
+//vlan configuration
+//vlanId
+rt_misc del vlanGroupMacLimit groupIndex <UINT:groupIndex> vlan <UINT:vlanId>
+
+//rt_misc configuration
+//del configuration
+//vlanGroupMacLimit configuration
+//groupIndex configuration
+//groupIndex
+//vlan configuration
+//untag
+rt_misc del vlanGroupMacLimit groupIndex <UINT:groupIndex> vlan untag
+
+//rt_misc configuration
+//del configuration
+//vlanGroupMacLimit configuration
+//groupIndex configuration
+//groupIndex
+rt_misc del vlanGroupMacLimit groupIndex <UINT:groupIndex>
+
+//rt_misc configuration
+//find configuration
+//vlanGroupMacLimit configuration
+//port configuration
+//port
+//vlan configuration
+//vlanId
+rt_misc find vlanGroupMacLimit port <UINT:port> vlan <UINT:vlanId>
+
+//rt_misc configuration
+//find configuration
+//vlanGroupMacLimit configuration
+//port configuration
+//port
+//vlan configuration
+//untag
+rt_misc find vlanGroupMacLimit port <UINT:port> vlan untag
+
+
+

@@ -1,0 +1,75 @@
+#!/bin/sh
+
+. /lib/functions.sh
+
+PROFILE_COUNT=1
+
+get_next_count()
+{
+	local config="$1"
+	local default_name="${2}"
+	local count=${3}
+	local found=0
+
+	if [ -z "$count" ]; then
+		count=1
+	fi
+
+	while [ "${found}" -ne 1 ]; do
+		uci -q get ${config}.${default_name}_${count} >/dev/null
+		if [ $? -eq 0 ]; then
+			count=$((count + 1))
+		else
+			found=1;
+		fi
+	done
+
+	echo "${default_name}_${count}"
+}
+
+translate_profile_id_to_profile_name() {
+	local section="${1}"
+	local profile_id="${2}"
+	local profile_name="${3}"
+	local curr_profile_id
+
+	config_get curr_profile_id "${section}" profile_id
+
+	[ -n "${curr_profile_id}" ] || return
+	
+	[ "${curr_profile_id}" != "${profile_id}" ] && return
+
+	uci -q set bulkdata.${section}.profile_name="${profile_name}"
+	uci -q set bulkdata.${section}.profile_id=""	
+}
+
+update_profile_sections() {
+	local section="${1}"
+	local default="${2}"
+	local profile_name
+
+	config_get profile_id "${section}" profile_id
+
+	[ -n "${profile_id}" ] || return
+
+	case "${section}" in
+		"cfg"*)
+			profile_name="$(get_next_count bulkdata ${default} ${PROFILE_COUNT})"
+			uci_rename bulkdata "${section}" "${profile_name}"
+		;;
+	esac
+	PROFILE_COUNT=$((PROFILE_COUNT + 1))
+
+	[ -n "$profile_name" ] && section="${profile_name}"
+
+	uci -q set bulkdata.${section}.profile_id=""
+
+	config_foreach translate_profile_id_to_profile_name profile_parameter "${profile_id}" "${profile_name}"
+	config_foreach translate_profile_id_to_profile_name profile_http_request_uri_parameter "${profile_id}" "${profile_name}"
+}
+
+config_load bulkdata
+config_foreach update_profile_sections profile profile
+uci commit bulkdata
+
+exit 0

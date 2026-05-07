@@ -1,0 +1,54 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+STOP=15
+
+USE_PROCD=1
+PROG="/usr/sbin/stunc"
+
+log() {
+	#echo "${@}" >/dev/console
+	echo "${@}"|logger -t stunc -p info
+}
+
+validate_stun_section()
+{
+	uci_validate_section stunc stunc stunc \
+		'enabled:bool' \
+		'Username:string' \
+		'Password:string' \
+		'server_address:host' \
+		'server_port:port' \
+		'client_port:port' \
+		'log_level:uinteger:0'
+}
+
+start_service() {
+	local enabled server_address
+
+	config_load stunc
+	validate_stun_section || {
+		log "Validation failed for stunc section";
+		return 1;
+	}
+
+	if [ "$enabled" -eq 0 ]; then
+		return 0;
+	fi
+
+	procd_open_instance stunc
+	procd_set_param command ${PROG}
+	procd_set_param respawn "3" "7" "0"
+	procd_close_instance
+
+}
+
+reload_service() {
+	stop
+	start 
+}
+
+service_triggers()
+{
+	procd_add_reload_trigger stunc
+}

@@ -1,0 +1,136 @@
+From bf8d860ae575edbbd5d8ca7ed6c60b6cda0aed43 Mon Sep 17 00:00:00 2001
+From: "lucien.zhliu" <lucien.zhliu@realtek.com>
+Date: Mon, 8 Aug 2022 19:57:50 +0800
+Subject: [PATCH] [hostapd] update patch 201026_hostapd_add_11r_support
+
+---
+ src/ap/drv_callbacks.c       |  7 ++++
+ src/drivers/driver_nl80211.c | 80 ++++++++++++++++++++++++++++++++++++
+ 2 files changed, 87 insertions(+)
+
+diff --git a/src/ap/drv_callbacks.c b/src/ap/drv_callbacks.c
+index 58bf13f..6f395f5 100755
+--- a/src/ap/drv_callbacks.c
++++ b/src/ap/drv_callbacks.c
+@@ -461,6 +461,9 @@ int hostapd_notif_assoc(struct hostapd_data *hapd, const u8 *addr,
+ 					reason = WLAN_REASON_INVALID_IE;
+ 				goto fail;
+ 			}
++
++			wpa_printf(MSG_DEBUG, "FT: set reassoc = 1");
++			reassoc = 1;
+ 		}
+ #endif /* CONFIG_IEEE80211R_AP */
+ #ifdef CONFIG_SAE
+@@ -1291,6 +1294,10 @@ static void hostapd_notif_auth(struct hostapd_data *hapd,
+ 				    rx_auth->ies_len,
+ 				    hostapd_notify_auth_ft_finish, hapd);
+ 		return;
++	} else {
++		wpa_printf(MSG_DEBUG, 
++			"FT: set auth_alg(%d) to WLAN_AUTH_OPEN", sta->auth_alg);
++		sta->auth_alg = WLAN_AUTH_OPEN;
+ 	}
+ #endif /* CONFIG_IEEE80211R_AP */
+ 
+diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
+index 05c9475..4672bd7 100755
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -12098,6 +12098,84 @@ fail:
+ 	return ret;
+ }
+ 
++int nl80211_sta_auth(void *priv, struct wpa_driver_sta_auth_params *params)
++{
++	struct i802_bss *bss = priv;
++	struct wpa_driver_nl80211_data *drv = bss->drv;
++	struct ieee80211_mgmt *mgmt;
++	size_t rlen;
++	u8 *buf;
++
++	wpa_printf(MSG_DEBUG, "nl80211: AUTH params: own_addr: "MACSTR" addr: "MACSTR" seq: %d status: %d", 
++		MAC2STR(params->own_addr), MAC2STR(params->addr), params->seq, params->status);
++
++	rlen = IEEE80211_HDRLEN + sizeof(mgmt->u.auth) + params->len;
++
++	buf = os_zalloc(rlen);  
++	if (buf == NULL)
++		return 0;   
++
++	mgmt = (struct ieee80211_mgmt *) buf;
++	mgmt->frame_control = IEEE80211_FC(WLAN_FC_TYPE_MGMT, WLAN_FC_STYPE_AUTH);
++	os_memcpy(mgmt->da, params->addr, ETH_ALEN);
++	os_memcpy(mgmt->sa, params->own_addr, ETH_ALEN);
++	os_memcpy(mgmt->bssid, params->own_addr, ETH_ALEN);
++
++	mgmt->u.auth.auth_alg = host_to_le16(WLAN_AUTH_FT);
++	mgmt->u.auth.auth_transaction = host_to_le16(params->seq);
++	mgmt->u.auth.status_code = host_to_le16(params->status);
++
++	if (params->ie && params->len)
++		os_memcpy(mgmt->u.auth.variable, params->ie, params->len);
++
++	/* wpa_hexdump(MSG_DEBUG, "AUTH FT: Response", buf, rlen); */
++
++	wpa_driver_nl80211_send_mlme(bss, buf, rlen, 0, 0, 0, 0, 0, NULL, 0, 0);
++
++	os_free(buf);
++
++	return 0;
++}
++
++int nl80211_sta_assoc(void *priv, const u8 *own_addr, const u8 *addr,
++		int reassoc, u16 status, const u8 *ie, size_t len)
++{
++	struct i802_bss *bss = priv;
++	struct wpa_driver_nl80211_data *drv = bss->drv;
++	struct ieee80211_mgmt *mgmt;
++	size_t rlen;
++	u8 *buf;
++
++	wpa_printf(MSG_DEBUG, "nl80211: ASSOC params: own_addr: "MACSTR" addr: "MACSTR" reassoc: %d status: %d", 
++		MAC2STR(own_addr), MAC2STR(addr), reassoc, status);
++
++	rlen = IEEE80211_HDRLEN + sizeof(mgmt->u.assoc_resp) + len;
++
++	buf = os_zalloc(rlen);  
++	if (buf == NULL)
++		return 0;   
++
++	mgmt = (struct ieee80211_mgmt *) buf;
++	mgmt->frame_control = (reassoc == 1) ? IEEE80211_FC(WLAN_FC_TYPE_MGMT, WLAN_FC_STYPE_REASSOC_RESP) :
++	IEEE80211_FC(WLAN_FC_TYPE_MGMT, WLAN_FC_STYPE_ASSOC_RESP);	  
++
++	os_memcpy(mgmt->da, addr, ETH_ALEN);
++	os_memcpy(mgmt->sa, own_addr, ETH_ALEN);
++	os_memcpy(mgmt->bssid, own_addr, ETH_ALEN);
++
++	mgmt->u.assoc_resp.status_code = host_to_le16(status);  
++
++	if (ie && len)
++		os_memcpy(mgmt->u.assoc_resp.variable, ie, len);
++
++	/* wpa_hexdump(MSG_DEBUG, "ASSOC FT: Response", buf, rlen); */
++
++	wpa_driver_nl80211_send_mlme(bss, buf, rlen, 0, 0, 0, 0, 0, NULL, 0, 0);
++
++	os_free(buf);
++
++	return 0;
++}
+ 
+ #ifdef CONFIG_DPP
+ static int nl80211_dpp_listen(void *priv, bool enable)
+@@ -12273,6 +12351,8 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
+ 	.update_connect_params = nl80211_update_connection_params,
+ 	.send_external_auth_status = nl80211_send_external_auth_status,
+ 	.set_4addr_mode = nl80211_set_4addr_mode,
++	.sta_auth = nl80211_sta_auth,
++	.sta_assoc = nl80211_sta_assoc,
+ #ifdef CONFIG_DPP
+ 	.dpp_listen = nl80211_dpp_listen,
+ #endif /* CONFIG_DPP */
+-- 
+2.37.1
+

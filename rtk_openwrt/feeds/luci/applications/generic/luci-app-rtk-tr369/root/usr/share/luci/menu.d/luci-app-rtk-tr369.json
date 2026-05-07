@@ -1,0 +1,19 @@
+{
+	"realtek/admin/admin/tr369": {
+		"title": "TR-369 Settings",
+		"action": {
+			"type": "view",
+			"path": "rtk/admin/admin/tr369"
+		},
+		"depends": {
+			"depends": {
+				"acl": [
+					"luci-app-rtk-tr369"
+				],
+				"uci": {
+					"obuspa": true
+				}
+			}
+		}
+	}
+}

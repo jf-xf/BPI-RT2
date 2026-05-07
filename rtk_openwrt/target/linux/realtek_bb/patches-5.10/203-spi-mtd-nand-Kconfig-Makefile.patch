@@ -1,0 +1,1291 @@
+Index: linux-5.10.138/drivers/mtd/nand/Kconfig
+===================================================================
+--- linux-5.10.138.orig/drivers/mtd/nand/Kconfig
++++ linux-5.10.138/drivers/mtd/nand/Kconfig
+@@ -21,4 +21,79 @@ config MTD_NAND_MTK_BMT
+ 
+ endmenu
+ 
++menuconfig MTD_RTK_NAND
++	tristate "RTK NAND Device Support"
++
++if MTD_RTK_NAND
++choice
++	prompt "Realtek NAND Flash Controller"
++	#depends on MTD_NAND_CORE
++	default MTD_SPI_NAND_RTK
++	optional
++
++	#config MTD_NAND_RTK
++	#	bool "Realtek Parallel NAND Flash Driver"
++
++	config MTD_SPI_NAND_RTK
++		bool "Realtek SPI NAND Flash Driver"
++	#config MTD_ONFI_NAND_RTK
++	#	bool "Realtek ONFI NAND Flash Driver"
++
++endchoice
++
++#config MTD_DUALIF_NAND_RTK
++#	depends on MTD_SPI_NAND_RTK || MTD_ONFI_NAND_RTK
++#	bool "Support dual SPI/ONFI interface"
++
++choice
++	prompt "SPI NAND driver version"
++	depends on MTD_SPI_NAND_RTK || MTD_DUALIF_NAND_RTK
++	default RTK_SPI_NAND_GEN3
++	#config RTK_SPI_NAND_GEN1
++	#	bool "SPI NAND driver"
++	config RTK_SPI_NAND_GEN3
++		bool "SPI NAND driver gen 3"
++endchoice
++
++#config MTD_NAND_MULTI_RTK
++#	depends on RTK_SPI_NAND_GEN3
++#	bool "Support multi-flash"
++
++#choice
++#	prompt "ONFI NAND driver version"
++#	depends on MTD_ONFI_NAND_RTK || MTD_DUALIF_NAND_RTK
++#	config RTK_ONFI_GEN1
++#		bool "ONFI NAND driver"
++#	config RTK_ONFI_GEN2
++#		bool "ONFI NAND driver gen 2"
++#endchoice
++
++choice
++	prompt "ECC driver version"
++	depends on MTD_SPI_NAND_RTK || MTD_ONFI_NAND_RTK
++	default RTK_ECC_GEN2
++	#config RTK_ECC_GEN1
++	#	depends on RTK_SPI_NAND_GEN1 || RTK_ONFI_GEN1
++	#	bool "ECC driver"
++	config RTK_ECC_GEN2
++		bool "ECC driver gen 2"
++endchoice
++
++
++config UBI_MTD_RTK_PATCH
++	depends on MTD_NAND_RTK || MTD_SPI_NAND_RTK || MTD_ONFI_NAND_RTK
++	  bool "Add UBI patch"
++		default y if UBIFS_FS
++		help
++			"Add some behavior patches for UBI, enable it if use UBI/UBIFS"
++
++config MAX_ALLOWED_ERR_IN_BLANK_PAGE
++	depends on MTD_NAND_RTK || MTD_SPI_NAND_RTK || MTD_ONFI_NAND_RTK
++ 	int "Max allowed bit error in ECC chunk"
++	default 4
++	help
++		"Allow number of bits flipped in a ECC chunk of blank page"
++
++endif
++
+ endmenu
+Index: linux-5.10.138/drivers/mtd/nand/Makefile
+===================================================================
+--- linux-5.10.138.orig/drivers/mtd/nand/Makefile
++++ linux-5.10.138/drivers/mtd/nand/Makefile
+@@ -9,3 +9,6 @@ obj-y	+= raw/
+ obj-y	+= spi/
+ 
+ nandcore-$(CONFIG_MTD_NAND_ECC) += ecc.o
++obj-$(CONFIG_MTD_SPI_NAND_RTK)		+= luna_mtd_nand/
++obj-$(CONFIG_MTD_SPI_NAND_RTK)		+= ecc.o
++obj-$(CONFIG_MTD_SPI_NAND_RTK)		+= core.o bbt.o
+Index: linux-5.10.138/drivers/mtd/nand/core.c
+===================================================================
+--- linux-5.10.138.orig/drivers/mtd/nand/core.c
++++ linux-5.10.138/drivers/mtd/nand/core.c
+@@ -125,13 +125,33 @@ EXPORT_SYMBOL_GPL(nanddev_isreserved);
+  */
+ int nanddev_erase(struct nand_device *nand, const struct nand_pos *pos)
+ {
++#ifdef CONFIG_NAND_HIDE_BAD
++	extern	int xlat_offset_to_skip_factory_bad(   struct nand_device *nand,  struct nand_pos *pos);
++	struct nand_pos xlat_pos;
++	int ret;
++#endif
++
+ 	if (nanddev_isbad(nand, pos) || nanddev_isreserved(nand, pos)) {
+ 		pr_warn("attempt to erase a bad/reserved block @%llx\n",
+ 			nanddev_pos_to_offs(nand, pos));
+ 		return -EIO;
+ 	}
+-
++#ifdef CONFIG_NAND_HIDE_BAD
++	{
++		xlat_pos = *pos;
++		ret = xlat_offset_to_skip_factory_bad(nand, &xlat_pos);
++		if(ret == -EINVAL){
++				pr_err("%s: offset xlat exceeds chip size\n",__FUNCTION__);
++				return ret;
++		}
++		if(nanddev_pos_cmp(&xlat_pos, pos) !=0 ){
++				pr_debug("Read xlat: 0x%llx => 0x%llx\n", nanddev_pos_to_offs(nand, pos), nanddev_pos_to_offs(nand, &xlat_pos));
++		}
++		return nand->ops->erase(nand, &xlat_pos);
++	}
++#else
+ 	return nand->ops->erase(nand, pos);
++#endif
+ }
+ EXPORT_SYMBOL_GPL(nanddev_erase);
+ 
+Index: linux-5.10.138/drivers/mtd/nand/spi/Kconfig
+===================================================================
+--- linux-5.10.138.orig/drivers/mtd/nand/spi/Kconfig
++++ linux-5.10.138/drivers/mtd/nand/spi/Kconfig
+@@ -6,3 +6,19 @@ menuconfig MTD_SPI_NAND
+ 	select SPI_MEM
+ 	help
+ 	  This is the framework for the SPI NAND device drivers.
++
++if MTD_SPI_NAND
++	config NAND_HIDE_BAD
++	tristate "NAND Flash factory bad block hidden mechanism"
++	depends on ARCH_CORTINA && MTD_SPI_NAND
++	help
++	  This configuration is used for the factory bad block hidden mechanism
++
++	config SPI_NAND_PAGECACHE
++    default y
++	tristate "Enhance the performance with PAGE_CACHE mechanism."
++	depends on ARCH_CORTINA && MTD_SPI_NAND
++	help
++	  This configuration is used for caching the page that had been read last time.
++
++endif # MTD_SPI_NAND
+Index: linux-5.10.138/drivers/mtd/nand/spi/Makefile
+===================================================================
+--- linux-5.10.138.orig/drivers/mtd/nand/spi/Makefile
++++ linux-5.10.138/drivers/mtd/nand/spi/Makefile
+@@ -1,3 +1,3 @@
+ # SPDX-License-Identifier: GPL-2.0
+-spinand-objs := core.o gigadevice.o macronix.o micron.o paragon.o toshiba.o winbond.o xtx.o
++spinand-objs := core.o gigadevice.o macronix.o micron.o paragon.o toshiba.o winbond.o dosilicon.o etron.o esmt.o fudan.o heyangtek.o longsys.o xtx.o
+ obj-$(CONFIG_MTD_SPI_NAND) += spinand.o
+Index: linux-5.10.138/drivers/mtd/nand/spi/core.c
+===================================================================
+--- linux-5.10.138.orig/drivers/mtd/nand/spi/core.c
++++ linux-5.10.138/drivers/mtd/nand/spi/core.c
+@@ -19,7 +19,205 @@
+ #include <linux/string.h>
+ #include <linux/spi/spi.h>
+ #include <linux/spi/spi-mem.h>
++#include <soc/cortina/cortina-soc.h>
+ 
++#ifdef CONFIG_NAND_HIDE_BAD
++/*
++ * Standard SPI-NAND flash commands
++ */
++#define SPINAND_CMD_READ_FROM_CACHE					0x03
++#define SPINAND_CMD_READ_FROM_CACHE_FAST			0x0b /* CMD_READ_RDM */
++#define SPINAND_CMD_READ_FROM_CACHE_X2				0x3b /* CMD_READ_RDM_X2 */
++#define SPINAND_CMD_READ_FROM_CACHE_DUAL_IO			0xbb
++#define SPINAND_CMD_READ_FROM_CACHE_X4				0x6b /* CMD_READ_RDM_X4 */
++#define SPINAND_CMD_READ_FROM_CACHE_QUAD_IO			0xeb
++#define SPINAND_CMD_PROG_LOAD						0x02 /* CMD_PROG_PAGE_CLRCACHE */
++#define SPINAND_CMD_PROG_LOAD_RDM_DATA				0x84 /* CMD_PROG_PAGE */
++#define SPINAND_CMD_PROG_LOAD_X4					0x32 /* CMD_PROG_PAGE_CLRCACHE_X4 */
++#define SPINAND_CMD_PROG_LOAD_RDM_DATA_X4			0x34
++
++/*
++ * Factory Bad Block mech
++ */
++#define BAD_BLOCK_LIST_ELEMENT	128
++#define BBL_INDICATORS          4
++#define VENUS_CONFIG_BBL_OFFSET         (0x180000)  /* 1.5MB */
++#define VENUS_CONFIG_BBL_OFFSET_REDUND  (0x1C0000)
++
++#define TAURUS_CONFIG_BBL_OFFSET        (0x200000)  /* 2.0MB */
++#define TAURUS_CONFIG_BBL_OFFSET_REDUND (0x240000)
++
++#define BBL0_NAME 0x42626c30 //'Bbl0'
++#define BBL1_NAME 0x316C6242 //'1lbB'
++
++enum {
++	FACTORY_1ST_SCAN = 1,
++	FACTORY_FROM_BBT0= 2,
++	FACTORY_FROM_BBT1= 3,
++};
++static u8 bbl_source=0;
++static u8 acc_phy_offset=0;
++static u8 bad_block_cnt=0;
++static uint32_t bad_block_list[BAD_BLOCK_LIST_ELEMENT];
++
++//static int spi_nand_block_bad(struct mtd_info *mtd, loff_t ofs, int getchip);
++static bool spinand_isbad(struct nand_device *nand, const struct nand_pos *pos);
++
++/* "crc16_tab & cyg_crc16" are Inherited from u-boot-2015.04 */
++/* Table of CRC constants - implements x^16+x^12+x^5+1 */
++static const uint16_t crc16_tab[] = {
++	0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5, 0x60c6, 0x70e7,
++	0x8108, 0x9129, 0xa14a, 0xb16b, 0xc18c, 0xd1ad, 0xe1ce, 0xf1ef,
++	0x1231, 0x0210, 0x3273, 0x2252, 0x52b5, 0x4294, 0x72f7, 0x62d6,
++	0x9339, 0x8318, 0xb37b, 0xa35a, 0xd3bd, 0xc39c, 0xf3ff, 0xe3de,
++	0x2462, 0x3443, 0x0420, 0x1401, 0x64e6, 0x74c7, 0x44a4, 0x5485,
++	0xa56a, 0xb54b, 0x8528, 0x9509, 0xe5ee, 0xf5cf, 0xc5ac, 0xd58d,
++	0x3653, 0x2672, 0x1611, 0x0630, 0x76d7, 0x66f6, 0x5695, 0x46b4,
++	0xb75b, 0xa77a, 0x9719, 0x8738, 0xf7df, 0xe7fe, 0xd79d, 0xc7bc,
++	0x48c4, 0x58e5, 0x6886, 0x78a7, 0x0840, 0x1861, 0x2802, 0x3823,
++	0xc9cc, 0xd9ed, 0xe98e, 0xf9af, 0x8948, 0x9969, 0xa90a, 0xb92b,
++	0x5af5, 0x4ad4, 0x7ab7, 0x6a96, 0x1a71, 0x0a50, 0x3a33, 0x2a12,
++	0xdbfd, 0xcbdc, 0xfbbf, 0xeb9e, 0x9b79, 0x8b58, 0xbb3b, 0xab1a,
++	0x6ca6, 0x7c87, 0x4ce4, 0x5cc5, 0x2c22, 0x3c03, 0x0c60, 0x1c41,
++	0xedae, 0xfd8f, 0xcdec, 0xddcd, 0xad2a, 0xbd0b, 0x8d68, 0x9d49,
++	0x7e97, 0x6eb6, 0x5ed5, 0x4ef4, 0x3e13, 0x2e32, 0x1e51, 0x0e70,
++	0xff9f, 0xefbe, 0xdfdd, 0xcffc, 0xbf1b, 0xaf3a, 0x9f59, 0x8f78,
++	0x9188, 0x81a9, 0xb1ca, 0xa1eb, 0xd10c, 0xc12d, 0xf14e, 0xe16f,
++	0x1080, 0x00a1, 0x30c2, 0x20e3, 0x5004, 0x4025, 0x7046, 0x6067,
++	0x83b9, 0x9398, 0xa3fb, 0xb3da, 0xc33d, 0xd31c, 0xe37f, 0xf35e,
++	0x02b1, 0x1290, 0x22f3, 0x32d2, 0x4235, 0x5214, 0x6277, 0x7256,
++	0xb5ea, 0xa5cb, 0x95a8, 0x8589, 0xf56e, 0xe54f, 0xd52c, 0xc50d,
++	0x34e2, 0x24c3, 0x14a0, 0x0481, 0x7466, 0x6447, 0x5424, 0x4405,
++	0xa7db, 0xb7fa, 0x8799, 0x97b8, 0xe75f, 0xf77e, 0xc71d, 0xd73c,
++	0x26d3, 0x36f2, 0x0691, 0x16b0, 0x6657, 0x7676, 0x4615, 0x5634,
++	0xd94c, 0xc96d, 0xf90e, 0xe92f, 0x99c8, 0x89e9, 0xb98a, 0xa9ab,
++	0x5844, 0x4865, 0x7806, 0x6827, 0x18c0, 0x08e1, 0x3882, 0x28a3,
++	0xcb7d, 0xdb5c, 0xeb3f, 0xfb1e, 0x8bf9, 0x9bd8, 0xabbb, 0xbb9a,
++	0x4a75, 0x5a54, 0x6a37, 0x7a16, 0x0af1, 0x1ad0, 0x2ab3, 0x3a92,
++	0xfd2e, 0xed0f, 0xdd6c, 0xcd4d, 0xbdaa, 0xad8b, 0x9de8, 0x8dc9,
++	0x7c26, 0x6c07, 0x5c64, 0x4c45, 0x3ca2, 0x2c83, 0x1ce0, 0x0cc1,
++	0xef1f, 0xff3e, 0xcf5d, 0xdf7c, 0xaf9b, 0xbfba, 0x8fd9, 0x9ff8,
++	0x6e17, 0x7e36, 0x4e55, 0x5e74, 0x2e93, 0x3eb2, 0x0ed1, 0x1ef0,
++};
++static uint16_t cyg_crc16(unsigned char *buf, int len)
++{
++	int i;
++	uint16_t cksum;
++
++	cksum = 0;
++	for (i = 0;  i < len;  i++) {
++		cksum = crc16_tab[((cksum>>8) ^ *buf++) & 0xFF] ^ (cksum << 8);
++	}
++	return cksum;
++}
++static int spinand_mtd_read(struct mtd_info *mtd, loff_t from,  struct mtd_oob_ops *ops);
++static int spinand_mtd_write(struct mtd_info *mtd, loff_t to, struct mtd_oob_ops *ops);
++
++static int hide_bad_mtd_read(struct mtd_info *mtd, loff_t from, size_t len,
++		     size_t *retlen, uint8_t *buf)
++{
++	int ret = 0;
++	struct mtd_oob_ops ops = {
++		.len = len,
++		.datbuf = buf,
++	};
++
++	ret = spinand_mtd_read(mtd, from, &ops);
++	if (ret < 0)
++		pr_info("%s: error! ret=%d\n", __func__, ret);
++	*retlen = ops.retlen;
++
++	return ret;
++}
++
++static void get_spi_nand_factory_bad_blocks(struct mtd_info *mtd, uint32_t start, uint32_t size)
++{
++	//struct spi_nand_chip *chip = mtd->priv;
++	struct nand_device *nand = mtd_to_nanddev(mtd);
++	struct nand_pos pos;
++	/* Check factory bad stored in flash chip:
++		 * 1) Read Bbl0 if the factory bad had already been scanned
++		 * 2) If Bbl0 is bad. Read Bbl1 for the factory bad
++		 */
++	loff_t offset;
++	uint32_t ret=0;
++	size_t retlen;
++	uint32_t indicator[BBL_INDICATORS];
++	uint32_t tempread[BAD_BLOCK_LIST_ELEMENT];
++	loff_t bbl_off = 0;
++	memset(indicator, 0xF, sizeof(indicator));
++	memset(tempread, 0xF, sizeof(tempread));
++	if (RTK_SOC_TAURUS_GEN) {
++		bbl_off = TAURUS_CONFIG_BBL_OFFSET;
++	} else {
++		bbl_off = VENUS_CONFIG_BBL_OFFSET;
++	}
++
++	acc_phy_offset = 1;
++	for(offset=bbl_off ; offset < nanddev_size(nand); offset += nanddev_eraseblock_size(nand) ){
++		nanddev_offs_to_pos(nand, offset, &pos);
++		ret = spinand_isbad(nand, &pos);
++		if(ret == 1) continue;
++		hide_bad_mtd_read(mtd, offset, sizeof(indicator), &retlen, (u8 *)indicator);
++
++		if(((indicator[0] == BBL0_NAME) || (indicator[0] == BBL1_NAME)) && (indicator[2] == indicator[3])){
++			ret = hide_bad_mtd_read(mtd, offset + nanddev_page_size(nand), sizeof(tempread), &retlen, (u8 *)tempread);
++			if(indicator[2] == cyg_crc16((u8 *)tempread, sizeof(tempread))){
++				bad_block_cnt = indicator[1];
++				bbl_source = (indicator[0]==BBL0_NAME)?FACTORY_FROM_BBT0:FACTORY_FROM_BBT1;
++				memcpy(bad_block_list, tempread, sizeof(bad_block_list));
++				acc_phy_offset = 0;
++				return;
++			}
++		}
++	}
++
++	/* If the BBLn is not read from flash, scan the BBI in OOB */
++	offset = start;
++	bbl_source = FACTORY_1ST_SCAN;
++	bad_block_cnt = 0;
++	memset(bad_block_list, 0xF, sizeof(bad_block_list));
++	while(((offset - start) < size) && (bad_block_cnt<BAD_BLOCK_LIST_ELEMENT)) {
++		 nanddev_offs_to_pos(nand, offset, &pos);
++		 ret = spinand_isbad(nand, &pos);
++		 if(ret == 1){
++			bad_block_list[bad_block_cnt++] = offset;
++		}
++		offset += nanddev_eraseblock_size(nand) ;
++	}
++	mtd->size -= bad_block_cnt*nanddev_eraseblock_size(nand) ;
++	acc_phy_offset = 0;
++	return;
++}
++
++ int xlat_offset_to_skip_factory_bad(	struct nand_device *nand,  struct nand_pos *pos)
++{
++	uint32_t i;
++	loff_t offset;
++
++	/* Just return original offset:
++	     1. if no bad block found
++	     2. Physical flash offset access is assigned */
++	if((bad_block_cnt==0) || (acc_phy_offset==1)){
++		return 0;
++	}
++
++	offset = nanddev_pos_to_offs(nand, pos);
++	for(i=0; i<bad_block_cnt; i++){
++		if(bad_block_list[i] <= offset){
++			offset += nanddev_eraseblock_size(nand);
++		}else{
++			break;
++		}
++	}
++	if(offset >= nanddev_size(nand)){
++		return -EINVAL;
++	}
++	nanddev_offs_to_pos(nand, offset, pos);
++	return 0;
++}
++
++#endif /* #ifdef CONFIG_NAND_HIDE_BAD */
+ static int spinand_read_reg_op(struct spinand_device *spinand, u8 reg, u8 *val)
+ {
+ 	struct spi_mem_op op = SPINAND_GET_FEATURE_OP(reg,
+@@ -491,6 +689,13 @@ static int spinand_mtd_read(struct mtd_i
+ 	bool enable_ecc = false;
+ 	bool ecc_failed = false;
+ 	int ret = 0;
++#ifdef CONFIG_SPI_NAND_PAGECACHE
++    unsigned int row;
++#endif
++#ifdef CONFIG_NAND_HIDE_BAD
++	struct nand_pos tmp_pos;
++	nanddev_offs_to_pos(nand, from, &tmp_pos);
++#endif
+ 
+ 	if (ops->mode != MTD_OPS_RAW && spinand->eccinfo.ooblayout)
+ 		enable_ecc = true;
+@@ -498,6 +703,19 @@ static int spinand_mtd_read(struct mtd_i
+ 	mutex_lock(&spinand->lock);
+ 
+ 	nanddev_io_for_each_page(nand, NAND_PAGE_READ, from, ops, &iter) {
++#ifdef CONFIG_NAND_HIDE_BAD
++		iter.req.pos = tmp_pos;
++		ret = xlat_offset_to_skip_factory_bad(nand, &iter.req.pos);
++		if(ret == -EINVAL){
++			pr_err("%s: offset xlat exceeds chip size\n",__FUNCTION__);
++			return ret;
++		}
++		if(nanddev_pos_cmp(&tmp_pos, &iter.req.pos) !=0 ){
++			pr_debug("Read xlat: 0x%llx => 0x%llx\n", nanddev_pos_to_offs(nand, &tmp_pos), nanddev_pos_to_offs(nand, &iter.req.pos));
++			//printk("Read xlat: 0x%llx => 0x%llx\n", nanddev_pos_to_offs(nand, &tmp_pos), nanddev_pos_to_offs(nand, &iter.req.pos) );
++		}
++		nanddev_pos_next_page(nand, &tmp_pos);
++#endif
+ 		ret = spinand_select_target(spinand, iter.req.pos.target);
+ 		if (ret)
+ 			break;
+@@ -506,6 +724,48 @@ static int spinand_mtd_read(struct mtd_i
+ 		if (ret)
+ 			break;
+ 
++#ifdef CONFIG_SPI_NAND_PAGECACHE
++/*
++  * Read performance enhancement
++  * For the page that had been read last time,
++  * just copy the flash data from [spinand->databuf] instead of sending out command again.
++  */
++        row = nanddev_pos_to_row(nand, &iter.req.pos);
++		if ((row != spinand->pagecache.page) || (iter.req.pos.target != spinand->pagecache.die)) {
++			ret = spinand_read_page(spinand, &iter.req, enable_ecc);
++            if (ret < 0 && ret != -EBADMSG)
++                break;
++
++            if (ret == -EBADMSG) {
++                ecc_failed = true;
++                mtd->ecc_stats.failed++;
++            } else {
++                mtd->ecc_stats.corrected += ret;
++                max_bitflips = max_t(unsigned int, max_bitflips, ret);
++            }
++
++			spinand->pagecache.bitflips = max_bitflips;
++            spinand->pagecache.page = row;
++			spinand->pagecache.die = iter.req.pos.target;
++		} else {
++            if (iter.req.datalen)
++                memcpy(iter.req.databuf.in, spinand->databuf + iter.req.dataoffs,
++                       iter.req.datalen);
++
++            if (iter.req.ooblen) {
++                if (iter.req.mode == MTD_OPS_AUTO_OOB)
++                    mtd_ooblayout_get_databytes(mtd, iter.req.oobbuf.in,
++                                    spinand->oobbuf,
++                                    iter.req.ooboffs,
++                                    iter.req.ooblen);
++                else
++                    memcpy(iter.req.oobbuf.in, spinand->oobbuf + iter.req.ooboffs,
++                           iter.req.ooblen);
++            }
++
++            max_bitflips = max_t(unsigned int, max_bitflips, spinand->pagecache.bitflips);
++		}
++#else
+ 		ret = spinand_read_page(spinand, &iter.req, enable_ecc);
+ 		if (ret < 0 && ret != -EBADMSG)
+ 			break;
+@@ -517,7 +777,7 @@ static int spinand_mtd_read(struct mtd_i
+ 			mtd->ecc_stats.corrected += ret;
+ 			max_bitflips = max_t(unsigned int, max_bitflips, ret);
+ 		}
+-
++#endif
+ 		ret = 0;
+ 		ops->retlen += iter.req.datalen;
+ 		ops->oobretlen += iter.req.ooblen;
+@@ -539,6 +799,10 @@ static int spinand_mtd_write(struct mtd_
+ 	struct nand_io_iter iter;
+ 	bool enable_ecc = false;
+ 	int ret = 0;
++#ifdef CONFIG_NAND_HIDE_BAD
++	struct nand_pos tmp_pos;
++	nanddev_offs_to_pos(nand, to, &tmp_pos);
++#endif
+ 
+ 	if (ops->mode != MTD_OPS_RAW && mtd->ooblayout)
+ 		enable_ecc = true;
+@@ -546,6 +810,25 @@ static int spinand_mtd_write(struct mtd_
+ 	mutex_lock(&spinand->lock);
+ 
+ 	nanddev_io_for_each_page(nand, NAND_PAGE_WRITE, to, ops, &iter) {
++
++#ifdef CONFIG_SPI_NAND_PAGECACHE
++    /* Invalidate the page cache reference */
++    spinand->pagecache.page = -1;
++#endif
++#ifdef CONFIG_NAND_HIDE_BAD
++		iter.req.pos = tmp_pos;
++
++		ret = xlat_offset_to_skip_factory_bad(nand, &iter.req.pos);
++		if(ret == -EINVAL){
++			pr_err("%s: offset xlat exceeds chip size\n",__FUNCTION__);
++			return ret;
++		}
++		if(nanddev_pos_cmp(&tmp_pos, &iter.req.pos) !=0 ){
++			pr_debug("Write xlat: 0x%llx => 0x%llx\n", nanddev_pos_to_offs(nand, &tmp_pos), nanddev_pos_to_offs(nand, &iter.req.pos));
++			//printk("Write xlat: 0x%llx => 0x%llx\n", nanddev_pos_to_offs(nand, &tmp_pos), nanddev_pos_to_offs(nand, &iter.req.pos) );
++		}
++		nanddev_pos_next_page(nand, &tmp_pos);
++#endif
+ 		ret = spinand_select_target(spinand, iter.req.pos.target);
+ 		if (ret)
+ 			break;
+@@ -578,8 +861,24 @@ static bool spinand_isbad(struct nand_de
+ 		.oobbuf.in = marker,
+ 		.mode = MTD_OPS_RAW,
+ 	};
+-
++#ifdef CONFIG_NAND_HIDE_BAD
++	int ret = 0;
++	struct nand_pos xlat_pos = *pos;
++#endif
++#ifdef CONFIG_NAND_HIDE_BAD
++	ret = xlat_offset_to_skip_factory_bad(nand, &xlat_pos);
++	if(ret == -EINVAL){
++		pr_err("%s: offset xlat exceeds chip size\n",__FUNCTION__);
++		return true;
++	}
++	if(nanddev_pos_cmp(&xlat_pos, pos) !=0 ){
++		pr_debug("isbad xlat: 0x%llx => 0x%llx\n", nanddev_pos_to_offs(nand, pos), nanddev_pos_to_offs(nand, &xlat_pos));
++	}
++	req.pos = xlat_pos;
++	spinand_select_target(spinand, xlat_pos.target);
++#else
+ 	spinand_select_target(spinand, pos->target);
++#endif
+ 	spinand_read_page(spinand, &req, false);
+ 	if (marker[0] != 0xff || marker[1] != 0xff)
+ 		return true;
+@@ -614,11 +913,29 @@ static int spinand_markbad(struct nand_d
+ 		.mode = MTD_OPS_RAW,
+ 	};
+ 	int ret;
++#ifdef CONFIG_NAND_HIDE_BAD
++		struct nand_pos xlat_pos;
++		//memcpy(&xlat_pos, pos, sizeof(struct nand_pos));
++		xlat_pos = *pos;
++		ret = xlat_offset_to_skip_factory_bad(nand, &xlat_pos);
++		if(ret == -EINVAL){
++			pr_err("%s: offset xlat exceeds chip size\n",__FUNCTION__);
++			return true;
++		}
++		if(nanddev_pos_cmp(pos, &xlat_pos) !=0 ){
++			pr_debug("markbad xlat: 0x%llx => 0x%llx\n", nanddev_pos_to_offs(nand, pos), nanddev_pos_to_offs(nand, &xlat_pos));
++			req.pos = xlat_pos;
++		}
+ 
+-	ret = spinand_select_target(spinand, pos->target);
++	ret = spinand_select_target(spinand, xlat_pos.target);
+ 	if (ret)
+ 		return ret;
+ 
++#else
++	ret = spinand_select_target(spinand, pos->target);
++	if (ret)
++		return ret;
++#endif
+ 	ret = spinand_write_enable_op(spinand);
+ 	if (ret)
+ 		return ret;
+@@ -672,6 +989,11 @@ static int spinand_mtd_erase(struct mtd_
+ 	struct spinand_device *spinand = mtd_to_spinand(mtd);
+ 	int ret;
+ 
++#ifdef CONFIG_SPI_NAND_PAGECACHE
++    /* Invalidate the page cache reference */
++    spinand->pagecache.page = -1;
++#endif
++
+ 	mutex_lock(&spinand->lock);
+ 	ret = nanddev_mtd_erase(mtd, einfo);
+ 	mutex_unlock(&spinand->lock);
+@@ -760,7 +1082,13 @@ static const struct spinand_manufacturer
+ 	&paragon_spinand_manufacturer,
+ 	&toshiba_spinand_manufacturer,
+ 	&winbond_spinand_manufacturer,
+-	&xtx_spinand_manufacturer,
++	&dosilicon_spinand_manufacturer,
++	&etron_spinand_manufacturer,
++    &esmt_spinand_manufacturer,
++    &fudan_spinand_manufacturer,
++    &longsys_spinand_manufacturer,
++    &xtx_spinand_manufacturer,
++    &heyangtek_spinand_manufacturer,
+ };
+ 
+ static int spinand_manufacturer_match(struct spinand_device *spinand,
+@@ -927,6 +1255,9 @@ int spinand_match_and_init(struct spinan
+ 					       info->op_variants.update_cache);
+ 		spinand->op_templates.update_cache = op;
+ 
++		dev_info(&spinand->spimem->spi->dev,
++			"model_name: %s\n", info->model);
++
+ 		return 0;
+ 	}
+ 
+@@ -997,6 +1328,15 @@ static int spinand_init(struct spinand_d
+ 	struct nand_device *nand = mtd_to_nanddev(mtd);
+ 	int ret, i;
+ 
++#ifdef CONFIG_NAND_HIDE_BAD
++		char op_mode[4]="?/?";
++#endif
++
++#ifdef CONFIG_SPI_NAND_PAGECACHE
++	/* Invalidate the page cache reference */
++	spinand->pagecache.page = -1;
++#endif
++
+ 	/*
+ 	 * We need a scratch buffer because the spi_mem interface requires that
+ 	 * buf passed in spi_mem_op->data.buf be DMA-able.
+@@ -1071,6 +1411,9 @@ static int spinand_init(struct spinand_d
+ 	 * Right now, we don't support ECC, so let the whole oob
+ 	 * area is available for user.
+ 	 */
++#ifdef CONFIG_ARCH_CORTINA
++	mtd->name = "ca_spinand_flash";
++#endif
+ 	mtd->_read_oob = spinand_mtd_read;
+ 	mtd->_write_oob = spinand_mtd_write;
+ 	mtd->_block_isbad = spinand_mtd_block_isbad;
+@@ -1094,6 +1437,53 @@ static int spinand_init(struct spinand_d
+ 	mtd->ecc_strength = nanddev_get_ecc_requirements(nand)->strength;
+ 	mtd->ecc_step_size = nanddev_get_ecc_requirements(nand)->step_size;
+ 
++#ifdef CONFIG_NAND_HIDE_BAD
++
++		get_spi_nand_factory_bad_blocks(mtd, 0, mtd->size);
++
++		/* Update the the size information to the availabe capacity */
++		mtd->size -= bad_block_cnt*mtd->erasesize;
++		printk("spi nand total capacity is %lluMB(0x%llx)\n",(uint64_t)(nanddev_size(nand)/0x100000),   nanddev_size(nand));
++		printk("spi nand available size is %lluMB(0x%llx)\n",(uint64_t)(mtd->size/0x100000), mtd->size);
++		if(bbl_source == FACTORY_1ST_SCAN)
++			printk("spi nand 1st scan factory bad to memory\n");
++		else
++			printk("spi nand %s from flash\n",(bbl_source==FACTORY_FROM_BBT0)?"Bbl0":"Bbl1");
++
++		printk("spi nand hidden: ");
++		for(i=0 ; i<bad_block_cnt ; i++){
++			printk("0x%x ", bad_block_list[i]);
++		}
++		printk("\n");
++		switch(spinand->op_templates.read_cache->cmd.opcode){
++			case SPINAND_CMD_READ_FROM_CACHE_QUAD_IO:
++				op_mode[0] = 'Q';
++				break;
++			case SPINAND_CMD_READ_FROM_CACHE_X4:
++				op_mode[0] = '4';
++				break;
++			case SPINAND_CMD_READ_FROM_CACHE_DUAL_IO:
++				op_mode[0] = 'D';
++				break;
++			case SPINAND_CMD_READ_FROM_CACHE_X2:
++				op_mode[0] = '2';
++				break;
++			case SPINAND_CMD_READ_FROM_CACHE:
++			case SPINAND_CMD_READ_FROM_CACHE_FAST:
++				op_mode[0] = 'S';
++				break;
++		}
++		switch(spinand->op_templates.write_cache->cmd.opcode){
++			case SPINAND_CMD_PROG_LOAD_X4:
++				op_mode[2] = '4';
++				break;
++			case SPINAND_CMD_PROG_LOAD:
++				op_mode[2] = 'S';
++				break;
++		}
++		printk("spi nand Mode: %s\n", op_mode);
++#endif
++
+ 	return 0;
+ 
+ err_cleanup_nanddev:
+Index: linux-5.10.138/drivers/mtd/nand/spi/gigadevice.c
+===================================================================
+--- linux-5.10.138.orig/drivers/mtd/nand/spi/gigadevice.c
++++ linux-5.10.138/drivers/mtd/nand/spi/gigadevice.c
+@@ -2,6 +2,10 @@
+ /*
+  * Author:
+  *	Chuanhong Guo <gch981213@gmail.com>
++ *
++ *
++ * Copyright (c) 2022, Realtek Semiconductor Corp.
++ * [RTK] 2022/08/31: Support GD5F1GM7UEYIG, GD5F2GM7UEYIG, GD5F4GM8UEYIG
+  */
+ 
+ #include <linux/device.h>
+@@ -13,7 +17,10 @@
+ #define GD5FXGQ4XA_STATUS_ECC_1_7_BITFLIPS	(1 << 4)
+ #define GD5FXGQ4XA_STATUS_ECC_8_BITFLIPS	(3 << 4)
+ 
+-#define GD5FXGQ4UEXXG_REG_STATUS2		0xf0
++#define GD5FXGQ5XE_STATUS_ECC_1_4_BITFLIPS	(1 << 4)
++#define GD5FXGQ5XE_STATUS_ECC_4_BITFLIPS	(3 << 4)
++
++#define GD5FXGQXXEXXG_REG_STATUS2		0xf0
+ 
+ #define GD5FXGQ4UXFXXG_STATUS_ECC_MASK		(7 << 4)
+ #define GD5FXGQ4UXFXXG_STATUS_ECC_NO_BITFLIPS	(0 << 4)
+@@ -28,6 +35,22 @@ static SPINAND_OP_VARIANTS(read_cache_va
+ 		SPINAND_PAGE_READ_FROM_CACHE_OP(true, 0, 1, NULL, 0),
+ 		SPINAND_PAGE_READ_FROM_CACHE_OP(false, 0, 1, NULL, 0));
+ 
++static SPINAND_OP_VARIANTS(read_cache_variants_1gq5uexxg,
++		SPINAND_PAGE_READ_FROM_CACHE_QUADIO_OP(0, 1, NULL, 0),
++		SPINAND_PAGE_READ_FROM_CACHE_X4_OP(0, 1, NULL, 0),
++		SPINAND_PAGE_READ_FROM_CACHE_DUALIO_OP(0, 1, NULL, 0),
++		SPINAND_PAGE_READ_FROM_CACHE_X2_OP(0, 1, NULL, 0),
++		SPINAND_PAGE_READ_FROM_CACHE_OP(true, 0, 1, NULL, 0),
++		SPINAND_PAGE_READ_FROM_CACHE_OP(false, 0, 1, NULL, 0));
++
++static SPINAND_OP_VARIANTS(read_cache_variants_xgq5uexxx,
++        SPINAND_PAGE_READ_FROM_CACHE_QUADIO_OP(0, 4, NULL, 0),
++        SPINAND_PAGE_READ_FROM_CACHE_X4_OP(0, 1, NULL, 0),
++        SPINAND_PAGE_READ_FROM_CACHE_DUALIO_OP(0, 2, NULL, 0),
++        SPINAND_PAGE_READ_FROM_CACHE_X2_OP(0, 1, NULL, 0),
++        SPINAND_PAGE_READ_FROM_CACHE_OP(true, 0, 1, NULL, 0),
++        SPINAND_PAGE_READ_FROM_CACHE_OP(false, 0, 1, NULL, 0));
++
+ static SPINAND_OP_VARIANTS(read_cache_variants_f,
+ 		SPINAND_PAGE_READ_FROM_CACHE_QUADIO_OP(0, 1, NULL, 0),
+ 		SPINAND_PAGE_READ_FROM_CACHE_X4_OP_3A(0, 1, NULL, 0),
+@@ -102,7 +125,7 @@ static int gd5fxgq4xa_ecc_get_status(str
+ 	return -EINVAL;
+ }
+ 
+-static int gd5fxgq4_variant2_ooblayout_ecc(struct mtd_info *mtd, int section,
++static int gd5fxgqx_variant2_ooblayout_ecc(struct mtd_info *mtd, int section,
+ 				       struct mtd_oob_region *region)
+ {
+ 	if (section)
+@@ -114,7 +137,7 @@ static int gd5fxgq4_variant2_ooblayout_e
+ 	return 0;
+ }
+ 
+-static int gd5fxgq4_variant2_ooblayout_free(struct mtd_info *mtd, int section,
++static int gd5fxgqx_variant2_ooblayout_free(struct mtd_info *mtd, int section,
+ 					struct mtd_oob_region *region)
+ {
+ 	if (section)
+@@ -127,9 +150,10 @@ static int gd5fxgq4_variant2_ooblayout_f
+ 	return 0;
+ }
+ 
+-static const struct mtd_ooblayout_ops gd5fxgq4_variant2_ooblayout = {
+-	.ecc = gd5fxgq4_variant2_ooblayout_ecc,
+-	.free = gd5fxgq4_variant2_ooblayout_free,
++/* Valid for Q4/Q5 and Q6 (untested) devices */
++static const struct mtd_ooblayout_ops gd5fxgqx_variant2_ooblayout = {
++	.ecc = gd5fxgqx_variant2_ooblayout_ecc,
++	.free = gd5fxgqx_variant2_ooblayout_free,
+ };
+ 
+ static int gd5fxgq4xc_ooblayout_256_ecc(struct mtd_info *mtd, int section,
+@@ -161,11 +185,35 @@ static const struct mtd_ooblayout_ops gd
+ 	.free = gd5fxgq4xc_ooblayout_256_free,
+ };
+ 
++static int gd5fxgq5uexxh_variant_ooblayout_ecc(struct mtd_info *mtd, int section,
++				       struct mtd_oob_region *region)
++{
++	return -ERANGE;
++}
++
++static int gd5fxgq5uexxh_variant_ooblayout_free(struct mtd_info *mtd, int section,
++					struct mtd_oob_region *region)
++{
++	if (section)
++		return -ERANGE;
++
++	/* Reserve 1 bytes for the BBM. */
++	region->offset = 1;
++	region->length = 63;
++
++	return 0;
++}
++
++static const struct mtd_ooblayout_ops gd5fxgq5uexxh_variant_ooblayout = {
++	.ecc = gd5fxgq5uexxh_variant_ooblayout_ecc,
++	.free = gd5fxgq5uexxh_variant_ooblayout_free,
++};
++
+ static int gd5fxgq4uexxg_ecc_get_status(struct spinand_device *spinand,
+ 					u8 status)
+ {
+ 	u8 status2;
+-	struct spi_mem_op op = SPINAND_GET_FEATURE_OP(GD5FXGQ4UEXXG_REG_STATUS2,
++	struct spi_mem_op op = SPINAND_GET_FEATURE_OP(GD5FXGQXXEXXG_REG_STATUS2,
+ 						      &status2);
+ 	int ret;
+ 
+@@ -203,6 +251,43 @@ static int gd5fxgq4uexxg_ecc_get_status(
+ 	return -EINVAL;
+ }
+ 
++static int gd5fxgq5xexxg_ecc_get_status(struct spinand_device *spinand,
++					u8 status)
++{
++	u8 status2;
++	struct spi_mem_op op = SPINAND_GET_FEATURE_OP(GD5FXGQXXEXXG_REG_STATUS2,
++						      &status2);
++	int ret;
++
++	switch (status & STATUS_ECC_MASK) {
++	case STATUS_ECC_NO_BITFLIPS:
++		return 0;
++
++	case GD5FXGQ5XE_STATUS_ECC_1_4_BITFLIPS:
++		/*
++		 * Read status2 register to determine a more fine grained
++		 * bit error status
++		 */
++		ret = spi_mem_exec_op(spinand->spimem, &op);
++		if (ret)
++			return ret;
++
++		/*
++		 * 1 ... 4 bits are flipped (and corrected)
++		 */
++		/* bits sorted this way (1...0): ECCSE1, ECCSE0 */
++		return ((status2 & STATUS_ECC_MASK) >> 4) + 1;
++
++	case STATUS_ECC_UNCOR_ERROR:
++		return -EBADMSG;
++
++	default:
++		break;
++	}
++
++	return -EINVAL;
++}
++
+ static int gd5fxgq4ufxxg_ecc_get_status(struct spinand_device *spinand,
+ 					u8 status)
+ {
+@@ -282,7 +367,7 @@ static const struct spinand_info gigadev
+ 					      &write_cache_variants,
+ 					      &update_cache_variants),
+ 		     SPINAND_HAS_QE_BIT,
+-		     SPINAND_ECCINFO(&gd5fxgq4_variant2_ooblayout,
++		     SPINAND_ECCINFO(&gd5fxgqx_variant2_ooblayout,
+ 				     gd5fxgq4uexxg_ecc_get_status)),
+ 	SPINAND_INFO("GD5F1GQ4UFxxG",
+ 		     SPINAND_ID(SPINAND_READID_METHOD_OPCODE, 0xb1, 0x48),
+@@ -292,9 +377,100 @@ static const struct spinand_info gigadev
+ 					      &write_cache_variants,
+ 					      &update_cache_variants),
+ 		     SPINAND_HAS_QE_BIT,
+-		     SPINAND_ECCINFO(&gd5fxgq4_variant2_ooblayout,
++		     SPINAND_ECCINFO(&gd5fxgqx_variant2_ooblayout,
+ 				     gd5fxgq4ufxxg_ecc_get_status)),
+-};
++    SPINAND_INFO("GD5F1GQ5UExxG",
++             SPINAND_ID(SPINAND_READID_METHOD_OPCODE_DUMMY, 0x51),
++             NAND_MEMORG(1, 2048, 128, 64, 1024, 20, 1, 1, 1),
++             NAND_ECCREQ(4, 512),
++             SPINAND_INFO_OP_VARIANTS(&read_cache_variants_1gq5uexxg,
++                          &write_cache_variants,
++                          &update_cache_variants),
++             SPINAND_HAS_QE_BIT,
++             SPINAND_ECCINFO(&gd5fxgqx_variant2_ooblayout,
++                     gd5fxgq5xexxg_ecc_get_status)),
++    SPINAND_INFO("GD5F2GQ5UExxG",
++             SPINAND_ID(SPINAND_READID_METHOD_OPCODE_DUMMY, 0x52),
++             NAND_MEMORG(1, 2048, 128, 64, 2048, 40, 1, 1, 1),
++             NAND_ECCREQ(4, 512),
++             SPINAND_INFO_OP_VARIANTS(&read_cache_variants_xgq5uexxx,
++                          &write_cache_variants,
++                          &update_cache_variants),
++             SPINAND_HAS_QE_BIT,
++             SPINAND_ECCINFO(&gd5fxgqx_variant2_ooblayout,
++                     gd5fxgq5xexxg_ecc_get_status)),
++    SPINAND_INFO("GD5F4GQ6UExxG",
++             SPINAND_ID(SPINAND_READID_METHOD_OPCODE_DUMMY, 0x55),
++             NAND_MEMORG(1, 2048, 128, 64, 4096, 80, 1, 1, 1),
++             NAND_ECCREQ(4, 512),
++             SPINAND_INFO_OP_VARIANTS(&read_cache_variants_xgq5uexxx,
++                          &write_cache_variants,
++                          &update_cache_variants),
++             SPINAND_HAS_QE_BIT,
++             SPINAND_ECCINFO(&gd5fxgqx_variant2_ooblayout,
++                     gd5fxgq5xexxg_ecc_get_status)),
++    SPINAND_INFO("GD5F1GQ5UExxH",
++             SPINAND_ID(SPINAND_READID_METHOD_OPCODE_DUMMY, 0x31),
++             NAND_MEMORG(1, 2048, 64, 64, 1024, 20, 1, 1, 1),
++             NAND_ECCREQ(4, 512),
++             SPINAND_INFO_OP_VARIANTS(&read_cache_variants_xgq5uexxx,
++                          &write_cache_variants,
++                          &update_cache_variants),
++             SPINAND_HAS_QE_BIT,
++             SPINAND_ECCINFO(&gd5fxgq5uexxh_variant_ooblayout,
++                     gd5fxgq5xexxg_ecc_get_status)),
++    SPINAND_INFO("GD5F2GQ5UExxH",
++             SPINAND_ID(SPINAND_READID_METHOD_OPCODE_DUMMY, 0x32),
++             NAND_MEMORG(1, 2048, 64, 64, 2048, 40, 1, 1, 1),
++             NAND_ECCREQ(4, 512),
++             SPINAND_INFO_OP_VARIANTS(&read_cache_variants_xgq5uexxx,
++                          &write_cache_variants,
++                          &update_cache_variants),
++             SPINAND_HAS_QE_BIT,
++             SPINAND_ECCINFO(&gd5fxgq5uexxh_variant_ooblayout,
++                     gd5fxgq5xexxg_ecc_get_status)),
++    SPINAND_INFO("GD5F4GQ6UExxH",
++             SPINAND_ID(SPINAND_READID_METHOD_OPCODE_DUMMY, 0x35),
++             NAND_MEMORG(1, 2048, 64, 64, 4096, 80, 1, 1, 1),
++             NAND_ECCREQ(4, 512),
++             SPINAND_INFO_OP_VARIANTS(&read_cache_variants_xgq5uexxx,
++                          &write_cache_variants,
++                          &update_cache_variants),
++             SPINAND_HAS_QE_BIT,
++             SPINAND_ECCINFO(&gd5fxgq5uexxh_variant_ooblayout,
++                     gd5fxgq5xexxg_ecc_get_status)),
++
++    SPINAND_INFO("GD5F1GM7UEYIG",
++             SPINAND_ID(SPINAND_READID_METHOD_OPCODE_DUMMY, 0x91),
++             NAND_MEMORG(1, 2048, 64, 64, 1024, 20, 1, 1, 1),
++             NAND_ECCREQ(8, 512),
++             SPINAND_INFO_OP_VARIANTS(&read_cache_variants_1gq5uexxg,
++                                      &write_cache_variants,
++                                      &update_cache_variants),
++             SPINAND_HAS_QE_BIT,
++             SPINAND_ECCINFO(&gd5fxgq5uexxh_variant_ooblayout, gd5fxgq4uexxg_ecc_get_status)),
++
++    SPINAND_INFO("GD5F2GM7UEYIG",
++             SPINAND_ID(SPINAND_READID_METHOD_OPCODE_DUMMY, 0x92),
++             NAND_MEMORG(1, 2048, 64, 64, 2048, 40, 1, 1, 1),
++             NAND_ECCREQ(8, 512),
++             SPINAND_INFO_OP_VARIANTS(&read_cache_variants_xgq5uexxx,
++                                      &write_cache_variants,
++                                      &update_cache_variants),
++             SPINAND_HAS_QE_BIT,
++             SPINAND_ECCINFO(&gd5fxgq5uexxh_variant_ooblayout, gd5fxgq4uexxg_ecc_get_status)),
++
++    SPINAND_INFO("GD5F4GM8UEYIG",
++             SPINAND_ID(SPINAND_READID_METHOD_OPCODE_DUMMY, 0x95),
++             NAND_MEMORG(1, 2048, 64, 64, 4096, 80, 1, 1, 1),
++             NAND_ECCREQ(8, 512),
++             SPINAND_INFO_OP_VARIANTS(&read_cache_variants_xgq5uexxx,
++                                      &write_cache_variants,
++                                      &update_cache_variants),
++             SPINAND_HAS_QE_BIT,
++             SPINAND_ECCINFO(&gd5fxgq5uexxh_variant_ooblayout, gd5fxgq4uexxg_ecc_get_status)),
++
++ };
+ 
+ static const struct spinand_manufacturer_ops gigadevice_spinand_manuf_ops = {
+ };
+Index: linux-5.10.138/drivers/mtd/nand/spi/macronix.c
+===================================================================
+--- linux-5.10.138.orig/drivers/mtd/nand/spi/macronix.c
++++ linux-5.10.138/drivers/mtd/nand/spi/macronix.c
+@@ -12,6 +12,12 @@
+ #define SPINAND_MFR_MACRONIX		0xC2
+ #define MACRONIX_ECCSR_MASK		0x0F
+ 
++#define MACRONIX_READ_ECCSR_OP(valptr)				\
++	SPI_MEM_OP(SPI_MEM_OP_CMD(0x7C, 1),				\
++    SPI_MEM_OP_ADDR(0, 0, 1),            \
++    SPI_MEM_OP_DUMMY(1, 1),             \
++    SPI_MEM_OP_DATA_IN(1, valptr, 1))
++
+ static SPINAND_OP_VARIANTS(read_cache_variants,
+ 		SPINAND_PAGE_READ_FROM_CACHE_X4_OP(0, 1, NULL, 0),
+ 		SPINAND_PAGE_READ_FROM_CACHE_X2_OP(0, 1, NULL, 0),
+@@ -99,7 +105,59 @@ static int mx35lf1ge4ab_ecc_get_status(s
+ 	return -EINVAL;
+ }
+ 
++static int mx35lfxge4ad_ecc_get_status(struct spinand_device *spinand,
++					u8 status)
++{
++	u8 eccsr;
++	struct spi_mem_op op = MACRONIX_READ_ECCSR_OP(&eccsr);
++	int ret;
++
++	switch (status & STATUS_ECC_MASK) {
++	case STATUS_ECC_NO_BITFLIPS:
++		return 0;
++
++	case STATUS_ECC_UNCOR_ERROR:
++		return -EBADMSG;
++
++	default:
++		/*
++		 * Read status2 register to determine a more fine grained
++		 * bit error status
++		 */
++		ret = spi_mem_exec_op(spinand->spimem, &op);
++		if (ret)
++			return ret;
++
++		/*
++		 * 1 ... 8 bits are flipped (and corrected)
++		 */
++		/* bits sorted this way (1...0): ECCSR3, ECCSR2, ECCSR1, ECCSR0 */
++		return (eccsr&MACRONIX_ECCSR_MASK);
++    }
++}
++
++
+ static const struct spinand_info macronix_spinand_table[] = {
++	SPINAND_INFO("MX35LF2GE4AD",
++		     SPINAND_ID(SPINAND_READID_METHOD_OPCODE_DUMMY, 0x26),
++		     NAND_MEMORG(1, 2048, 64, 64, 2048, 40, 1, 1, 1),
++		     NAND_ECCREQ(8, 512),
++		     SPINAND_INFO_OP_VARIANTS(&read_cache_variants,
++					      &write_cache_variants,
++					      &update_cache_variants),
++		     SPINAND_HAS_QE_BIT,
++		     SPINAND_ECCINFO(&mx35lfxge4ab_ooblayout,
++		            mx35lfxge4ad_ecc_get_status)),
++	SPINAND_INFO("MX35LF4GE4AD",
++		     SPINAND_ID(SPINAND_READID_METHOD_OPCODE_DUMMY, 0x37),
++		     NAND_MEMORG(1, 4096, 128, 64, 2048, 40, 1, 1, 1),
++		     NAND_ECCREQ(8, 512),
++		     SPINAND_INFO_OP_VARIANTS(&read_cache_variants,
++					      &write_cache_variants,
++					      &update_cache_variants),
++		     SPINAND_HAS_QE_BIT,
++		     SPINAND_ECCINFO(&mx35lfxge4ab_ooblayout,
++		            mx35lfxge4ad_ecc_get_status)),
+ 	SPINAND_INFO("MX35LF1GE4AB",
+ 		     SPINAND_ID(SPINAND_READID_METHOD_OPCODE_DUMMY, 0x12),
+ 		     NAND_MEMORG(1, 2048, 64, 64, 1024, 20, 1, 1, 1),
+Index: linux-5.10.138/drivers/mtd/nand/spi/winbond.c
+===================================================================
+--- linux-5.10.138.orig/drivers/mtd/nand/spi/winbond.c
++++ linux-5.10.138/drivers/mtd/nand/spi/winbond.c
+@@ -5,7 +5,11 @@
+  * Authors:
+  *	Frieder Schrempf <frieder.schrempf@exceet.de>
+  *	Boris Brezillon <boris.brezillon@bootlin.com>
+- */
++ *
++ *
++ * Copyright (c) 2022, Realtek Semiconductor Corp.
++ * [RTK] 2022/08/30: Support W25N02KVZEIE-H, W25N04KVZEIE-H
++*/
+ 
+ #include <linux/device.h>
+ #include <linux/kernel.h>
+@@ -15,6 +19,8 @@
+ 
+ #define WINBOND_CFG_BUF_READ		BIT(3)
+ 
++#define W25N0XKV_MBF_TABLE_ADDR 0x30
++
+ static SPINAND_OP_VARIANTS(read_cache_variants,
+ 		SPINAND_PAGE_READ_FROM_CACHE_QUADIO_OP(0, 2, NULL, 0),
+ 		SPINAND_PAGE_READ_FROM_CACHE_X4_OP(0, 1, NULL, 0),
+@@ -60,6 +66,73 @@ static const struct mtd_ooblayout_ops w2
+ 	.free = w25m02gv_ooblayout_free,
+ };
+ 
++
++static int w25n0xkv_ooblayout_ecc(struct mtd_info *mtd, int section,
++				  struct mtd_oob_region *region)
++{
++	if (section > 3)
++		return -ERANGE;
++
++	region->offset = 64 + (16 * section);
++	region->length = 16;
++
++	return 0;
++}
++
++static int w25n0xkv_ooblayout_free(struct mtd_info *mtd, int section,
++				   struct mtd_oob_region *region)
++{
++	if (section > 3)
++		return -ERANGE;
++
++	region->offset = (16 * section) + 2;
++	region->length = 14;
++
++	return 0;
++}
++
++static const struct mtd_ooblayout_ops w25n0xkv_ooblayout = {
++	.ecc = w25n0xkv_ooblayout_ecc,
++	.free = w25n0xkv_ooblayout_free,
++};
++
++static int w25n0xkv_ecc_get_status(struct spinand_device *spinand,
++					u8 status)
++{
++	u8 mbf;
++	struct spi_mem_op op = SPINAND_GET_FEATURE_OP(W25N0XKV_MBF_TABLE_ADDR,
++						      &mbf);
++	int ret;
++
++	switch (status & STATUS_ECC_MASK) {
++	case STATUS_ECC_NO_BITFLIPS:
++		return 0;
++
++	case STATUS_ECC_HAS_BITFLIPS:
++		/*
++		 * Read status2 register to determine a more fine grained
++		 * bit error status
++		 */
++		ret = spi_mem_exec_op(spinand->spimem, &op);
++		if (ret)
++			return ret;
++
++		/*
++		 * 1 ... 8 bits are flipped (and corrected)
++		 */
++		/* bits sorted this way (1...0): MBF3, MBF2, MBF1, MBF0 */
++		return (mbf >> 4)&0xF;
++
++	case STATUS_ECC_UNCOR_ERROR:
++		return -EBADMSG;
++
++	default:
++		break;
++	}
++
++	return -EINVAL;
++}
++
+ static int w25m02gv_select_target(struct spinand_device *spinand,
+ 				  unsigned int target)
+ {
+@@ -74,9 +147,13 @@ static int w25m02gv_select_target(struct
+ 	return spi_mem_exec_op(spinand->spimem, &op);
+ }
+ 
++
++//u16 tmp_id=0xab21;
++const u8 tmp_id[2]={0xab,0x21};
++
+ static const struct spinand_info winbond_spinand_table[] = {
+-	SPINAND_INFO("W25M02GV",
+-		     SPINAND_ID(SPINAND_READID_METHOD_OPCODE_DUMMY, 0xab),
++	SPINAND_INFO("W25M02GVZEIG",
++		     SPINAND_ID(SPINAND_READID_METHOD_OPCODE_DUMMY, 0xab, 0x21),
+ 		     NAND_MEMORG(1, 2048, 64, 64, 1024, 20, 1, 1, 2),
+ 		     NAND_ECCREQ(1, 512),
+ 		     SPINAND_INFO_OP_VARIANTS(&read_cache_variants,
+@@ -85,8 +162,8 @@ static const struct spinand_info winbond
+ 		     0,
+ 		     SPINAND_ECCINFO(&w25m02gv_ooblayout, NULL),
+ 		     SPINAND_SELECT_TARGET(w25m02gv_select_target)),
+-	SPINAND_INFO("W25N01GV",
+-		     SPINAND_ID(SPINAND_READID_METHOD_OPCODE_DUMMY, 0xaa),
++	SPINAND_INFO("W25N01GVZEIG",
++		     SPINAND_ID(SPINAND_READID_METHOD_OPCODE_DUMMY, 0xaa, 0x21),
+ 		     NAND_MEMORG(1, 2048, 64, 64, 1024, 20, 1, 1, 1),
+ 		     NAND_ECCREQ(1, 512),
+ 		     SPINAND_INFO_OP_VARIANTS(&read_cache_variants,
+@@ -94,6 +171,26 @@ static const struct spinand_info winbond
+ 					      &update_cache_variants),
+ 		     0,
+ 		     SPINAND_ECCINFO(&w25m02gv_ooblayout, NULL)),
++
++
++    SPINAND_INFO("W25N02KVZEIE",
++             SPINAND_ID(SPINAND_READID_METHOD_OPCODE_DUMMY, 0xaa, 0x22),
++             NAND_MEMORG(1, 2048, 128, 64, 2048, 40, 1, 1, 1),
++             NAND_ECCREQ(8, 512),
++             SPINAND_INFO_OP_VARIANTS(&read_cache_variants,
++                          &write_cache_variants,
++                          &update_cache_variants),
++             0,
++             SPINAND_ECCINFO(&w25n0xkv_ooblayout, w25n0xkv_ecc_get_status)),
++    SPINAND_INFO("W25N04KVZEIE",
++             SPINAND_ID(SPINAND_READID_METHOD_OPCODE_DUMMY, 0xaa, 0x23),
++             NAND_MEMORG(1, 2048, 128, 64, 4096, 80, 1, 1, 1),
++             NAND_ECCREQ(8, 512),
++             SPINAND_INFO_OP_VARIANTS(&read_cache_variants,
++                          &write_cache_variants,
++                          &update_cache_variants),
++             SPINAND_HAS_QE_BIT,
++             SPINAND_ECCINFO(&w25n0xkv_ooblayout, w25n0xkv_ecc_get_status)),
+ };
+ 
+ static int winbond_spinand_init(struct spinand_device *spinand)
+Index: linux-5.10.138/drivers/spi/Kconfig
+===================================================================
+--- linux-5.10.138.orig/drivers/spi/Kconfig
++++ linux-5.10.138/drivers/spi/Kconfig
+@@ -56,6 +56,14 @@ config SPI_MEM
+ 	  by providing a high-level interface to send memory-like commands.
+ 
+ comment "SPI Master Controller Drivers"
++config SPI_CORTINA_QSPI
++	tristate "Cortina-Access QSPI controller driver"
++	depends on ARCH_CORTINA
++	select SPI_MEM
++	help
++	  QSPI master controller for CORTINA SoCs used for spi flash devices.
++	  This device supports single, dual and quad read support, while
++	  it supports single, dual and quad write mode.
+ 
+ config SPI_ALTERA
+ 	tristate "Altera SPI Controller"
+@@ -233,6 +241,20 @@ config SPI_DAVINCI
+ 	help
+ 	  SPI master controller for DaVinci/DA8x/OMAP-L/AM1x SPI modules.
+ 
++config SPI_CA77XX
++        tristate "Cortina Access CA77XX SPI Master"
++        depends on ARCH_CORTINA
++        help
++          This enables using the SPI master controller on the CA77XX chips.
++
++config BYPASS_SPI_FRAMEWORK
++        bool "Bypass SPI Framework - Direct Access"
++        depends on SPI_CA77XX
++        default y if RTK_VOIP
++        help
++          This provides direct host driver APIs for device access
++
++
+ config SPI_DESIGNWARE
+ 	tristate "DesignWare SPI controller core support"
+ 	imply SPI_MEM
+Index: linux-5.10.138/drivers/spi/Makefile
+===================================================================
+--- linux-5.10.138.orig/drivers/spi/Makefile
++++ linux-5.10.138/drivers/spi/Makefile
+@@ -14,6 +14,7 @@ obj-$(CONFIG_SPI_SPIDEV)		+= spidev.o
+ obj-$(CONFIG_SPI_LOOPBACK_TEST)		+= spi-loopback-test.o
+ 
+ # SPI master controller drivers (bus)
++obj-$(CONFIG_SPI_CORTINA_QSPI)          += spi-cortina-qspi.o
+ obj-$(CONFIG_SPI_ALTERA)		+= spi-altera.o
+ obj-$(CONFIG_SPI_AR934X)		+= spi-ar934x.o
+ obj-$(CONFIG_SPI_ARMADA_3700)		+= spi-armada-3700.o
+@@ -135,3 +136,4 @@ obj-$(CONFIG_SPI_AMD)			+= spi-amd.o
+ # SPI slave protocol handlers
+ obj-$(CONFIG_SPI_SLAVE_TIME)		+= spi-slave-time.o
+ obj-$(CONFIG_SPI_SLAVE_SYSTEM_CONTROL)	+= spi-slave-system-control.o
++obj-$(CONFIG_SPI_CA77XX)                += spi-ca77xx.o
+Index: linux-5.10.138/include/linux/mtd/spinand.h
+===================================================================
+--- linux-5.10.138.orig/include/linux/mtd/spinand.h
++++ linux-5.10.138/include/linux/mtd/spinand.h
+@@ -244,6 +244,12 @@ extern const struct spinand_manufacturer
+ extern const struct spinand_manufacturer paragon_spinand_manufacturer;
+ extern const struct spinand_manufacturer toshiba_spinand_manufacturer;
+ extern const struct spinand_manufacturer winbond_spinand_manufacturer;
++extern const struct spinand_manufacturer dosilicon_spinand_manufacturer;
++extern const struct spinand_manufacturer etron_spinand_manufacturer;
++extern const struct spinand_manufacturer esmt_spinand_manufacturer;
++extern const struct spinand_manufacturer fudan_spinand_manufacturer;
++extern const struct spinand_manufacturer longsys_spinand_manufacturer;
++extern const struct spinand_manufacturer heyangtek_spinand_manufacturer;
+ extern const struct spinand_manufacturer xtx_spinand_manufacturer;
+ 
+ /**
+@@ -413,6 +419,16 @@ struct spinand_device {
+ 	u8 *oobbuf;
+ 	u8 *scratchbuf;
+ 	const struct spinand_manufacturer *manufacturer;
++
++#ifdef CONFIG_SPI_NAND_PAGECACHE
++    /* Performance enhancement */
++    struct {
++        unsigned int bitflips;
++	int die;
++        int page;
++    } pagecache;
++#endif
++
+ 	void *priv;
+ };
+ 
+Index: linux-5.10.138/include/linux/spi/spi.h
+===================================================================
+--- linux-5.10.138.orig/include/linux/spi/spi.h
++++ linux-5.10.138/include/linux/spi/spi.h
+@@ -185,6 +185,9 @@ struct spi_device {
+ #define	SPI_TX_OCTAL	0x2000			/* transmit with 8 wires */
+ #define	SPI_RX_OCTAL	0x4000			/* receive with 8 wires */
+ #define	SPI_3WIRE_HIZ	0x8000			/* high impedance turnaround */
++#ifdef CONFIG_ARCH_CORTINA
++#define	SPI_XSI		0x10000
++#endif
+ 	int			irq;
+ 	void			*controller_state;
+ 	void			*controller_data;

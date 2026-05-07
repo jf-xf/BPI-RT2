@@ -1,0 +1,25 @@
+#!/bin/sh /etc/rc.common
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Copyright (C) 2013-2020 OpenWrt.org
+
+START=11
+
+boot() {
+	/sbin/block detect | /sbin/uci import fstab
+	/sbin/uci commit
+	/sbin/block mount
+}
+
+start() {
+	boot
+}
+
+restart() {
+	stop
+	boot
+}
+
+stop() {
+	/sbin/block umount
+}

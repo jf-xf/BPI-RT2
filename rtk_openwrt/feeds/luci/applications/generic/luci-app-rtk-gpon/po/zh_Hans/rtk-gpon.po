@@ -1,0 +1,234 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:127
+#: htdocs/luci-static/resources/view/rtk/admin/admin/omci.js:103
+msgid "Apply and keep settings"
+msgstr "套用并保留设定"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:23
+msgid "Bias Current"
+msgstr "偏置电流"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:33
+msgid "Broadcast Packets Received"
+msgstr "广播包接收"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:32
+msgid "Broadcast Packets Sent"
+msgstr "广播包发送"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:25
+msgid "Bytes Received"
+msgstr "Bytes接收"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:24
+msgid "Bytes Sent"
+msgstr "Bytes传送"
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/omci.js:83
+msgid "CWMP Product Class"
+msgstr "设备ID"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:76
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:90
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:96
+msgid "Collecting data ..."
+msgstr "蒐集资料 ..."
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:74
+msgid "Configure GPON PLOAM password..."
+msgstr "设置PLOAM 密码..."
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:84
+msgid "Configure OMCI OLT Mode..."
+msgstr "设置认证模式..."
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/omci.js:61
+msgid "Configure OMCI Vendor ID..."
+msgstr "设置厂商ID..."
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:89
+msgid "Customized Mode"
+msgstr "特殊模式"
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:86
+msgid "Default Mode"
+msgstr "正常认证模式"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:34
+msgid "FEC Errors"
+msgstr "FEC 错误"
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:69
+msgid "GPON Settings"
+msgstr "GPON 设定"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:94
+msgid "GPON Status"
+msgstr "GPON 状态"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:35
+msgid "HEC Errors"
+msgstr "HEC 错误"
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/omci.js:86
+msgid "HW version"
+msgstr "ONT版本"
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:87
+msgid "Huawei OLT Mode"
+msgstr "华为局端模式"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:49
+msgid "LOID Status"
+msgstr "LOID 状态"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:31
+msgid "Multicast Packets Received"
+msgstr "多播包接收"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:30
+msgid "Multicast Packets Sent"
+msgstr "多播包发送"
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/omci.js:73
+msgid "OMCC version"
+msgstr "OMCC版本"
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/omci.js:56
+msgid "OMCI Information"
+msgstr "设备信息设置"
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:83
+msgid "OMCI OLT Mode"
+msgstr "认证模式"
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/omci.js:60
+msgid "OMCI Vendor ID"
+msgstr "厂商ID"
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/omci.js:67
+msgid "OMCI software version 1"
+msgstr "OMCI软件版本1"
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/omci.js:70
+msgid "OMCI software version 2"
+msgstr "OMCI软件版本2"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:48
+msgid "ONU ID"
+msgstr "ONU编号"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:47
+msgid "ONU State"
+msgstr "ONU 状态"
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:73
+msgid "PLOAM Password"
+msgstr "PLOAM 密码"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:72
+msgid "PON Statistics"
+msgstr "PON统计"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:85
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:88
+msgid "PON Status"
+msgstr "PON 状态"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:36
+msgid "Packets Dropped"
+msgstr "封包遗失"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:27
+msgid "Packets Received"
+msgstr "收包数"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:26
+msgid "Packets Sent"
+msgstr "发包数"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:18
+msgid "Part Number"
+msgstr "出货号码"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:38
+msgid "Pause Packets Received"
+msgstr "暂停封包接收"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:37
+msgid "Pause Packets Sent"
+msgstr "暂停封包发送"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:85
+msgid "Reset Statistics."
+msgstr "清除统计值"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:22
+msgid "Rx Power"
+msgstr "接收功率"
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:80
+msgid "Serial Number"
+msgstr "序号"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:19
+msgid "Temperature"
+msgstr "温度"
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:130
+#: htdocs/luci-static/resources/view/rtk/admin/admin/omci.js:106
+msgid "There are no changes to apply"
+msgstr "无可套用的变更"
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:54
+msgid "This item length is too long!"
+msgstr "设置长度过长!"
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:46
+#: htdocs/luci-static/resources/view/rtk/admin/admin/omci.js:42
+msgid "This item should NOT be NULL"
+msgstr "设置不能为空"
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:69
+#: htdocs/luci-static/resources/view/rtk/admin/admin/omci.js:56
+msgid ""
+"This page is used to configure the parameters for your GPON network access."
+msgstr "此页面用来配置您的GPON 网路存取参数."
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:73
+msgid "This page shows the current statistics of PON."
+msgstr "此网页显示当前设备的 PON 统计值."
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:86
+msgid "This page shows the current system status of PON."
+msgstr "此网页显示当前设备的 PON 状态."
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/omci.js:80
+msgid "Traffic Managament option"
+msgstr "流量管理选项"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:21
+msgid "Tx Power"
+msgstr "发送功率"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:29
+msgid "Unicast Packets Received"
+msgstr "单播包接收"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:28
+msgid "Unicast Packets Sent"
+msgstr "单播包发送"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:17
+msgid "Vendor Name"
+msgstr "供应商名称"
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:20
+msgid "Voltage"
+msgstr "电压"
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:88
+msgid "ZTE OLT Mode"
+msgstr "中兴局端模式"

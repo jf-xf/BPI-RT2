@@ -1,0 +1,10 @@
+
+# RTL86900 SDK configuration
+#
+
+config COMMON_RT_API_DEMO
+	bool "Build Common RT API sample Kernel module"
+	depends on COMMON_RT_API
+	default n
+	help
+	  Say Y if your machine has Common RT API and build a demo Kernel module.

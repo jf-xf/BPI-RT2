@@ -1,0 +1,11 @@
+{
+	"luci-app-rtk-l2tp": {
+		"description": "Grant access to l2tp procedures",
+		"read": {
+			"file": {
+				"usr/sbin/swanctl": [ "exec" ]
+			},
+			"uci": [ "network", "l2tp", "ipsec" ]
+                }
+        }
+}

@@ -1,0 +1,274 @@
+//
+// Copyright (C) 2012 Realtek Semiconductor Corp.
+// All Rights Reserved.
+//
+// This program is the proprietary software of Realtek Semiconductor
+// Corporation and/or its licensors, and only be used, duplicated,
+// modified or distributed under the authorized license from Realtek.
+//
+// ANY USE OF THE SOFTWARE OTHER THAN AS AUTHORIZED UNDER
+// THIS LICENSE OR COPYRIGHT LAW IS PROHIBITED.
+//
+// $Revision: 68395 $
+// $Date: 2016-05-27 16:38:35 +0800 (Fri, 27 May 2016) $
+//
+// Purpose : Define diag shell commands for PE
+//
+// Feature : The file have include the following module and sub-modules
+//           1) PE http test
+//
+
+//rt_pe configuration
+//http_test
+//download
+//get_counter
+rt_pe http_test download get_counter
+
+//rt_pe configuration
+//http_test
+//download
+//stop
+rt_pe http_test download stop 
+
+//rt_pe configuration
+//http_test
+//download
+//start
+//connection_number configuration
+//connection_number
+//client_mac configuration
+//client_mac, e.g., 00:e0:4c:86:70:06
+//server_mac configuration
+//server_mac, e.g., 04:92:26:87:81:81
+//IPv4
+//client_ip configuration
+//client_ip, e.g., 192.168.10.55
+//server_ip configuration
+//server_ip, e.g., 192.168.10.66
+//client_l4port configuration
+//client_l4port
+//server_l4port configuration
+//server_l4port
+//ldpid configuration
+//ldpid
+//pppoe_sid configuration
+//pppoe_sid, -1 means invalid
+//svlan_vid configuration
+//svlan_vid, -1 means invalid 
+//cvlan_vid configuration
+//cvlan_vid, -1 means invalid 
+//pon_streamId configuration
+//pon_streamId, -1 means invalid
+//http_req_url configuration
+//http_req_url, e.g., /garbage.php?ckSize=5000
+//http_version configuration
+//http_version, e.g., HTTP/1.1
+rt_pe http_test download start connection_number <UINT:connection_number> client_mac <MACADDR:client_mac> server_mac <MACADDR:server_mac> IPv4 client_ip <IPV4ADDR:client_ip> server_ip <IPV4ADDR:server_ip> client_l4port <UINT:client_l4port> server_l4port <UINT:server_l4port> ldpid <UINT:ldpid> pppoe_sid <INT:pppoe_sid> svlan_vid <INT:svlan_vid> cvlan_vid <INT:cvlan_vid> pon_streamId <INT:pon_streamId> http_req_url <STRING:http_req_url> http_version <STRING:http_version>
+
+//rt_pe configuration
+//http_test
+//download
+//start
+//connection_number configuration
+//connection_number
+//client_mac configuration
+//client_mac, e.g., 00:e0:4c:86:70:06
+//server_mac configuration
+//server_mac, e.g., 04:92:26:87:81:81
+//IPv6
+//client_ip configuration
+//client_ip, e.g., 2001::5555
+//server_ip configuration
+//server_ip, e.g., 2001::6666
+//client_l4port configuration
+//client_l4port
+//server_l4port configuration
+//server_l4port
+//ldpid configuration
+//ldpid
+//pppoe_sid configuration
+//pppoe_sid, -1 means invalid
+//svlan_vid configuration
+//svlan_vid, -1 means invalid 
+//cvlan_vid configuration
+//cvlan_vid, -1 means invalid 
+//pon_streamId configuration
+//pon_streamId, -1 means invalid
+//http_req_url configuration
+//http_req_url, e.g., /garbage.php?ckSize=5000
+//http_version configuration
+//http_version, e.g., HTTP/1.1
+rt_pe http_test download start connection_number <UINT:connection_number> client_mac <MACADDR:client_mac> server_mac <MACADDR:server_mac> IPv6 client_ip <IPV6ADDR:client_ip> server_ip <IPV6ADDR:server_ip> client_l4port <UINT:client_l4port> server_l4port <UINT:server_l4port> ldpid <UINT:ldpid> pppoe_sid <INT:pppoe_sid> svlan_vid <INT:svlan_vid> cvlan_vid <INT:cvlan_vid> pon_streamId <INT:pon_streamId> http_req_url <STRING:http_req_url> http_version <STRING:http_version>
+
+
+
+
+//rt_pe configuration
+//http_test
+//upload
+//get_counter
+rt_pe http_test upload get_counter
+
+//rt_pe configuration
+//http_test
+//upload
+//stop
+rt_pe http_test upload stop 
+
+//rt_pe configuration
+//http_test
+//upload
+//start
+//connection_number configuration
+//connection_number
+//client_mac configuration
+//client_mac, e.g., 00:e0:4c:86:70:06
+//server_mac configuration
+//server_mac, e.g., 04:92:26:87:81:81
+//IPv4
+//client_ip configuration
+//client_ip, e.g., 192.168.10.55
+//server_ip configuration
+//server_ip, e.g., 192.168.10.66
+//client_l4port configuration
+//client_l4port
+//server_l4port configuration
+//server_l4port
+//ldpid configuration
+//ldpid
+//pppoe_sid configuration
+//pppoe_sid, -1 means invalid
+//svlan_vid configuration
+//svlan_vid, -1 means invalid 
+//cvlan_vid configuration
+//cvlan_vid, -1 means invalid 
+//pon_streamId configuration
+//pon_streamId, -1 means invalid
+//http_req_url configuration
+//http_req_url, e.g., /garbage.php?ckSize=5000
+//http_version configuration
+//http_version, e.g., HTTP/1.1
+//upload_content_length configuration
+//upload_content_length, unit: bytes
+//upload_window_size configuration
+//upload_window_size, unit: bytes, 0: means it uses default window size 14600
+rt_pe http_test upload start connection_number <UINT:connection_number> client_mac <MACADDR:client_mac> server_mac <MACADDR:server_mac> IPv4 client_ip <IPV4ADDR:client_ip> server_ip <IPV4ADDR:server_ip> client_l4port <UINT:client_l4port> server_l4port <UINT:server_l4port> ldpid <UINT:ldpid> pppoe_sid <INT:pppoe_sid> svlan_vid <INT:svlan_vid> cvlan_vid <INT:cvlan_vid> pon_streamId <INT:pon_streamId> http_req_url <STRING:http_req_url> http_version <STRING:http_version> upload_content_length <UINT64:upload_content_length> upload_window_size <UINT:upload_window_size>
+
+//rt_pe configuration
+//http_test
+//upload
+//start
+//connection_number configuration
+//connection_number
+//client_mac configuration
+//client_mac, e.g., 00:e0:4c:86:70:06
+//server_mac configuration
+//server_mac, e.g., 04:92:26:87:81:81
+//IPv6
+//client_ip configuration
+//client_ip, e.g., 2001::5555
+//server_ip configuration
+//server_ip, e.g., 2001::6666
+//client_l4port configuration
+//client_l4port
+//server_l4port configuration
+//server_l4port
+//ldpid configuration
+//ldpid
+//pppoe_sid configuration
+//pppoe_sid, -1 means invalid
+//svlan_vid configuration
+//svlan_vid, -1 means invalid 
+//cvlan_vid configuration
+//cvlan_vid, -1 means invalid 
+//pon_streamId configuration
+//pon_streamId, -1 means invalid
+//http_req_url configuration
+//http_req_url, e.g., /garbage.php?ckSize=5000
+//http_version configuration
+//http_version, e.g., HTTP/1.1
+//upload_content_length configuration
+//upload_content_length, unit: bytes
+//upload_window_size configuration
+//upload_window_size, unit: bytes, 0: means it uses default window size 14600
+rt_pe http_test upload start connection_number <UINT:connection_number> client_mac <MACADDR:client_mac> server_mac <MACADDR:server_mac> IPv6 client_ip <IPV6ADDR:client_ip> server_ip <IPV6ADDR:server_ip> client_l4port <UINT:client_l4port> server_l4port <UINT:server_l4port> ldpid <UINT:ldpid> pppoe_sid <INT:pppoe_sid> svlan_vid <INT:svlan_vid> cvlan_vid <INT:cvlan_vid> pon_streamId <INT:pon_streamId> http_req_url <STRING:http_req_url> http_version <STRING:http_version> upload_content_length <UINT64:upload_content_length> upload_window_size <UINT:upload_window_size>
+
+
+//rt_pe configuration
+//http_test
+//latency_test
+//get_counter
+rt_pe http_test latency_test get_counter
+
+//rt_pe configuration
+//http_test
+//latency_test
+//stop
+rt_pe http_test latency_test stop 
+
+//rt_pe configuration
+//http_test
+//latency_test
+//start
+//client_mac configuration
+//client_mac, e.g., 00:e0:4c:86:70:06
+//server_mac configuration
+//server_mac, e.g., 04:92:26:87:81:81
+//IPv4
+//client_ip configuration
+//client_ip, e.g., 192.168.10.55
+//server_ip configuration
+//server_ip, e.g., 192.168.10.66
+//client_l4port configuration
+//client_l4port
+//server_l4port configuration
+//server_l4port
+//ldpid configuration
+//ldpid
+//pppoe_sid configuration
+//pppoe_sid, -1 means invalid
+//svlan_vid configuration
+//svlan_vid, -1 means invalid 
+//cvlan_vid configuration
+//cvlan_vid, -1 means invalid 
+//pon_streamId configuration
+//pon_streamId, -1 means invalid
+//http_req_url configuration
+//http_req_url, e.g., /garbage.php?ckSize=5000
+//http_version configuration
+//http_version, e.g., HTTP/1.1
+rt_pe http_test latency_test start client_mac <MACADDR:client_mac> server_mac <MACADDR:server_mac> IPv4 client_ip <IPV4ADDR:client_ip> server_ip <IPV4ADDR:server_ip> client_l4port <UINT:client_l4port> server_l4port <UINT:server_l4port> ldpid <UINT:ldpid> pppoe_sid <INT:pppoe_sid> svlan_vid <INT:svlan_vid> cvlan_vid <INT:cvlan_vid> pon_streamId <INT:pon_streamId> http_req_url <STRING:http_req_url> http_version <STRING:http_version>
+
+//rt_pe configuration
+//http_test
+//latency_test
+//start
+//client_mac configuration
+//client_mac, e.g., 00:e0:4c:86:70:06
+//server_mac configuration
+//server_mac, e.g., 04:92:26:87:81:81
+//IPv6
+//client_ip configuration
+//client_ip, e.g., 2001::5555
+//server_ip configuration
+//server_ip, e.g., 2001::6666
+//client_l4port configuration
+//client_l4port
+//server_l4port configuration
+//server_l4port
+//ldpid configuration
+//ldpid
+//pppoe_sid configuration
+//pppoe_sid, -1 means invalid
+//svlan_vid configuration
+//svlan_vid, -1 means invalid 
+//cvlan_vid configuration
+//cvlan_vid, -1 means invalid 
+//pon_streamId configuration
+//pon_streamId, -1 means invalid
+//http_req_url configuration
+//http_req_url, e.g., /garbage.php?ckSize=5000
+//http_version configuration
+//http_version, e.g., HTTP/1.1
+rt_pe http_test latency_test start client_mac <MACADDR:client_mac> server_mac <MACADDR:server_mac> IPv6 client_ip <IPV6ADDR:client_ip> server_ip <IPV6ADDR:server_ip> client_l4port <UINT:client_l4port> server_l4port <UINT:server_l4port> ldpid <UINT:ldpid> pppoe_sid <INT:pppoe_sid> svlan_vid <INT:svlan_vid> cvlan_vid <INT:cvlan_vid> pon_streamId <INT:pon_streamId> http_req_url <STRING:http_req_url> http_version <STRING:http_version>
+

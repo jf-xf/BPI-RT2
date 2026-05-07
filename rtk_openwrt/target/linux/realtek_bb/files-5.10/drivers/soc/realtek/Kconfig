@@ -1,0 +1,27 @@
+#
+# Realtek SoC drivers
+#
+menuconfig SOC_RTK
+	bool "RTK SOC drivers support"
+	depends on ARCH_REALTEK_TAURUS || ARCH_CORTINA_VENUS || ARCH_REALTEK_9607F
+	default y
+
+if SOC_RTK
+
+config RTK_SOC_VSFC
+	bool "RTK SOC: Voltage Sensitive Frequency Control"
+	depends on ARCH_REALTEK_TAURUS
+	default n
+	help
+	VSFC Controller is a hardware who receives several kind signals representing for voltage droop events
+	and then lows the frequency of cpu as fast as possible in order to avoid cpu failure due to insufficient timing margin.
+
+config RTK_DDR_TREF_TUNING
+	bool "RTK DDR: DDR tref tuning with thermal sensor"
+	depends on ARCH_REALTEK_TAURUS || ARCH_CORTINA_VENUS || ARCH_REALTEK_9607F
+	default y
+	select CA8271_THERMAL if ARCH_REALTEK_9607F
+	help
+	 This option will create kthread "rtk_tref_tuning". And it will do tref tuning by smc call(BL31)
+
+endif

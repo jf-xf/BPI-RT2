@@ -1,0 +1,33 @@
+{
+	"luci-mod-rtk-status-arp": {
+		"description": "Grant access to ARP/Route status",
+		"read": {
+			"file": {
+				"/sbin/ip -[46] neigh show": [ "exec" ],
+				"/sbin/ip -[46] route show table all": [ "exec" ],
+				"/sbin/ip -[46] rule show": [ "exec" ]
+			},
+			"ubus": {
+				"file": [ "exec" ]
+			}
+		}
+	},
+
+	"luci-mod-rtk-status-logs": {
+		"description": "Grant access to system logs",
+		"read": {
+			"cgi-io": [ "exec" ],
+			"file": {
+				"/bin/dmesg -r": [ "exec" ],
+				"/www/system.log": [ "read" ]
+			},
+			"ubus": {
+				"file": [ "stat" ]
+			},
+			"uci": [ "system" ]
+		},
+		"write": {
+			"uci": [ "system" ]
+		}
+	}
+}

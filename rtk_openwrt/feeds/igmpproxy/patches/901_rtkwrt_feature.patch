@@ -1,0 +1,119 @@
+Index: igmpproxy-0.3/src/config.c
+===================================================================
+--- igmpproxy-0.3.orig/src/config.c
++++ igmpproxy-0.3/src/config.c
+@@ -179,6 +179,56 @@ int loadConfig(char *configFile) {
+             token = nextConfigToken();
+             continue;
+         }
++        else if(strcmp("robustness", token)==0) {
++            token = nextConfigToken();
++            int intToken = atoi(token);
++            my_log(LOG_DEBUG, 0, "Config: robustnessValue :%d.", intToken);
++            commonConfig.robustnessValue = intToken;
++
++            // Read next token...
++            token = nextConfigToken();
++            continue;
++        }
++        else if(strcmp("query_interval", token)==0) {
++            token = nextConfigToken();
++            int intToken = atoi(token);
++            my_log(LOG_DEBUG, 0, "Config: queryInterval :%d.", intToken);
++            commonConfig.queryInterval = intToken;
++
++            // Read next token...
++            token = nextConfigToken();
++            continue;
++        }
++        else if(strcmp("query_response_interval", token)==0) {
++            token = nextConfigToken();
++            int intToken = atoi(token);
++            my_log(LOG_DEBUG, 0, "Config: queryResponseInterval :%d.", intToken);
++            commonConfig.queryResponseInterval = intToken;
++
++            // Read next token...
++            token = nextConfigToken();
++            continue;
++        }
++        else if(strcmp("last_listener_query_count", token)==0) {
++            token = nextConfigToken();
++            int intToken = atoi(token);
++            my_log(LOG_DEBUG, 0, "Config: lastMemberQueryCount :%d.", intToken);
++            commonConfig.lastMemberQueryCount = intToken;
++
++            // Read next token...
++            token = nextConfigToken();
++            continue;
++        }
++        else if(strcmp("last_listener_query_interval", token)==0) {
++            token = nextConfigToken();
++            int intToken = atoi(token);
++            my_log(LOG_DEBUG, 0, "Config: lastMemberQueryInterval :%d.", intToken);
++            commonConfig.lastMemberQueryInterval = intToken;
++
++            // Read next token...
++            token = nextConfigToken();
++            continue;
++        }
+         else if(strcmp("defaultdown", token)==0) {
+             // Got a defaultdown token...
+             my_log(LOG_DEBUG, 0, "Config: interface Default as down stream.");
+Index: igmpproxy-0.3/src/igmp.c
+===================================================================
+--- igmpproxy-0.3.orig/src/igmp.c
++++ igmpproxy-0.3/src/igmp.c
+@@ -107,6 +107,7 @@ void acceptIgmp(int recvlen) {
+     register uint32_t src, dst, group;
+     struct ip *ip;
+     struct igmp *igmp;
++    struct igmpmsg *msg;
+     struct igmpv3_report *igmpv3;
+     struct igmpv3_grec *grec;
+     int ipdatalen, iphdrlen, ngrec, nsrcs, i;
+@@ -128,6 +129,10 @@ void acceptIgmp(int recvlen) {
+         return;
+     }
+ 
++    iphdrlen  = ip->ip_hl << 2;
++    ipdatalen = ip_data_len(ip);
++    igmp = (struct igmp *)(recv_buf + iphdrlen);
++    msg = (struct igmpmsg*)recv_buf;
+     /*
+      * this is most likely a message from the kernel indicating that
+      * a new src grp pair message has arrived and so, it would be
+@@ -167,10 +172,12 @@ void acceptIgmp(int recvlen) {
+                     } else {
+                         // Activate the route.
+                         int vifindex = checkVIF->index;
+-                        my_log(LOG_DEBUG, 0, "Route activate request from %s to %s on VIF[%d]",
+-                            inetFmt(src,s1), inetFmt(dst,s2), vifindex);
+-                        activateRoute(dst, src, vifindex);
+-                        i = MAX_UPS_VIFS;
++                        if(igmp->igmp_type == IGMPMSG_NOCACHE && vifindex == (const int)msg->im_vif) {
++                            my_log(LOG_DEBUG, 0, "Route activate request from %s to %s on VIF[%d]",
++                                inetFmt(src,s1), inetFmt(dst,s2), vifindex);
++                            activateRoute(dst, src, vifindex);
++                            i = MAX_UPS_VIFS;
++                        }
+                     }
+                 } else {
+                     i = MAX_UPS_VIFS;
+@@ -180,9 +187,6 @@ void acceptIgmp(int recvlen) {
+         return;
+     }
+ 
+-    iphdrlen  = ip->ip_hl << 2;
+-    ipdatalen = ip_data_len(ip);
+-
+     if (iphdrlen + ipdatalen != recvlen) {
+         my_log(LOG_WARNING, 0,
+             "received packet from %s shorter (%u bytes) than hdr+data length (%u+%u)",
+@@ -190,7 +194,6 @@ void acceptIgmp(int recvlen) {
+         return;
+     }
+ 
+-    igmp = (struct igmp *)(recv_buf + iphdrlen);
+     if ((ipdatalen < IGMP_MINLEN) ||
+         (igmp->igmp_type == IGMP_V3_MEMBERSHIP_REPORT && ipdatalen <= IGMPV3_MINLEN)) {
+         my_log(LOG_WARNING, 0,

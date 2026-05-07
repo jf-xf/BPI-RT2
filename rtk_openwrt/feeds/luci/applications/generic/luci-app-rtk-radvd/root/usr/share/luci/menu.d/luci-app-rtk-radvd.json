@@ -1,0 +1,13 @@
+{
+	"realtek/advance/ipv6/radvd": {
+		"title": "RA Configuration",
+		"order": 20,
+		"action": {
+			"type": "view",
+			"path": "rtk/advance/ipv6/radvd"
+		},
+		"depends": {
+			"uci": { "dhcp": true }
+		}
+	}
+}

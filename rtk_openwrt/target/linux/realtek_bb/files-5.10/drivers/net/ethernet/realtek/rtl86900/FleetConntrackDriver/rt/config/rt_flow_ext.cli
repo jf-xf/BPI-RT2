@@ -1,0 +1,353 @@
+//
+// Copyright (C) 2012 Realtek Semiconductor Corp.
+// All Rights Reserved.
+//
+// This program is the proprietary software of Realtek Semiconductor
+// Corporation and/or its licensors, and only be used, duplicated,
+// modified or distributed under the authorized license from Realtek.
+//
+// ANY USE OF THE SOFTWARE OTHER THAN AS AUTHORIZED UNDER
+// THIS LICENSE OR COPYRIGHT LAW IS PROHIBITED.
+//
+// $Revision: 68395 $
+// $Date: 2016-05-27 16:38:35 +0800 (Fri, 27 May 2016) $
+//
+// Purpose : Define diag shell commands for flow extension.
+//
+// Feature : The file have include the following module and sub-modules
+//           1) flow operation commands
+//           2) flow acceleration mode command
+//
+
+//rt_flow configuration
+//clear configuration
+//operation_para
+//delete_flow_key
+rt_flow clear operation_para delete_flow_key
+
+//rt_flow configuration
+//set configuration
+//operation_para
+//del flow
+//flowKeyType
+//0: by flow_idx, 1: by pattern
+rt_flow set operation_para delete_flow flowKeyType <UINT:index>
+
+//rt_flow configuration
+//set configuration
+//operation_para
+//del flow
+//flowKey
+//INDEX: flow index
+//flow_index
+rt_flow set operation_para delete_flow flowKey INDEX <UINT:index>
+
+//rt_flow configuration
+//set configuration
+//operation_para
+//del flow
+//flowKey
+//SIP4: ingress source IP 
+//ingress_sip
+rt_flow set operation_para delete_flow flowKey SIP4 <IPV4ADDR:ingress_sip>
+
+//rt_flow configuration
+//set configuration
+//operation_para
+//del flow
+//flowKey
+//DIP4: ingress destionation IP 
+//ingress_dip
+rt_flow set operation_para delete_flow flowKey DIP4 <IPV4ADDR:ingress_dip>
+
+//rt_flow configuration
+//set configuration
+//operation_para
+//del flow
+//flowKey
+//SIP6: ingress source IP
+//ingress_sip
+rt_flow set operation_para delete_flow flowKey SIP6 <IPV6ADDR:ingress_sip>
+
+//rt_flow configuration
+//set configuration
+//operation_para
+//del flow
+//flowKey
+//DIP6: ingress destionation IP
+//ingress_dip
+rt_flow set operation_para delete_flow flowKey DIP6 <IPV6ADDR:ingress_dip>
+
+//rt_flow configuration
+//set configuration
+//operation_para
+//del flow
+//flowKey
+//SPORT: ingress source port 
+//ingress_sport
+rt_flow set operation_para delete_flow flowKey SPORT <UINT:ingress_sport>
+
+//rt_flow configuration
+//set configuration
+//operation_para
+//del flow
+//flowKey
+//DPORT: ingress destination port 
+//ingress_dport
+rt_flow set operation_para delete_flow flowKey DPORT <UINT:ingress_dport>
+
+//rt_flow configuration
+//set configuration
+//operation_para
+//del flow
+//flowKey
+//L4PROTO: 0 (UDP) or 1 (TCP)
+rt_flow set operation_para delete_flow flowKey L4PROTO <UINT:l4_proto>
+
+//rt_flow configuration
+//set configuration
+//operation_para
+//del flow
+//flowKey
+//MSIP4: modified source IP 
+//modified_sip
+rt_flow set operation_para delete_flow flowKey MSIP4 <IPV4ADDR:modified_sip>
+
+//rt_flow configuration
+//set configuration
+//operation_para
+//del flow
+//flowKey
+//MDIP4: modified destionation IP 
+//modified_dip
+rt_flow set operation_para delete_flow flowKey MDIP4 <IPV4ADDR:modified_dip>
+
+//rt_flow configuration
+//set configuration
+//operation_para
+//del flow
+//flowKey
+//MSPORT: modified source port 
+//modified_sport
+rt_flow set operation_para delete_flow flowKey MSPORT <UINT:modified_sport>
+
+//rt_flow configuration
+//set configuration
+//operation_para
+//del flow
+//flowKey
+//MDPORT: modified destination port 
+//modified_dport
+rt_flow set operation_para delete_flow flowKey MDPORT <UINT:modified_dport>
+
+//rt_flow configuration
+//set configuration
+//operation_para
+//del flow
+//flowKey
+//MAC: smac or dmac
+//mac
+rt_flow set operation_para delete_flow flowKey MAC <MACADDR:mac>
+
+//rt_flow configuration
+//set configuration
+//operation_para
+//del flow
+//flowKey
+//SMAC: smac
+//mac
+rt_flow set operation_para delete_flow flowKey SMAC <MACADDR:mac>
+
+//rt_flow configuration
+//set configuration
+//operation_para
+//del flow
+//flowKey
+//DMAC: dmac
+//mac
+rt_flow set operation_para delete_flow flowKey DMAC <MACADDR:mac>
+
+//rt_flow configuration
+//show configuration
+//operation_para
+//del flow
+//flowKey
+rt_flow show operation_para delete_flow flowKey
+
+//rt_flow configuration
+//add configuration
+//operation
+//del flow
+rt_flow add operation delete_flow
+
+//rt_flow configuration
+//add configuration
+//operation
+//flush flow
+rt_flow add operation flush_flow
+
+//rt_flow configuration
+//add configuration
+//operation
+//get SwFlowMib
+//flow index
+rt_flow add operation get_swFlow_mib <UINT:index>
+
+//rt_flow configuration
+//add configuration
+//operation
+//get flowGrpMib
+//flow group mib index
+rt_flow add operation get_flowGrp_mib <UINT:index>
+
+//rt_flow configuration
+//add configuration
+//operation
+//clear all mib
+rt_flow add operation clear_allMib
+
+//rt_flow configuration
+//add configuration
+//operation
+//clear SwFlowMib
+//flow index
+rt_flow add operation clear_swFlow_mib <UINT:index>
+
+//rt_flow configuration
+//add configuration
+//operation
+//clear flowGrpMib
+//flow group mib index
+rt_flow add operation clear_flowGrp_mib <UINT:index>
+
+//rt_flow configuration
+//add configuration
+//operation
+//sync CT state
+rt_flow add operation sync_CT
+
+//rt_flow configuration
+//clear configuration
+//operation_para
+//hiPriFlow pattern
+rt_flow clear operation_para hiPriFlow_pattern
+
+//rt_flow configuration
+//set configuration
+//operation_para
+//hiPriFlow
+//pattern
+//SIP4: ingress source IP
+//ingress_sip
+rt_flow set operation_para hiPriFlow pattern SIP4 <IPV4ADDR:ingress_sip>
+
+//rt_flow configuration
+//set configuration
+//operation_para
+//hiPriFlow
+//pattern
+//DIP4: ingress destionation IP
+//ingress_dip
+rt_flow set operation_para hiPriFlow pattern DIP4 <IPV4ADDR:ingress_dip>
+
+//rt_flow configuration
+//set configuration
+//operation_para
+//hiPriFlow
+//pattern
+//SIP6: ingress source IP
+//ingress_sip
+rt_flow set operation_para hiPriFlow pattern SIP6 <IPV6ADDR:ingress_sip>
+
+//rt_flow configuration
+//set configuration
+//operation_para
+//hiPriFlow
+//pattern
+//DIP6: ingress destionation IP
+//ingress_dip
+rt_flow set operation_para hiPriFlow pattern DIP6 <IPV6ADDR:ingress_dip>
+
+//rt_flow configuration
+//set configuration
+//operation_para
+//hiPriFlow
+//pattern
+//SPORT: ingress source port
+//ingress_sport
+rt_flow set operation_para hiPriFlow pattern SPORT <UINT:ingress_sport>
+
+//rt_flow configuration
+//set configuration
+//operation_para
+//hiPriFlow
+//pattern
+//DPORT: ingress destination port
+//ingress_dport
+rt_flow set operation_para hiPriFlow pattern DPORT <UINT:ingress_dport>
+
+//rt_flow configuration
+//set configuration
+//operation_para
+//hiPriFlow
+//pattern
+//L4PROTO: 0 (UDP) or 1 (TCP)
+rt_flow set operation_para hiPriFlow pattern L4PROTO <UINT:l4_proto>
+
+//rt_flow configuration
+//show configuration
+//operation_para
+//hiPriFlow
+//pattern
+rt_flow show operation_para hiPriFlow pattern
+
+//rt_flow configuration
+//add configuration
+//operation
+//hiPriFlowPattern_act
+//add hiPriFlow pattern
+//hiPriFlowPtn index
+rt_flow add operation hiPriFlowPtn_act add <UINT:index>
+
+//rt_flow configuration
+//add configuration
+//operation
+//hiPriFlowPattern_act
+//del hiPriFlowPtn
+//hiPriFlowPtn index
+rt_flow add operation hiPriFlowPtn_act del <UINT:index>
+
+//rt_flow configuration
+//add configuration
+//operation
+//hiPriFlowPattern_act
+//get hiPriFlowPtn
+//hiPriFlowPtn index
+rt_flow add operation hiPriFlowPtn_act get <UINT:index>
+
+//rt_flow configuration
+//add configuration
+//operation
+//hiPriFlowPattern_act
+//get hiPriFlowPtn
+//all entry
+rt_flow add operation hiPriFlowPtn_act get all
+
+//rt_flow configuration
+//add configuration
+//operation
+//hiPriFlowPattern_act
+//flush hiPriFlowPtn table
+rt_flow add operation hiPriFlowPtn_act flush
+
+//rt_flow configuration
+//set configuration
+//hwnatMode
+//0: Disable acceleration, 1: Enable acceleration, 2: Disable HW acceleration, 3: Disable SW acceleration, 4: Redirect all packet to cpu (including unknown mc packet), and disable acceleration 
+rt_flow set hwnatMode <UINT:mode>
+
+//rt_flow configuration
+//get configuration
+//hwnatMode
+rt_flow get hwnatMode
+

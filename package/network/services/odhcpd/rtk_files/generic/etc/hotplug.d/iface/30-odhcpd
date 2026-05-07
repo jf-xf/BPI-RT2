@@ -1,0 +1,35 @@
+#!/bin/sh
+
+[ "$ACTION" = ifup -o "$ACTION" = ifupdate ] || exit 0
+[ "$ACTION" = ifupdate -a -z "$IFUPDATE_DATA" ] && exit 0
+
+[ -e /lib/functions.sh ] && . /lib/functions.sh || . ./functions.sh
+[ -e /lib/functions.sh ] && . /lib/functions/network.sh
+
+rtk_dns_bind_update(){
+	config_load network
+	config_get dnsv6mode rtkglobals dnsv6mode
+
+	case $dnsv6mode in
+		"wan")
+			uci delete dhcp.lan6.dns
+
+			config_get dnsv6wans rtkglobals dnsv6wan
+			for wan in $dnsv6wans; do
+				if [ -n $wan -a $wan = "$INTERFACE" ]; then
+					network_get_dnsserver dnss $wan true
+					for dns in $dnss; do
+						uci add_list dhcp.lan6.dns=$dns
+					done
+
+					uci commit dhcp
+					ifdown lan
+					ifup lan
+				fi
+			done
+		;;
+		*)
+	esac
+}
+
+rtk_dns_bind_update

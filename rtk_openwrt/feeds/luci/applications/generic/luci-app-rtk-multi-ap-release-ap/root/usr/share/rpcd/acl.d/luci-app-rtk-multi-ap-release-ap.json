@@ -1,0 +1,30 @@
+{
+  "luci-app-rtk-multi-ap-release-ap": {
+    "description": "Grant UCI access to LuCI app multi-ap-release-ap",
+    "read": {
+      "ubus": {
+        "uci": [ "get" ],
+        "rtkmap": [
+          "getChannelScanReport",
+          "getTopologyJson"
+        ]
+      },
+      "uci": [ "rtkmap" ]
+    },
+    "write": {
+      "ubus": {
+        "uci": [ "add", "apply", "confirm", "delete", "set", "commit" ],
+        "rtkmap": [
+          "channelScan",
+          "setChannel",
+          "delChannelScanReport",
+          "triggerWPS",
+          "initBhIntf"
+        ],
+        "hostapd.*": [ "wps_start", "wps_cancel", "wps_status" ],
+        "wpa_supplicant.*": [ "wps_start", "wps_cancel" ]
+      },
+      "uci": [ "rtkmap" ]
+    }
+  }
+}

@@ -1,0 +1,29 @@
+#!/bin/sh /etc/rc.common
+
+START=12
+
+CONF=/etc/sysctl.d/99-rtk-sysctl.conf
+
+update_sysctl_conf()
+{
+	local config="$1"
+	local sysctl_conf=$2
+	local key value
+
+	config_get key "$config" key
+	config_get value "$config" value
+
+	[ -n $key ] || return
+	[ -n $value ] || return
+
+	echo "$key=$value" >> $sysctl_conf
+}
+
+start()
+{
+	: > $CONF
+	config_load rtk_sysctl
+	config_foreach update_sysctl_conf sysctl $CONF
+
+	[ -f "$CONF" ] && sysctl -e -p "$CONF" >&-
+}

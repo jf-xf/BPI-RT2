@@ -1,0 +1,13 @@
+{
+	"realtek/wan/vpn/ipsec": {
+		"title": "IPsec",
+		"action": {
+			"type": "view",
+			"path": "rtk/wan/vpn/ipsec"
+		},
+		"depends": {
+			"uci": { "network": true },
+			"acl": [ "luci-app-rtk-ipsec-cert" ]
+		}
+	}
+}

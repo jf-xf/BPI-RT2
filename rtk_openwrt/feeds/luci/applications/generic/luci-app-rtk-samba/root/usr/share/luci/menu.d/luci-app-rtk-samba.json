@@ -1,0 +1,13 @@
+{
+	"realtek/services/service/samba": {
+		"title": "Network Shares",
+		"action": {
+			"type": "view",
+			"path": "rtk/services/service/samba"
+		},
+		"depends": {
+			"acl": [ "luci-app-rtk-samba" ],
+			"uci": { "samba": true }
+		}
+	}
+}

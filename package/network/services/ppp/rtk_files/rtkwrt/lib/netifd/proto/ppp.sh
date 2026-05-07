@@ -1,0 +1,402 @@
+#!/bin/sh
+
+[ -x /usr/sbin/pppd ] || exit 0
+
+[ -n "$INCLUDE_ONLY" ] || {
+	. /lib/functions.sh
+	. /lib/functions/network.sh
+	. ../netifd-proto.sh
+	init_proto "$@"
+	echo init_proto "$@"
+}
+
+ppp_select_ipaddr()
+{
+	local subnets=$1
+	local res
+	local res_mask
+
+	for subnet in $subnets; do
+		local addr="${subnet%%/*}"
+		local mask="${subnet#*/}"
+
+		if [ -n "$res_mask" -a "$mask" != 32 ]; then
+			[ "$mask" -gt "$res_mask" ] || [ "$res_mask" = 32 ] && {
+				res="$addr"
+				res_mask="$mask"
+			}
+		elif [ -z "$res_mask" ]; then
+			res="$addr"
+			res_mask="$mask"
+		fi
+	done
+
+	echo "$res"
+}
+
+ppp_exitcode_tostring()
+{
+	local errorcode=$1
+	[ -n "$errorcode" ] || errorcode=5
+
+	case "$errorcode" in
+		0) echo "OK" ;;
+		1) echo "FATAL_ERROR" ;;
+		2) echo "OPTION_ERROR" ;;
+		3) echo "NOT_ROOT" ;;
+		4) echo "NO_KERNEL_SUPPORT" ;;
+		5) echo "USER_REQUEST" ;;
+		6) echo "LOCK_FAILED" ;;
+		7) echo "OPEN_FAILED" ;;
+		8) echo "CONNECT_FAILED" ;;
+		9) echo "PTYCMD_FAILED" ;;
+		10) echo "NEGOTIATION_FAILED" ;;
+		11) echo "PEER_AUTH_FAILED" ;;
+		12) echo "IDLE_TIMEOUT" ;;
+		13) echo "CONNECT_TIME" ;;
+		14) echo "CALLBACK" ;;
+		15) echo "PEER_DEAD" ;;
+		16) echo "HANGUP" ;;
+		17) echo "LOOPBACK" ;;
+		18) echo "INIT_FAILED" ;;
+		19) echo "AUTH_TOPEER_FAILED" ;;
+		20) echo "TRAFFIC_LIMIT" ;;
+		21) echo "CNID_AUTH_FAILED";;
+		*) echo "UNKNOWN_ERROR" ;;
+	esac
+}
+
+ppp_generic_init_config() {
+	proto_config_add_string username
+	proto_config_add_string password
+	proto_config_add_string keepalive
+	proto_config_add_boolean keepalive_adaptive
+	proto_config_add_int demand
+	proto_config_add_string pppd_options
+	proto_config_add_string 'connect:file'
+	proto_config_add_string 'disconnect:file'
+	proto_config_add_string ipv4
+	[ -e /proc/sys/net/ipv6 ] && proto_config_add_string ipv6
+	#for IANA and IAPD
+	[ -e /proc/sys/net/ipv6 ] && proto_config_add_string reqaddress
+	[ -e /proc/sys/net/ipv6 ] && proto_config_add_string reqprefix
+	#for DHCPv6 zone
+	[ -e /proc/sys/net/ipv6 ] && proto_config_add_string dhcpv6_zone
+	#for static zone
+	proto_config_add_string static_zone
+	[ -e /proc/sys/net/ipv6 ] && proto_config_add_array 'ip6addr:list(ip6addr)'
+	[ -e /proc/sys/net/ipv6 ] && proto_config_add_array 'ip6prefix:list(ip6addr)'
+	[ -e /proc/sys/net/ipv6 ] && proto_config_add_string 'ip6gw:ip6addr'
+	[ -e /proc/sys/net/ipv6 ] && proto_config_add_array 'ip6dns:list(ip6addr)'
+	#for dslite
+	[ -e /proc/sys/net/ipv6 ] && proto_config_add_string zone_dslite
+	[ -e /proc/sys/net/ipv6 ] && proto_config_add_string iface_dslite
+	[ -e /proc/sys/net/ipv6 ] && proto_config_add_string peeraddr
+	proto_config_add_boolean authfail
+	proto_config_add_int mtu
+	proto_config_add_string pppname
+	proto_config_add_string unnumbered
+	proto_config_add_boolean persist
+	proto_config_add_int maxfail
+	proto_config_add_int holdoff
+}
+
+ppp_proto_add_ipv6_address() {
+	local address="$1"
+	append PROTO_IP6ADDR "$address"
+}
+
+ppp_proto_add_ipv6_prefix() {
+        local address="$1"
+	append PROTO_PREFIX6 "$address"
+}
+
+ppp_proto_add_ipv6_dns() {
+	local address="$1"
+	append PROTO_DNS6 "$address"
+}
+
+ppp_generic_setup() {
+	local config="$1"; shift
+	local localip
+
+	json_get_vars ip6table demand keepalive keepalive_adaptive username password pppd_options pppname unnumbered persist maxfail holdoff peerdns ipv4
+
+	[ ! -e /proc/sys/net/ipv6 ] && ipv6=0 || json_get_var ipv6 ipv6
+	[ ! -e /proc/sys/net/ipv6 ] && ipv6=0 || json_get_var reqaddress reqaddress
+	[ ! -e /proc/sys/net/ipv6 ] && ipv6=0 || json_get_var reqprefix reqprefix
+	[ ! -e /proc/sys/net/ipv6 ] && ipv6=0 || json_get_var dhcpv6_zone dhcpv6_zone
+	json_get_var static_zone static_zone
+	[ ! -e /proc/sys/net/ipv6 ] && ipv6=0 || json_get_var ip6gw ip6gw
+	[ ! -e /proc/sys/net/ipv6 ] && ipv6=0 || json_get_vars zone_dslite iface_dslite peeraddr
+	[ ! -e /proc/sys/net/ipv6 ] && ipv6=0 || json_for_each_item ppp_proto_add_ipv6_address ip6addr
+	[ ! -e /proc/sys/net/ipv6 ] && ipv6=0 || json_for_each_item ppp_proto_add_ipv6_prefix ip6prefix
+	[ ! -e /proc/sys/net/ipv6 ] && ipv6=0 || json_for_each_item ppp_proto_add_ipv6_dns ip6dns
+
+	#echo $PROTO_PREFIX6 $PROTO_IP6ADDR $PROTO_DNS6 $ip6gw $zone_dslite $iface_dslite $peeraddr >> /tmp/ppp.sh.$pppname
+
+	#ipv4 part
+	if [ "$ipv4" = 0 ]; then
+		ipv4=""
+		no_ipv4=1
+	elif [ -z "$ipv4" -o "$ipv4" = auto ]; then
+		ipv4=1
+		no_ipv4=""
+	fi
+
+	#ipv6 part
+	if [ "$ipv6" = 0 ]; then
+		ipv6=""
+	elif [ -z "$ipv6" -o "$ipv6" = auto ]; then
+		ipv6=1
+		autoipv6=1
+	fi
+
+	if [ "${demand:-0}" -gt 0 ]; then
+		demand="precompiled-active-filter /usr/lib/pppd/filter demand idle $demand"
+	else
+		demand=""
+	fi
+	if [ -n "$persist" ]; then
+		[ "${persist}" -lt 1 ] && persist="nopersist" || persist="persist"
+	fi
+	if [ -z "$maxfail" ]; then
+		[ "$persist" = "persist" ] && maxfail=0 || maxfail=1
+	fi
+	[ -n "$mtu" ] || json_get_var mtu mtu
+	[ -n "$pppname" ] || pppname="${proto:-ppp}-$config"
+	[ -n "$unnumbered" ] && {
+		local subnets
+		( proto_add_host_dependency "$config" "" "$unnumbered" )
+		network_get_subnets subnets "$unnumbered"
+		localip=$(ppp_select_ipaddr "$subnets")
+		[ -n "$localip" ] || {
+			proto_block_restart "$config"
+			return
+		}
+	}
+
+	[ -n "$keepalive" ] || keepalive="5 1"
+
+	local lcp_failure="${keepalive%%[, ]*}"
+	local lcp_interval="${keepalive##*[, ]}"
+	local lcp_adaptive="lcp-echo-adaptive"
+	[ "${lcp_failure:-0}" -lt 1 ] && lcp_failure=""
+	[ "$lcp_interval" != "$keepalive" ] || lcp_interval=5
+	[ "${keepalive_adaptive:-1}" -lt 1 ] && lcp_adaptive=""
+	[ -n "$connect" ] || json_get_var connect connect
+	[ -n "$disconnect" ] || json_get_var disconnect disconnect
+
+	proto_run_command "$config" /usr/sbin/pppd \
+		nodetach ipparam "$config" \
+		ifname "$pppname" \
+		${localip:+$localip:} \
+		${lcp_failure:+lcp-echo-interval $lcp_interval lcp-echo-failure $lcp_failure $lcp_adaptive} \
+		${no_ipv4:+-ip} \
+		${ipv6:++ipv6} \
+		${autoipv6:+set AUTOIPV6=1} \
+		${ip6table:+set IP6TABLE=$ip6table} \
+		${peerdns:+set PEERDNS=$peerdns} \
+		nodefaultroute \
+		usepeerdns \
+		$demand $persist maxfail $maxfail \
+		${holdoff:+holdoff "$holdoff"} \
+		${username:+user "$username" password "$password"} \
+		${connect:+connect "$connect"} \
+		${disconnect:+disconnect "$disconnect"} \
+		${ipv4:+ip-up-script /lib/netifd/ppp-up} \
+		${ipv6:+ipv6-up-script /lib/netifd/ppp6-up} \
+		${ipv4:+ip-down-script /lib/netifd/ppp-down} \
+		${ipv6:+ipv6-down-script /lib/netifd/ppp-down} \
+		${reqaddress:+set reqaddress=$reqaddress} \
+		${reqprefix:+set reqprefix=$reqprefix} \
+		${dhcpv6_zone:+set dhcpv6_zone=$dhcpv6_zone} \
+		${static_zone:+set static_zone=$static_zone} \
+		${PROTO_IP6ADDR:+set ip6addr=$PROTO_IP6ADDR} \
+		${PROTO_PREFIX6:+set ip6prefix=$PROTO_PREFIX6} \
+		${PROTO_DNS6:+set ip6dns=$PROTO_DNS6} \
+		${ip6gw:+set ip6gw=$ip6gw} \
+		${zone_dslite:+set zone_dslite=$zone_dslite} \
+		${iface_dslite:+set iface_dslite=$iface_dslite} \
+		${peeraddr:+set peeraddr=$peeraddr} \
+		${mtu:+mtu $mtu mru $mtu} \
+		"$@" $pppd_options
+}
+
+ppp_generic_teardown() {
+	local interface="$1"
+	local errorstring=$(ppp_exitcode_tostring $ERROR)
+
+	case "$ERROR" in
+		0)
+		;;
+		2)
+			proto_notify_error "$interface" "$errorstring"
+			proto_block_restart "$interface"
+		;;
+		11|19)
+			json_get_var authfail authfail
+			proto_notify_error "$interface" "$errorstring"
+			if [ "${authfail:-0}" -gt 0 ]; then
+				proto_block_restart "$interface"
+			fi
+		;;
+		*)
+			proto_notify_error "$interface" "$errorstring"
+		;;
+	esac
+
+	proto_kill_command "$interface"
+}
+
+# PPP on serial device
+
+proto_ppp_init_config() {
+	proto_config_add_string "device"
+	ppp_generic_init_config
+	no_device=1
+	available=1
+	lasterror=1
+}
+
+proto_ppp_setup() {
+	local config="$1"
+
+	json_get_var device device
+	ppp_generic_setup "$config" "$device"
+}
+
+proto_ppp_teardown() {
+	ppp_generic_teardown "$@"
+}
+
+proto_pppoe_init_config() {
+	ppp_generic_init_config
+	proto_config_add_string "ac"
+	proto_config_add_string "service"
+	proto_config_add_string "host_uniq"
+	proto_config_add_int "padi_attempts"
+	proto_config_add_int "padi_timeout"
+
+	lasterror=1
+}
+
+proto_pppoe_setup() {
+	local config="$1"
+	local iface="$2"
+
+	for module in slhc ppp_generic pppox pppoe; do
+		/sbin/insmod $module 2>&- >&-
+	done
+
+	json_get_var mtu mtu
+	mtu="${mtu:-1492}"
+
+	json_get_var ac ac
+	json_get_var service service
+	json_get_var host_uniq host_uniq
+	json_get_var padi_attempts padi_attempts
+	json_get_var padi_timeout padi_timeout
+
+	ppp_generic_setup "$config" \
+		plugin pppoe.so \
+		${ac:+rp_pppoe_ac "$ac"} \
+		${service:+rp_pppoe_service "$service"} \
+		${host_uniq:+host-uniq "$host_uniq"} \
+		${padi_attempts:+pppoe-padi-attempts $padi_attempts} \
+		${padi_timeout:+pppoe-padi-timeout $padi_timeout} \
+		"nic-$iface"
+}
+
+proto_pppoe_teardown() {
+	ppp_generic_teardown "$@"
+}
+
+proto_pppoa_init_config() {
+	ppp_generic_init_config
+	proto_config_add_int "atmdev"
+	proto_config_add_int "vci"
+	proto_config_add_int "vpi"
+	proto_config_add_string "encaps"
+	no_device=1
+	available=1
+	lasterror=1
+}
+
+proto_pppoa_setup() {
+	local config="$1"
+	local iface="$2"
+
+	for module in slhc ppp_generic pppox pppoatm; do
+		/sbin/insmod $module 2>&- >&-
+	done
+
+	json_get_vars atmdev vci vpi encaps
+
+	case "$encaps" in
+		1|vc) encaps="vc-encaps" ;;
+		*) encaps="llc-encaps" ;;
+	esac
+
+	ppp_generic_setup "$config" \
+		plugin pppoatm.so \
+		${atmdev:+$atmdev.}${vpi:-8}.${vci:-35} \
+		${encaps}
+}
+
+proto_pppoa_teardown() {
+	ppp_generic_teardown "$@"
+}
+
+proto_pptp_init_config() {
+	ppp_generic_init_config
+	proto_config_add_string "server"
+	proto_config_add_string "interface"
+	available=1
+	no_device=1
+	lasterror=1
+}
+
+proto_pptp_setup() {
+	local config="$1"
+	local iface="$2"
+
+	local ip serv_addr server interface
+	json_get_vars interface server
+	[ -n "$server" ] && {
+		for ip in $(resolveip -t 5 "$server"); do
+			( proto_add_host_dependency "$config" "$ip" $interface )
+			serv_addr=1
+		done
+	}
+	[ -n "$serv_addr" ] || {
+		echo "Could not resolve server address"
+		sleep 5
+		proto_setup_failed "$config"
+		exit 1
+	}
+
+	local load
+	for module in slhc ppp_generic ppp_async ppp_mppe ip_gre gre pptp; do
+		grep -q "^$module " /proc/modules && continue
+		/sbin/insmod $module 2>&- >&-
+		load=1
+	done
+	[ "$load" = "1" ] && sleep 1
+
+	ppp_generic_setup "$config" \
+		plugin pptp.so \
+		pptp_server $server \
+		file /etc/ppp/options.pptp
+}
+
+proto_pptp_teardown() {
+	ppp_generic_teardown "$@"
+}
+
+[ -n "$INCLUDE_ONLY" ] || {
+	add_protocol ppp
+	[ -f /usr/lib/pppd/*/pppoe.so ] && add_protocol pppoe
+	[ -f /usr/lib/pppd/*/pppoatm.so ] && add_protocol pppoa
+	[ -f /usr/lib/pppd/*/pptp.so ] && add_protocol pptp
+}

@@ -1,0 +1,118 @@
+{
+	"realtek": {
+		"title": "Administration",
+		"order": 10,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		},
+		"auth": {
+			"methods": [ "cookie:sysauth_https", "cookie:sysauth_http" ],
+			"login": true
+		}
+	},
+
+	"realtek/status": {
+		"title": "Status",
+		"order": 10,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		}
+	},
+
+	"realtek/lan": {
+		"title": "LAN",
+		"order": 20,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		}
+	},
+
+	"realtek/wlan": {
+		"title": "WLAN",
+		"order": 30,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		}
+	},
+
+	"realtek/wan": {
+		"title": "WAN",
+		"order": 40,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		}
+	},
+
+	"realtek/services": {
+		"title": "Services",
+		"order": 50,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		}
+	},
+
+	"realtek/voip": {
+		"title": "VoIP",
+		"order": 60,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		}
+	},
+
+	"realtek/advance": {
+		"title": "Advance",
+		"order": 70,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		}
+	},
+
+	"realtek/diagnostics": {
+		"title": "Diagnostics",
+		"order": 80,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		}
+	},
+
+	"realtek/admin": {
+		"title": "Admin",
+		"order": 90,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		}
+	},
+
+	"realtek/statistics": {
+		"title": "Statistics",
+		"order": 100,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		}
+	},
+
+	"realtek/logout": {
+		"title": "Logout",
+		"order": 999,
+		"action": {
+			"type": "call",
+			"module": "luci.controller.admin.index",
+			"function": "action_logout"
+		},
+		"depends": {
+			"acl": [ "luci-base" ]
+		},
+		"firstchild_ineligible": true
+	}
+}

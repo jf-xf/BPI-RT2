@@ -1,0 +1,31 @@
+From 06f7374f308e63c2dcfca7def0c97288c062d5a6 Mon Sep 17 00:00:00 2001
+From: "lucien.zhliu" <lucien.zhliu@realtek.com>
+Date: Mon, 8 Aug 2022 19:23:18 +0800
+Subject: [PATCH] [hostapd] update 20200813_spy_hostapd_auth_fail_msg
+
+* add event for sae auth fail
+---
+ src/ap/ieee802_11.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+ mode change 100644 => 100755 src/ap/ieee802_11.c
+
+diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
+old mode 100644
+new mode 100755
+index 83d80c1..740b9be
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
+@@ -1580,6 +1580,10 @@ reply:
+ 				auth_transaction, resp,
+ 				data ? wpabuf_head(data) : (u8 *) "",
+ 				data ? wpabuf_len(data) : 0, "auth-sae");
++
++		wpa_msg(hapd->msg_ctx, MSG_INFO,
++			WPA_EVENT_AUTH_REJECT
++			MACSTR, MAC2STR(sta->addr));
+ 	}
+ 
+ remove_sta:
+-- 
+2.37.1
+

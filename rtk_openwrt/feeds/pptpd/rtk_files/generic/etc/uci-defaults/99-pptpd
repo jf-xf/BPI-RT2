@@ -1,0 +1,14 @@
+#!/bin/sh
+
+uci -q batch <<-EOT
+	delete firewall.pptpd
+	set firewall.pptpd=include
+	set firewall.pptpd.enabled=0
+	set firewall.pptpd.type=script
+	set firewall.pptpd.path=/usr/share/pptpd/firewall.include
+	set firewall.pptpd.family=any
+	set firewall.pptpd.reload=1
+	commit firewall
+EOT
+
+exit 0

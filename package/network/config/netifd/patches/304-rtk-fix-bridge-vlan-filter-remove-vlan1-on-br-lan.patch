@@ -1,0 +1,107 @@
+Index: netifd-2022-08-25-76d2d41b/bridge.c
+===================================================================
+--- netifd-2022-08-25-76d2d41b.orig/bridge.c
++++ netifd-2022-08-25-76d2d41b/bridge.c
+@@ -239,7 +239,17 @@ bridge_set_local_vlan(struct bridge_stat
+ 	if (!vlan->local && add)
+ 		return;
+ 
++#if 1 // fix bridge vlan remove local vid 1, if add vlan 1 always set it pvid.
++	unsigned int vflags;
++	if(vlan->vid == 1) {
++		vflags = BRVLAN_F_PVID | BRVLAN_F_SELF | BRVLAN_F_UNTAGGED;
++	} else
++		vflags = BRVLAN_F_SELF;
++	
++	system_bridge_vlan(bst->dev.ifname, vlan->vid, add, vflags);
++#else
+ 	system_bridge_vlan(bst->dev.ifname, vlan->vid, add, BRVLAN_F_SELF);
++#endif
+ }
+ 
+ static void
+@@ -281,7 +291,12 @@ bridge_set_vlan_state(struct bridge_stat
+ 	struct bridge_vlan *vlan2;
+ 
+ 	bridge_set_local_vlan(bst, vlan, add);
+-
++#if 1  // recheck pvid 1
++	if(!add && vlan->vid == 1)
++	{
++		system_bridge_vlan(bst->dev.ifname, 1, true, (BRVLAN_F_SELF|BRVLAN_F_UNTAGGED|BRVLAN_F_PVID));
++	}
++#endif
+ 	vlist_for_each_element(&bst->members, bm, node) {
+ 		struct bridge_vlan_port *port;
+ 		int new_pvid = -1;
+@@ -308,6 +323,21 @@ bridge_set_vlan_state(struct bridge_stat
+ 		__bridge_set_member_vlan(bm, vlan, port, add);
+ 		if (new_pvid >= 0)
+ 			bm->pvid = new_pvid;
++
++#if 1  // recheck pvid 1
++		{
++			uint16_t vid1 = 1;
++			if(!vlist_find(&bst->dev.vlans, &vid1, vlan2, node)) 
++			{
++				if(bm->pvid <= 0) {
++					system_bridge_vlan(bm->dev.dev->ifname, 1, true, (BRVLAN_F_UNTAGGED|BRVLAN_F_PVID));
++				}
++				else {
++					system_bridge_vlan(bm->dev.dev->ifname, 1, false, 0);
++				}
++			}
++		}
++#endif
+ 	}
+ }
+ 
+@@ -370,6 +400,16 @@ bridge_enable_interface(struct bridge_st
+ 		system_bridge_vlan(bst->dev.ifname, 1, false, BRVLAN_F_SELF);
+ 
+ 		bridge_set_local_vlans(bst, true);
++#if 1 //recheck port has pvid 1, if pvid <= 0 reset vid 1
++		{
++			struct bridge_vlan *vlan;
++			uint16_t vid1 = 1;
++			if(!vlist_find(&bst->dev.vlans, &vid1, vlan, node)) 
++			{
++				system_bridge_vlan(bst->dev.ifname, 1, true, (BRVLAN_F_SELF|BRVLAN_F_UNTAGGED|BRVLAN_F_PVID));
++			}
++		}
++#endif
+ 	}
+ 
+ 	bst->active = true;
+@@ -422,8 +462,13 @@ bridge_enable_member(struct bridge_membe
+ 	}
+ 
+ 	ret = device_claim(&bm->dev);
++#if 1 //for wireless interface will up after hostapd config
++	if (ret < 0)
++		return -1;
++#else
+ 	if (ret < 0)
+ 		goto error;
++#endif
+ 
+ 	dev = bm->dev.dev;
+ 	if (dev->settings.auth && !dev->auth_status)
+@@ -445,6 +490,17 @@ bridge_enable_member(struct bridge_membe
+ 
+ 		vlist_for_each_element(&bst->dev.vlans, vlan, node)
+ 			bridge_set_member_vlan(bm, vlan, true);
++#if 1 //recheck port has pvid 1, if pvid <= 0 reset vid 1
++		{
++			uint16_t vid1 = 1;
++			if(!vlist_find(&bst->dev.vlans, &vid1, vlan, node)) 
++			{
++				if(bm->pvid <= 0) {
++					system_bridge_vlan(bm->dev.dev->ifname, 1, true, (BRVLAN_F_UNTAGGED|BRVLAN_F_PVID));
++				}
++			}
++		}
++#endif
+ 	}
+ 
+ 	device_set_present(&bst->dev, true);

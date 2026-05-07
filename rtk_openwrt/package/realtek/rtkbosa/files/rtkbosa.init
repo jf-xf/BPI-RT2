@@ -1,0 +1,9 @@
+#!/bin/sh /etc/rc.common
+START=14
+
+start() {
+	echo "Starting rtkbosa ..." > /dev/console
+	/bin/sh /etc/rtkbosa.sh
+	echo "Ending of rtkbosa ..." > /dev/console
+}
+

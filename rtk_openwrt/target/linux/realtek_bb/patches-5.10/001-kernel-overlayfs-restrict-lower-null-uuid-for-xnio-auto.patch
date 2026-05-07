@@ -1,0 +1,149 @@
+Index: linux-5.10.125/Documentation/filesystems/overlayfs.rst
+===================================================================
+--- linux-5.10.125.orig/Documentation/filesystems/overlayfs.rst
++++ linux-5.10.125/Documentation/filesystems/overlayfs.rst
+@@ -40,17 +40,17 @@ On 64bit systems, even if all overlay la
+ underlying filesystem, the same compliant behavior could be achieved
+ with the "xino" feature.  The "xino" feature composes a unique object
+ identifier from the real object st_ino and an underlying fsid index.
+-
+-If all underlying filesystems support NFS file handles and export file
+-handles with 32bit inode number encoding (e.g. ext4), overlay filesystem
+-will use the high inode number bits for fsid.  Even when the underlying
+-filesystem uses 64bit inode numbers, users can still enable the "xino"
+-feature with the "-o xino=on" overlay mount option.  That is useful for the
+-case of underlying filesystems like xfs and tmpfs, which use 64bit inode
+-numbers, but are very unlikely to use the high inode number bits.  In case
++The "xino" feature uses the high inode number bits for fsid, because the
++underlying filesystems rarely use the high inode number bits.  In case
+ the underlying inode number does overflow into the high xino bits, overlay
+ filesystem will fall back to the non xino behavior for that inode.
+ 
++The "xino" feature can be enabled with the "-o xino=on" overlay mount option.
++If all underlying filesystems support NFS file handles, the value of st_ino
++for overlay filesystem objects is not only unique, but also persistent over
++the lifetime of the filesystem.  The "-o xino=auto" overlay mount option
++enables the "xino" feature only if the persistent st_ino requirement is met.
++
+ The following table summarizes what can be expected in different overlay
+ configurations.
+ 
+@@ -66,14 +66,13 @@ Inode properties
+ | All layers   |  Y  |  Y   |  Y  |  Y   |  Y     |   Y    |  Y     |  Y    |
+ | on same fs   |     |      |     |      |        |        |        |       |
+ +--------------+-----+------+-----+------+--------+--------+--------+-------+
+-| Layers not   |  N  |  Y   |  Y  |  N   |  N     |   Y    |  N     |  Y    |
++| Layers not   |  N  |  N   |  Y  |  N   |  N     |   Y    |  N     |  Y    |
+ | on same fs,  |     |      |     |      |        |        |        |       |
+ | xino=off     |     |      |     |      |        |        |        |       |
+ +--------------+-----+------+-----+------+--------+--------+--------+-------+
+ | xino=on/auto |  Y  |  Y   |  Y  |  Y   |  Y     |   Y    |  Y     |  Y    |
+-|              |     |      |     |      |        |        |        |       |
+ +--------------+-----+------+-----+------+--------+--------+--------+-------+
+-| xino=on/auto,|  N  |  Y   |  Y  |  N   |  N     |   Y    |  N     |  Y    |
++| xino=on/auto,|  N  |  N   |  Y  |  N   |  N     |   Y    |  N     |  Y    |
+ | ino overflow |     |      |     |      |        |        |        |       |
+ +--------------+-----+------+-----+------+--------+--------+--------+-------+
+ 
+@@ -81,7 +80,6 @@ Inode properties
+ /proc files, such as /proc/locks and /proc/self/fdinfo/<fd> of an inotify
+ file descriptor.
+ 
+-
+ Upper and Lower
+ ---------------
+ 
+@@ -459,7 +457,7 @@ enough free bits in the inode number, th
+ guarantee that the values of st_ino and st_dev returned by stat(2) and the
+ value of d_ino returned by readdir(3) will act like on a normal filesystem.
+ E.g. the value of st_dev may be different for two objects in the same
+-overlay filesystem and the value of st_ino for directory objects may not be
++overlay filesystem and the value of st_ino for filesystem objects may not be
+ persistent and could change even while the overlay filesystem is mounted, as
+ summarized in the `Inode properties`_ table above.
+ 
+Index: linux-5.10.125/fs/overlayfs/super.c
+===================================================================
+--- linux-5.10.125.orig/fs/overlayfs/super.c
++++ linux-5.10.125/fs/overlayfs/super.c
+@@ -901,6 +901,16 @@ static int ovl_lower_dir(const char *nam
+ 		pr_warn("fs on '%s' does not support file handles, falling back to index=off,nfs_export=off.\n",
+ 			name);
+ 	}
++	/*
++	 * Decoding origin file handle is required for persistent st_ino.
++	 * Without persistent st_ino, xino=auto falls back to xino=off.
++	 */
++	if (ofs->config.xino == OVL_XINO_AUTO &&
++	    ofs->config.upperdir && !fh_type) {
++		ofs->config.xino = OVL_XINO_OFF;
++		pr_warn("fs on '%s' does not support file handles, falling back to xino=off.\n",
++			name);
++	}
+ 
+ 	/* Check if lower fs has 32bit inode numbers */
+ 	if (fh_type != FILEID_INO32_GEN)
+@@ -1338,9 +1348,19 @@ static int ovl_make_workdir(struct super
+ 	err = ovl_do_setxattr(ofs, ofs->workdir, OVL_XATTR_OPAQUE, "0", 1);
+ 	if (err) {
+ 		ofs->noxattr = true;
+-		ofs->config.index = false;
+-		ofs->config.metacopy = false;
+-		pr_warn("upper fs does not support xattr, falling back to index=off and metacopy=off.\n");
++		if (ofs->config.index || ofs->config.metacopy) {
++			ofs->config.index = false;
++			ofs->config.metacopy = false;
++			pr_warn("upper fs does not support xattr, falling back to index=off,metacopy=off.\n");
++		}
++		/*
++		 * xattr support is required for persistent st_ino.
++		 * Without persistent st_ino, xino=auto falls back to xino=off.
++		 */
++		if (ofs->config.xino == OVL_XINO_AUTO) {
++			ofs->config.xino = OVL_XINO_OFF;
++			pr_warn("upper fs does not support xattr, falling back to xino=off.\n");
++		}
+ 		err = 0;
+ 	} else {
+ 		ovl_do_removexattr(ofs, ofs->workdir, OVL_XATTR_OPAQUE);
+@@ -1517,7 +1537,8 @@ static bool ovl_lower_uuid_ok(struct ovl
+ 	 * user opted-in to one of the new features that require following the
+ 	 * lower inode of non-dir upper.
+ 	 */
+-	if (!ofs->config.index && !ofs->config.metacopy && !ofs->config.xino &&
++	if (!ofs->config.index && !ofs->config.metacopy &&
++	    ofs->config.xino != OVL_XINO_ON &&
+ 	    uuid_is_null(uuid))
+ 		return false;
+ 
+@@ -1546,6 +1567,7 @@ static int ovl_get_fsid(struct ovl_fs *o
+ 	dev_t dev;
+ 	int err;
+ 	bool bad_uuid = false;
++	bool warn = false;
+ 
+ 	for (i = 0; i < ofs->numfs; i++) {
+ 		if (ofs->fs[i].sb == sb)
+@@ -1554,13 +1576,20 @@ static int ovl_get_fsid(struct ovl_fs *o
+ 
+ 	if (!ovl_lower_uuid_ok(ofs, &sb->s_uuid)) {
+ 		bad_uuid = true;
++		if (ofs->config.xino == OVL_XINO_AUTO) {
++			ofs->config.xino = OVL_XINO_OFF;
++			warn = true;
++		}
+ 		if (ofs->config.index || ofs->config.nfs_export) {
+ 			ofs->config.index = false;
+ 			ofs->config.nfs_export = false;
+-			pr_warn("%s uuid detected in lower fs '%pd2', falling back to index=off,nfs_export=off.\n",
++			warn = true;
++		}
++		if (warn) {
+++			pr_warn("%s uuid detected in lower fs '%pd2', falling back to xino=%s,index=off,nfs_export=off.\n",
+ 				uuid_is_null(&sb->s_uuid) ? "null" :
+ 							    "conflicting",
+-				path->dentry);
++				path->dentry, ovl_xino_str[ofs->config.xino]);
+ 		}
+ 	}
+ 

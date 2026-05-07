@@ -1,0 +1,196 @@
+//
+// Copyright (C) 2012 Realtek Semiconductor Corp.
+// All Rights Reserved.
+//
+// This program is the proprietary software of Realtek Semiconductor
+// Corporation and/or its licensors, and only be used, duplicated,
+// modified or distributed under the authorized license from Realtek.
+//
+// ANY USE OF THE SOFTWARE OTHER THAN AS AUTHORIZED UNDER
+// THIS LICENSE OR COPYRIGHT LAW IS PROHIBITED.
+//
+// $Revision: 68395 $
+// $Date: 2016-05-27 16:38:35 +0800 (Fri, 27 May 2016) $
+//
+// Purpose : Define diag shell commands for rate extension.
+//
+// Feature : The file have include the following module and sub-modules
+//           1) host policer control commands.
+//
+
+//rt_rate configuration
+//set configuration
+//host policer configuration
+//index, <0-31>
+//mac configuration
+//MAC address
+//counter_state configuration
+//state, 0:disable 1:enable
+//limit_state configuration
+//disable
+rt_rate set host-policer <UINT:index> mac <MACADDR:addr> counter_state <UINT:state> limit_state disable
+
+//rt_rate configuration
+//set configuration
+//host policer configuration
+//index, <0-31>
+//mac configuration
+//MAC address
+//counter_state configuration
+//counter state, 0:disable 1:enable
+//limit_state configuration
+//ingress_limit_state configuration
+//ingress limit state, 0:disable 1:enable
+//ingress_limit_meter configuration
+//ingress limit meter index
+//egress_limit_state configuration
+//egress limit state, 0:disable 1:enable
+//egress_limit_meter configuration
+//egress limit meter index
+rt_rate set host-policer <UINT:index> mac <MACADDR:addr> counter_state <UINT:state> limit_state ingress <UINT:igr_state> ingress_meter <UINT:igr_index> egress <UINT:egr_state> egress_meter <UINT:egr_index>
+
+//rt_rate configuration
+//set configuration
+//host policer configuration
+//index, <0-31>
+//mac configuration
+//MAC address
+//counter_state configuration
+//counter state, 0:disable 1:enable
+//limit_state configuration
+//ingress_limit_state configuration
+//ingress limit state, 0:disable 1:enable
+//ingress_limit_meter configuration
+//ingress limit meter index
+//ingress_limit_rate configuration
+//ingress limit rate
+//egress_limit_state configuration
+//egress limit state, 0:disable 1:enable
+//egress_limit_meter configuration
+//egress limit meter index
+//egress_limit_rate configuration
+//egress limit rate
+rt_rate set host-policer <UINT:index> mac <MACADDR:addr> counter_state <UINT:state> limit_state ingress <UINT:igr_state> ingress_meter <UINT:igr_index> ingress_rate <UINT:igr_rate> egress <UINT:egr_state> egress_meter <UINT:egr_index> egress_rate <UINT:egr_rate>
+
+//rt_rate configuration
+//get configuration
+//host policer configuration
+//index, <0-31>
+rt_rate get host-policer <UINT:index>
+
+//rt_rate configuration
+//get configuration
+//host policer configuration
+//index, <0-31>
+//counter configuration
+rt_rate get host-policer <UINT:index> counter
+
+//rt_rate configuration
+//clear configuration
+//host policer configuration
+//index, <0-31>
+//counter configuration
+rt_rate clear host-policer <UINT:index> counter
+
+
+//rt_rate configuration
+//set configuration
+//sw-rate-limit configuration
+//arp-request configuration
+//portmask configuration
+//portmask
+//wlan0_dev_mask configuration
+//wlan0_dev_mask
+//wlan1_dev_mask configuration
+//wlan1_dev_mask
+//wlan2_dev_mask configuration
+//wlan2_dev_mask
+//meter configuration
+//meter index, -1:disabled
+rt_rate set sw-rate-limit arp-request portmask <UINT:portmask> wlan0_dev_mask <UINT:wlan0_dev_mask> wlan1_dev_mask <UINT:wlan1_dev_mask> wlan2_dev_mask <UINT:wlan2_dev_mask> meter <INT:meter_index>
+
+//rt_rate configuration
+//get configuration
+//sw-rate-limit configuration
+//arp-request configuration
+rt_rate get sw-rate-limit arp-request
+
+//rt_rate configuration
+//set configuration
+//sw-rate-limit configuration
+//specific-dos configuration
+//portmask configuration
+//portmask
+//wlan0_dev_mask configuration
+//wlan0_dev_mask
+//wlan1_dev_mask configuration
+//wlan1_dev_mask
+//wlan2_dev_mask configuration
+//wlan2_dev_mask
+//ingress_ctagif configuration
+//ingress_ctagif, 0:untag 1:tag
+//ingress_cvid configuration
+//ingress_cvid, <0~4095>
+//ingress_dmac configuration
+//ingress_dmac, e.g., 00:11:22:33:44:55
+//ingress_dip configuration
+//ingress_dip, e.g., 10.10.10.10
+//isTCP configuration
+//isTCP, 0:udp 1:tcp
+//packet_length_start configuration
+//packet_length_start
+//packet_length_end configuration
+//packet_length_end
+//meter configuration
+//meter index, -1:disabled
+rt_rate set sw-rate-limit specific-dos portmask <UINT:portmask> wlan0_dev_mask <UINT:wlan0_dev_mask> wlan1_dev_mask <UINT:wlan1_dev_mask> wlan2_dev_mask <UINT:wlan2_dev_mask> ingress_ctagif <UINT:ingress_ctagif> ingress_cvid <UINT:ingress_cvid> ingress_dmac <MACADDR:ingress_dmac> ingress_dip <IPV4ADDR:ingress_dip> isTCP <UINT:isTCP> packet_length_start <UINT:packet_length_start> packet_length_end <UINT:packet_length_end> meter <INT:meter_index>
+
+//rt_rate configuration
+//get configuration
+//sw-rate-limit configuration
+//specific-dos configuration
+rt_rate get sw-rate-limit specific-dos
+
+//rt_rate configuration
+//set configuration
+//sw-rate-limit configuration
+//tcp-syn-only configuration
+//portmask configuration
+//portmask
+//wlan0_dev_mask configuration
+//wlan0_dev_mask
+//wlan1_dev_mask configuration
+//wlan1_dev_mask
+//wlan2_dev_mask configuration
+//wlan2_dev_mask
+//meter configuration
+//meter index, -1:disabled
+rt_rate set sw-rate-limit tcp-syn-only portmask <UINT:portmask> wlan0_dev_mask <UINT:wlan0_dev_mask> wlan1_dev_mask <UINT:wlan1_dev_mask> wlan2_dev_mask <UINT:wlan2_dev_mask> meter <INT:meter_index>
+
+//rt_rate configuration
+//get configuration
+//sw-rate-limit configuration
+//tcp-syn-only configuration
+rt_rate get sw-rate-limit tcp-syn-only
+
+//rt_rate configuration
+//set configuration
+//sw-rate-limit configuration
+//unknown-unicast configuration
+//portmask configuration
+//portmask
+//wlan0_dev_mask configuration
+//wlan0_dev_mask
+//wlan1_dev_mask configuration
+//wlan1_dev_mask
+//wlan2_dev_mask configuration
+//wlan2_dev_mask
+//meter configuration
+//meter index, -1:disabled
+rt_rate set sw-rate-limit unknown-unicast portmask <UINT:portmask> wlan0_dev_mask <UINT:wlan0_dev_mask> wlan1_dev_mask <UINT:wlan1_dev_mask> wlan2_dev_mask <UINT:wlan2_dev_mask> meter <INT:meter_index>
+
+//rt_rate configuration
+//get configuration
+//sw-rate-limit configuration
+//unknown-unicast configuration
+rt_rate get sw-rate-limit unknown-unicast

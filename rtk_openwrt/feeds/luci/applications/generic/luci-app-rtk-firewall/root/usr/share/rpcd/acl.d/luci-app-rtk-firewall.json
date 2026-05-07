@@ -1,0 +1,25 @@
+{
+	"luci-app-rtk-firewall": {
+		"description": "Grant access to firewall procedures",
+		"read": {
+			"file": {
+				"/etc/firewall.user": [ "read" ],
+				"/etc/firewall_urlRule.user": [ "read" ],
+				"/etc/firewall_domainRule.user": [ "read" ]
+			},
+			"ubus": {
+				"luci": [ "getConntrackHelpers" ]
+			},
+			"uci": [ "firewall" ]
+		},
+		"write": {
+			"file": {
+				"/etc/firewall.user": [ "write" ],
+				"/etc/firewall_urlRule.user": [ "write" ],
+				"/etc/firewall_domainRule.user": [ "write" ],
+				"/etc/init.d/firewall": [ "exec" ]
+			},
+			"uci": [ "firewall" ]
+		}
+	}
+}

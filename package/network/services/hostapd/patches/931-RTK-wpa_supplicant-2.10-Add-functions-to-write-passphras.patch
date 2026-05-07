@@ -1,0 +1,54 @@
+From a11fab8b16c0c5734b006113fc2909a2f09970aa Mon Sep 17 00:00:00 2001
+From: "ryan.kuo" <ryan.kuo@realtek.com>
+Date: Fri, 10 Feb 2023 19:04:16 +0800
+Subject: [PATCH] [wpa_supplicant-2.10] Add functions to write passphrase from
+ wpa_s to a file
+
+To provide the 802.11 passphrase for the UCC to decrypt packets in
+EasyMesh logo DPP testcases
+---
+ wpa_supplicant/wpa_supplicant.c | 25 +++++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
+ mode change 100644 => 100755 wpa_supplicant/wpa_supplicant.c
+
+diff --git a/wpa_supplicant/wpa_supplicant.c b/wpa_supplicant/wpa_supplicant.c
+old mode 100644
+new mode 100755
+index 6f8a733..ddb04d8
+--- a/wpa_supplicant/wpa_supplicant.c
++++ b/wpa_supplicant/wpa_supplicant.c
+@@ -1050,6 +1050,31 @@ void wpa_supplicant_set_state(struct wpa_supplicant *wpa_s,
+ 			ssid && ssid->id_str ? ssid->id_str : "",
+ 			fils_hlp_sent ? " FILS_HLP_SENT" : "");
+ #endif /* CONFIG_CTRL_IFACE || !CONFIG_NO_STDOUT_DEBUG */
++#ifdef CONFIG_USER_RTK_MULTI_AP_WFA
++			// Write passphrase of bhBSS in tmp folder
++			char *passphrase;
++			int passphrase_len;
++			FILE *fp;
++			char c;
++		
++			if (wpa_s->current_ssid->key_mgmt & WPA_KEY_MGMT_SAE)
++				passphrase = wpa_s->current_ssid->sae_password;
++			else
++				passphrase = wpa_s->current_ssid->passphrase;
++		
++			if (passphrase)
++			{
++				passphrase_len = strlen(passphrase);
++				fp = fopen("tmp/passphrase", "a+");
++				c = fgetc(fp);
++				if (c != EOF)
++					fprintf(fp, "%s", "\n");
++				fprintf(fp, MACSTR, MAC2STR(wpa_s->own_addr));
++				fprintf(fp, "%s", "_");
++				fprintf(fp, "%s", passphrase);
++				fclose(fp);
++			}
++#endif
+ 		wpas_clear_temp_disabled(wpa_s, ssid, 1);
+ 		wpa_s->consecutive_conn_failures = 0;
+ 		wpa_s->new_connection = 0;
+-- 
+2.17.1
+

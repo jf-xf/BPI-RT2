@@ -1,0 +1,32 @@
+From c39d0cb9afa72c0908cdba822ea2d5658c842a1c Mon Sep 17 00:00:00 2001
+From: "lucien.zhliu" <lucien.zhliu@realtek.com>
+Date: Mon, 8 Aug 2022 19:48:52 +0800
+Subject: [PATCH] [hostapd] update hostapd_req_beacon_issue patch
+
+---
+ src/ap/drv_callbacks.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+ mode change 100644 => 100755 src/ap/drv_callbacks.c
+
+diff --git a/src/ap/drv_callbacks.c b/src/ap/drv_callbacks.c
+old mode 100644
+new mode 100755
+index 316d8de..58bf13f
+--- a/src/ap/drv_callbacks.c
++++ b/src/ap/drv_callbacks.c
+@@ -553,6 +553,12 @@ skip_wpa_check:
+ 	}
+ #endif /* CONFIG_IEEE80211R_AP */
+ 
++	if (elems.rrm_enabled &&
++	    elems.rrm_enabled_len >= sizeof(sta->rrm_enabled_capa)) {
++	    os_memcpy(sta->rrm_enabled_capa, elems.rrm_enabled,
++		sizeof(sta->rrm_enabled_capa));
++	}
++
+ #ifdef CONFIG_FILS
+ 	if (sta->auth_alg == WLAN_AUTH_FILS_SK ||
+ 	    sta->auth_alg == WLAN_AUTH_FILS_SK_PFS ||
+-- 
+2.37.1
+

@@ -1,0 +1,11 @@
+config COMMON_CLK_CA7774
+	bool "Cortina CA7774 (G3) Clock Driver"
+	depends on (ARCH_CORTINA_G3 || ARCH_CORTINA_G3HGU)
+	help
+	  Build the Cortina CA7774 clock driver based on the common clock framework.
+
+config COMMON_CLK_CA8289
+	bool "Cortina CA8289 (Venus) Clock Driver"
+	depends on (ARCH_CORTINA_VENUS)
+	help
+	  Build the Cortina CA8289 clock driver based on the common clock framework.

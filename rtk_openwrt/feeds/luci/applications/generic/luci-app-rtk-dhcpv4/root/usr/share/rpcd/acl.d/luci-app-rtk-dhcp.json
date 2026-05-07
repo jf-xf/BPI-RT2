@@ -1,0 +1,15 @@
+{
+	"luci-app-rtk-dhcp": {
+		"description": "Grant access to dhcp configuration",
+		"read": {
+			"ubus": {
+				"luci-rpc": [ "getHostHints" , "getDHCPLeases" ]
+			},
+			"uci": [ "dhcp", "network" ]
+		},
+		"write": {
+			"uci": [ "dhcp", "network" ]
+		}
+	}
+}
+

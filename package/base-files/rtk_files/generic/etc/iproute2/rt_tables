@@ -1,0 +1,15 @@
+#
+# reserved values
+#
+128	prelocal
+260	LAN_route
+258	PD_route
+257	static_route
+255	local
+254	main
+253	default
+0	unspec
+#
+# local
+#
+#1	inr.ruhep

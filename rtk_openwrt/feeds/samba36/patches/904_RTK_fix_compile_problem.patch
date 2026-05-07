@@ -1,0 +1,23 @@
+commit 6c17f589444e613c5403b8db3ba83c0a5f61ff13
+Author: kevin.su <kevin.su@6205ae0b-4059-46eb-a33d-b14f343f8a53>
+Date:   Thu Apr 12 19:24:28 2018 +0800
+
+    [SAMBA]
+    1. fix compile problem
+    
+    
+    git-svn-id: http://cadinfo.realtek.com/svn/CN/cnsd5/trunk/adsl/SDK/uClinux-dist/user/samba@90189 6205ae0b-4059-46eb-a33d-b14f343f8a53
+
+diff --git a/source3/smbd/trans2.c b/source3/smbd/trans2.c
+index f75519c1..63af8bd8 100755
+--- a/source3/smbd/trans2.c
++++ b/source3/smbd/trans2.c
+@@ -40,7 +40,7 @@
+ #include "libsmb/libsmb.h"
+ 
+ #define DIR_ENTRY_SAFETY_MARGIN 4096
+-
++static char smbfullpath[4096];
+ static char *store_file_unix_basic(connection_struct *conn,
+ 				char *pdata,
+ 				files_struct *fsp,

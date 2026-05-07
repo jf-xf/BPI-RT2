@@ -1,0 +1,42 @@
+From e0e7a0c59ee4bfa9a00197f10b34c426c134b185 Mon Sep 17 00:00:00 2001
+From: "lucien.zhliu" <lucien.zhliu@realtek.com>
+Date: Mon, 8 Aug 2022 19:40:24 +0800
+Subject: [PATCH] [hostapd] update 200819_11ax_add_countrycode_support
+
+---
+ src/ap/hw_features.c              | 3 +++
+ src/drivers/driver_nl80211_capa.c | 1 +
+ 2 files changed, 4 insertions(+)
+ mode change 100644 => 100755 src/drivers/driver_nl80211_capa.c
+
+diff --git a/src/ap/hw_features.c b/src/ap/hw_features.c
+index 87ad2e2..06608b6 100755
+--- a/src/ap/hw_features.c
++++ b/src/ap/hw_features.c
+@@ -128,6 +128,9 @@ int hostapd_get_hw_features(struct hostapd_iface *iface)
+ 					HOSTAPD_CHAN_DISABLED;
+ 			}
+ 
++			if (!feature->channels[j].max_tx_power)
++				feature->channels[j].flag |= HOSTAPD_CHAN_DISABLED;
++			
+ 			if (feature->channels[j].flag & HOSTAPD_CHAN_DISABLED)
+ 				continue;
+ 
+diff --git a/src/drivers/driver_nl80211_capa.c b/src/drivers/driver_nl80211_capa.c
+old mode 100644
+new mode 100755
+index 83868b7..58ecd87
+--- a/src/drivers/driver_nl80211_capa.c
++++ b/src/drivers/driver_nl80211_capa.c
+@@ -1549,6 +1549,7 @@ static void phy_info_freq(struct hostapd_hw_modes *mode,
+ 	chan->flag = 0;
+ 	chan->allowed_bw = ~0;
+ 	chan->dfs_cac_ms = 0;
++	chan->max_tx_power = 0;
+ 	if (ieee80211_freq_to_chan(chan->freq, &channel) != NUM_HOSTAPD_MODES)
+ 		chan->chan = channel;
+ 	else
+-- 
+2.37.1
+

@@ -1,0 +1,28 @@
+From bd853bf7b7eabb26d7b8d6eeeee9022aa9a6e442 Mon Sep 17 00:00:00 2001
+From: "lucien.zhliu" <lucien.zhliu@realtek.com>
+Date: Mon, 8 Aug 2022 20:23:35 +0800
+Subject: [PATCH] [hostapd] update 20210407_wifi6_wps_pmf_required_hapd.patch
+
+---
+ src/ap/wps_hostapd.c | 2 ++
+ 1 file changed, 2 insertions(+)
+ mode change 100644 => 100755 src/ap/wps_hostapd.c
+
+diff --git a/src/ap/wps_hostapd.c b/src/ap/wps_hostapd.c
+old mode 100644
+new mode 100755
+index bdd0573..4d1a498
+--- a/src/ap/wps_hostapd.c
++++ b/src/ap/wps_hostapd.c
+@@ -1169,6 +1169,8 @@ int hostapd_init_wps(struct hostapd_data *hapd,
+ 	if (conf->wpa & WPA_PROTO_RSN) {
+ 		if (conf->wpa_key_mgmt & WPA_KEY_MGMT_PSK)
+ 			wps->auth_types |= WPS_AUTH_WPA2PSK;
++		if (conf->wpa_key_mgmt & WPA_KEY_MGMT_PSK_SHA256)
++			wps->auth_types |= WPS_AUTH_WPA2PSK;
+ 		if (conf->wpa_key_mgmt & WPA_KEY_MGMT_IEEE8021X)
+ 			wps->auth_types |= WPS_AUTH_WPA2;
+ 		if (conf->wpa_key_mgmt & WPA_KEY_MGMT_SAE)
+-- 
+2.37.1
+

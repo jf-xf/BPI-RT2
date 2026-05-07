@@ -1,0 +1,481 @@
+Index: linux-5.10.138/include/net/xfrm.h
+===================================================================
+--- linux-5.10.138.orig/include/net/xfrm.h
++++ linux-5.10.138/include/net/xfrm.h
+@@ -125,6 +125,26 @@ struct xfrm_state_walk {
+ 	u32			seq;
+ 	struct xfrm_address_filter *filter;
+ };
++#if defined(CONFIG_RTK_FC_IPSEC_FASTFWD)
++#define uint32 unsigned int
++
++typedef struct rtk_fc_ipsec_saInfo_ops_s {
++	
++	int (*ipsec_saInfo_add)(uint32 direction, struct xfrm_state *x, struct xfrm_policy *xp);
++	int (*ipsec_saInfo_delete)(uint32 spi);
++	int (*ipsec_saInfo_soft_delete)(uint32 spi);
++	int (*ipsec_callback_get_hwnatMode)(void);
++	int (*ipsec_callback_shortCut_en)(void);
++	int (*ipsec_callback_supported_mode)(u8 cipher_mode, int hash_mode);
++	int (*ipsec_callback_table_ready)(uint32 spi);
++	
++}rtk_fc_ipsec_saInfo_ops_t;
++
++void xfrm_state_find_by_xfrm_policy(struct xfrm_policy *xp, struct xfrm_state **x1);
++struct xfrm_policy *get_policy_by_partial_policy(int dir, struct xfrm_policy *policy);
++
++
++#endif
+ 
+ struct xfrm_state_offload {
+ 	struct net_device	*dev;
+Index: linux-5.10.138/net/ipv4/esp4.c
+===================================================================
+--- linux-5.10.138.orig/net/ipv4/esp4.c
++++ linux-5.10.138/net/ipv4/esp4.c
+@@ -576,6 +576,30 @@ int esp_output_tail(struct xfrm_state *x
+ 
+ 	esph = esp_output_set_extra(skb, x, esp->esph, extra);
+ 	esp->esph = esph;
++	
++#if defined(CONFIG_RTK_FC_IPSEC_FASTFWD)
++	//if(skb->fcIngressData.isNotLocalOut == 0)
++	/*
++		Need to check GCM or AES CBC
++	*/
++	extern rtk_fc_ipsec_saInfo_ops_t ipsec_kernel_hook_func;
++	if(ipsec_kernel_hook_func.ipsec_callback_shortCut_en && ipsec_kernel_hook_func.ipsec_callback_shortCut_en() && 
++		ipsec_kernel_hook_func.ipsec_callback_get_hwnatMode!=NULL && ipsec_kernel_hook_func.ipsec_callback_get_hwnatMode() && 
++		ipsec_kernel_hook_func.ipsec_callback_table_ready!=NULL && ipsec_kernel_hook_func.ipsec_callback_table_ready(x->id.spi) && 
++		ipsec_kernel_hook_func.ipsec_callback_supported_mode!=NULL && ipsec_kernel_hook_func.ipsec_callback_supported_mode(x->props.ealgo, x->props.aalgo) )
++	{	
++		//printk("FC hook: Skip kernel encrypt! err = %d\n",err);
++		skb->fcIngressData.ipsec_skip_kernel = 1;
++		err = 0;
++		
++		ESP_SKB_CB(skb)->tmp = tmp;
++		if ((x->props.flags & XFRM_STATE_ESN))
++			esp_output_restore_header(skb);
++		
++		kfree(tmp);
++		goto error;
++	}
++#endif
+ 
+ 	sg_init_table(sg, esp->nfrags);
+ 	err = skb_to_sgvec(skb, sg,
+Index: linux-5.10.138/net/xfrm/xfrm_policy.c
+===================================================================
+--- linux-5.10.138.orig/net/xfrm/xfrm_policy.c
++++ linux-5.10.138/net/xfrm/xfrm_policy.c
+@@ -4221,6 +4221,30 @@ void __init xfrm_init(void)
+ 	RCU_INIT_POINTER(xfrm_if_cb, NULL);
+ 	synchronize_rcu();
+ }
++#if 0//defined(CONFIG_RTK_FC_IPSEC_FASTFWD)
++struct xfrm_policy *get_policy_by_partial_policy(int dir, struct xfrm_policy *policy)
++{
++	struct net *net = xp_net(policy);
++	struct xfrm_policy *pol;
++	struct hlist_head *chain;
++
++	read_lock_bh(&net->xfrm.xfrm_policy_lock);
++	chain = policy_hash_bysel(net, &policy->selector, policy->family, dir);
++	hlist_for_each_entry(pol, chain, bydst) {
++		if (pol->type == policy->type &&
++		    !selector_cmp(&pol->selector, &policy->selector) &&
++		    xfrm_policy_mark_match(policy, pol) &&
++		    xfrm_sec_ctx_match(pol->security, policy->security)) {
++			read_unlock_bh(&net->xfrm.xfrm_policy_lock);
++			return pol;
++		}
++
++	}
++	read_unlock_bh(&net->xfrm.xfrm_policy_lock);
++
++	return NULL;
++}
++#endif
+ 
+ #ifdef CONFIG_AUDITSYSCALL
+ static void xfrm_audit_common_policyinfo(struct xfrm_policy *xp,
+Index: linux-5.10.138/net/xfrm/xfrm_state.c
+===================================================================
+--- linux-5.10.138.orig/net/xfrm/xfrm_state.c
++++ linux-5.10.138/net/xfrm/xfrm_state.c
+@@ -43,6 +43,20 @@ static void xfrm_state_gc_task(struct wo
+       destination/tunnel endpoint. (output)
+  */
+ 
++#if defined(CONFIG_RTK_FC_IPSEC_FASTFWD) 
++rtk_fc_ipsec_saInfo_ops_t ipsec_kernel_hook_func = {
++	.ipsec_saInfo_add = NULL,
++	.ipsec_saInfo_delete  = NULL,
++	.ipsec_saInfo_soft_delete  = NULL,
++	.ipsec_callback_get_hwnatMode  = NULL,
++	.ipsec_callback_shortCut_en  = NULL,
++	.ipsec_callback_supported_mode  = NULL,
++	.ipsec_callback_table_ready  = NULL,
++};
++EXPORT_SYMBOL(ipsec_kernel_hook_func);
++#endif
++
++
+ static unsigned int xfrm_state_hashmax __read_mostly = 1 * 1024 * 1024;
+ static struct kmem_cache *xfrm_state_cache __ro_after_init;
+ 
+@@ -657,6 +671,9 @@ int __xfrm_state_delete(struct xfrm_stat
+ {
+ 	struct net *net = xs_net(x);
+ 	int err = -ESRCH;
++#if defined(CONFIG_RTK_FC_IPSEC_FASTFWD)
++	int i ;
++#endif
+ 
+ 	if (x->km.state != XFRM_STATE_DEAD) {
+ 		x->km.state = XFRM_STATE_DEAD;
+@@ -668,6 +685,13 @@ int __xfrm_state_delete(struct xfrm_stat
+ 			hlist_del_rcu(&x->byspi);
+ 		net->xfrm.state_num--;
+ 		spin_unlock(&net->xfrm.xfrm_state_lock);
++#if defined(CONFIG_RTK_FC_IPSEC_FASTFWD)
++		printk("[IPSEC HOOK]__xfrm_state_delete : try to delete state!\n");
++		if(ipsec_kernel_hook_func.ipsec_saInfo_delete)
++			ipsec_kernel_hook_func.ipsec_saInfo_delete(x->id.spi);
++		else
++			printk("ipsec_kernel_hook_func.ipsec_saInfo_delete is NULL!!\n");
++#endif
+ 
+ 		if (x->encap_sk)
+ 			sock_put(rcu_dereference_raw(x->encap_sk));
+@@ -2196,6 +2220,15 @@ void km_state_expired(struct xfrm_state
+ 	c.data.hard = hard;
+ 	c.portid = portid;
+ 	c.event = XFRM_MSG_EXPIRE;
++#if defined(CONFIG_RTK_FC_IPSEC_FASTFWD)	
++	if(ipsec_kernel_hook_func.ipsec_saInfo_soft_delete)
++	{
++		printk("Try to Call ipsec_saInfo_soft_delete\n");
++		ipsec_kernel_hook_func.ipsec_saInfo_soft_delete(x->id.spi);
++	}
++	else
++		printk("ipsec_kernel_hook_func.ipsec_saInfo_soft_delete is NULL!!\n");
++#endif	
+ 	km_state_notify(x, &c);
+ }
+ 
+@@ -2723,6 +2756,61 @@ void xfrm_state_fini(struct net *net)
+ 	xfrm_hash_free(net->xfrm.state_bydst, sz);
+ }
+ 
++#if defined(CONFIG_RTK_FC_IPSEC_FASTFWD)
++void xfrm_state_find_by_xfrm_policy(struct xfrm_policy *pol, struct xfrm_state **x1)
++{
++	xfrm_address_t *daddr, *saddr;
++	struct xfrm_tmpl *tmpl;
++	struct net *net;
++	struct xfrm_state *x;
++	struct xfrm_state *best = NULL;
++	unsigned short encap_family;
++	u32 mark = pol->mark.v & pol->mark.m;
++	int acquire_in_progress = 0;
++	unsigned int h;
++
++	if ((pol == NULL) || (pol->xfrm_nr == 0) || (pol->action != XFRM_POLICY_ALLOW))
++		return;
++
++	net = xp_net(pol);
++	tmpl = &pol->xfrm_vec[0];
++	daddr = &pol->xfrm_vec[0].id.daddr;
++	saddr = &pol->xfrm_vec[0].saddr;
++	encap_family = tmpl->encap_family;
++
++	spin_lock_bh(&net->xfrm.xfrm_state_lock);
++	h = xfrm_dst_hash(net, daddr, saddr, tmpl->reqid, encap_family);
++	hlist_for_each_entry(x, net->xfrm.state_bydst+h, bydst) {
++		if (x->props.family == encap_family &&
++		    x->props.reqid == tmpl->reqid &&
++		    (mark & x->mark.m) == x->mark.v &&
++		    !(x->props.flags & XFRM_STATE_WILDRECV) &&
++		    xfrm_state_addr_check(x, daddr, saddr, encap_family) &&
++		    tmpl->mode == x->props.mode &&
++		    tmpl->id.proto == x->id.proto &&
++		    (tmpl->id.spi == x->id.spi || !tmpl->id.spi)) {	// TBD: spi should not be in check?
++
++			if (x->km.state == XFRM_STATE_VALID) {
++				if (!best ||
++				    best->km.dying > x->km.dying ||
++				    (best->km.dying == x->km.dying &&
++				     best->curlft.add_time < x->curlft.add_time))
++					best = x;
++			} else if (x->km.state == XFRM_STATE_ACQ) {
++				acquire_in_progress = 1;
++			}
++		}
++	}
++	spin_unlock_bh(&net->xfrm.xfrm_state_lock);
++
++	if (best || acquire_in_progress) {
++		*x1 = best;
++	}
++}
++EXPORT_SYMBOL_GPL(xfrm_state_find_by_xfrm_policy);
++#endif
++
++
+ #ifdef CONFIG_AUDITSYSCALL
+ static void xfrm_audit_helper_sainfo(struct xfrm_state *x,
+ 				     struct audit_buffer *audit_buf)
+Index: linux-5.10.138/net/xfrm/xfrm_user.c
+===================================================================
+--- linux-5.10.138.orig/net/xfrm/xfrm_user.c
++++ linux-5.10.138/net/xfrm/xfrm_user.c
+@@ -34,6 +34,167 @@
+ #endif
+ #include <asm/unaligned.h>
+ 
++#if defined(CONFIG_RTK_FC_IPSEC_FASTFWD)
++
++extern rtk_fc_ipsec_saInfo_ops_t ipsec_kernel_hook_func;
++
++static void dump_xfrm_state(struct xfrm_state *x)
++{
++	int i;
++
++	if (x == NULL) return;
++
++	printk(KERN_INFO "id: daddr=%08x-%08x-%08x-%08x, spi=0x%08x, proto=0x%02x\n",
++		ntohl(x->id.daddr.a6[0]), ntohl(x->id.daddr.a6[1]),
++		ntohl(x->id.daddr.a6[2]), ntohl(x->id.daddr.a6[3]), ntohl(x->id.spi), x->id.proto);
++	printk(KERN_INFO "sel: daddr=%08x-%08x-%08x-%08x/%u, dport=%u, dport_mask=%u\n",
++		ntohl(x->sel.daddr.a6[0]), ntohl(x->sel.daddr.a6[1]),
++		ntohl(x->sel.daddr.a6[2]), ntohl(x->sel.daddr.a6[3]), x->sel.prefixlen_d,
++		ntohs(x->sel.dport), ntohs(x->sel.dport_mask));
++	printk(KERN_INFO "     saddr=%08x-%08x-%08x-%08x/%u, sport=%u, sport_mask=%u\n",
++		ntohl(x->sel.saddr.a6[0]), ntohl(x->sel.saddr.a6[1]),
++		ntohl(x->sel.saddr.a6[2]), ntohl(x->sel.saddr.a6[3]), x->sel.prefixlen_s,
++		ntohs(x->sel.sport), ntohs(x->sel.sport_mask));
++	printk(KERN_INFO "     family=%u, proto=%u, ifindex=%d\n", x->sel.family, x->sel.proto, x->sel.ifindex);
++	printk(KERN_INFO "mark.v=0x%08x, mark.m=0x%08x\n", x->mark.v, x->mark.m);
++	printk(KERN_INFO "tfcpad=0x%08x, genid=0x%08x\n", x->tfcpad, x->genid);
++	printk(KERN_INFO "props: reqid=%u, mode=%u, replay_window=%u, aalgo=%u, ealgo=%u, calgo=%u\n",
++		x->props.reqid, x->props.mode, x->props.replay_window, x->props.aalgo, x->props.ealgo, x->props.calgo);
++	printk(KERN_INFO "       flags=0x%02x, family=%u, header_len=%u, trailer_len=%u, extra_flags=0x%08x\n",
++		x->props.flags, x->props.family, x->props.header_len, x->props.trailer_len, x->props.flags);
++	printk(KERN_INFO "       saddr=%08x-%08x-%08x-%08x\n",
++		ntohl(x->props.saddr.a6[0]), ntohl(x->props.saddr.a6[1]),
++		ntohl(x->props.saddr.a6[2]), ntohl(x->props.saddr.a6[3]));
++
++	if (x->aalg != NULL) {
++		printk(KERN_INFO "aalg: name=(%s), key_len=%u, trunc_len=%u, key=",
++			x->aalg->alg_name, x->aalg->alg_key_len, x->aalg->alg_trunc_len);
++		for (i = 0; i < x->aalg->alg_key_len / 8; i++) {
++			printk(KERN_CONT "%02x ", x->aalg->alg_key[i]);
++		}
++		printk(KERN_CONT "\n");
++	}
++
++	if (x->ealg != NULL) {
++		printk(KERN_INFO "ealg: name=(%s), key_len=%u, key=",
++			x->ealg->alg_name, x->ealg->alg_key_len);
++		for (i = 0; i < x->ealg->alg_key_len / 8; i++) {
++			printk(KERN_CONT "%02x ", x->ealg->alg_key[i]);
++		}
++		printk(KERN_CONT "\n");
++	}
++
++	if (x->calg != NULL) {
++		printk(KERN_INFO "calg: name=(%s), key_len=%u, key=",
++			x->calg->alg_name, x->calg->alg_key_len);
++		for (i = 0; i < x->calg->alg_key_len / 8; i++) {
++			printk(KERN_CONT "%02x ", x->calg->alg_key[i]);
++		}
++		printk(KERN_CONT "\n");
++	}
++
++	if (x->aead != NULL) {
++		printk(KERN_INFO "aead: name=(%s), key_len=%u, icv_len=%u, key=",
++			x->aead->alg_name, x->aead->alg_key_len, x->aead->alg_icv_len);
++		for (i = 0; i < x->aead->alg_key_len / 8; i++) {
++			printk(KERN_CONT "%02x ", x->aead->alg_key[i]);
++		}
++		printk(KERN_CONT "\n");
++	}
++
++	if (x->encap != NULL) {
++		printk(KERN_INFO "encap: encap_type=0x%04x, encap_sport=%u, encap_dport=%u, encap_oa=%08x-%08x-%08x-%08x\n",
++				x->encap->encap_type, ntohs(x->encap->encap_sport), ntohs(x->encap->encap_dport),
++				ntohl(x->encap->encap_oa.a6[0]), ntohl(x->encap->encap_oa.a6[1]),
++				ntohl(x->encap->encap_oa.a6[2]), ntohl(x->encap->encap_oa.a6[3]));
++	}
++
++	if (x->coaddr != NULL)
++		printk(KERN_INFO "coaddr=%08x-%08x-%08x-%08x\n",
++			ntohl(x->coaddr->a6[0]), ntohl(x->coaddr->a6[1]),
++			ntohl(x->coaddr->a6[2]), ntohl(x->coaddr->a6[3]));
++
++	printk(KERN_INFO "replay: oseq=%u, seq=%u, bitmap=0x%08x\n", x->replay.oseq, x->replay.seq, x->replay.bitmap);
++
++	if (x->replay_esn != NULL)
++		printk(KERN_INFO "replay_esn: oseq=%u, seq=%u, oseq_hi=%u, seq_hi=%u, replay_window=%u, bmp_len=%u\n",
++			x->replay_esn->oseq, x->replay_esn->seq, x->replay_esn->oseq_hi,
++			x->replay_esn->seq_hi, x->replay_esn->replay_window, x->replay_esn->bmp_len);
++
++	printk(KERN_INFO "xflags=0x%08x, replay_maxage=%u, replay_maxdiff=%u\n", x->xflags, x->replay_maxage, x->replay_maxdiff);
++	printk(KERN_INFO "stats: replay_window=%u, replay=%u, integrity_failed=%u\n", x->stats.replay_window, x->stats.replay, x->stats.integrity_failed);
++	printk(KERN_INFO "curlft.bytes=%llu, curlft.packets=%llu\n", x->curlft.bytes, x->curlft.packets);
++
++	if (x->type != NULL)
++		printk(KERN_INFO "type.proto=%u, type.flags=0x%02x\n", x->type->proto, x->type->flags);
++/*
++
++	if (x->inner_mode != NULL) {
++		printk(KERN_INFO "inner_mode: encap=%u, flags=0x%08x\n", x->inner_mode->encap, x->inner_mode->flags);
++		
++		if (x->inner_mode->afinfo != NULL)
++			printk(KERN_INFO "inner_mode.afinfo: family=%u, proto=%u, eth_proto=0x%04x\n",
++				x->inner_mode->afinfo->family, x->inner_mode->afinfo->proto, ntohs(x->inner_mode->afinfo->eth_proto));
++				
++	}
++*/
++/*
++	if (x->inner_mode_iaf != NULL) {
++		printk(KERN_INFO "inner_mode_iaf: encap=%u, flags=0x%08x\n", x->inner_mode_iaf->encap, x->inner_mode_iaf->flags);
++		if (x->inner_mode_iaf->afinfo != NULL)
++			printk(KERN_INFO "inner_mode_iaf.afinfo: family=%u, proto=%u, eth_proto=0x%04x\n",
++				x->inner_mode_iaf->afinfo->family, x->inner_mode_iaf->afinfo->proto, ntohs(x->inner_mode_iaf->afinfo->eth_proto));
++	}
++
++	if (x->outer_mode != NULL) {
++		printk(KERN_INFO "outer_mode: encap=%u, flags=0x%08x\n", x->outer_mode->encap, x->outer_mode->flags);
++		if (x->outer_mode->afinfo != NULL)
++			printk(KERN_INFO "outer_mode.afinfo, family=%u, proto=%u, eth_proto=0x%04x\n",
++				x->outer_mode->afinfo->family, x->outer_mode->afinfo->proto, ntohs(x->outer_mode->afinfo->eth_proto));
++	}
++*/
++	if (x->security != NULL) {
++		printk(KERN_INFO "security: ctx_doi=%u, ctx_alg=%u, ctx_len=%u, ctx_sid=%u\n",
++			x->security->ctx_doi, x->security->ctx_alg, x->security->ctx_len, x->security->ctx_sid);
++	}
++}
++
++static void dump_xfrm_policy(struct xfrm_policy *p)
++{
++	int i;
++
++	if (p == NULL) return;
++
++	printk(KERN_INFO "index=%u, type=%u, action=%u, flags=0x%02x, family=0x%04x, xfrm_nr=%u, priority=%u\n",
++		p->index, p->type, p->action, p->flags, p->family, p->xfrm_nr, p->priority);
++
++	printk(KERN_INFO "selector: daddr=%08x-%08x-%08x-%08x/%u, dport=%u, dport_mask=%u\n",
++		ntohl(p->selector.daddr.a6[0]), ntohl(p->selector.daddr.a6[1]),
++		ntohl(p->selector.daddr.a6[2]), ntohl(p->selector.daddr.a6[3]),
++		p->selector.prefixlen_d, ntohs(p->selector.dport), ntohs(p->selector.dport_mask));
++	printk(KERN_INFO "          saddr=%08x-%08x-%08x-%08x/%u, sel.sport=%u, sel.sport_mask=%u\n",
++		ntohl(p->selector.saddr.a6[0]), ntohl(p->selector.saddr.a6[1]),
++		ntohl(p->selector.saddr.a6[2]), ntohl(p->selector.saddr.a6[3]),
++		p->selector.prefixlen_s, ntohs(p->selector.sport), ntohs(p->selector.sport_mask));
++	printk(KERN_INFO "          family=%u, proto=%u, ifindex=%d\n",
++		p->selector.family, p->selector.proto, p->selector.ifindex);
++
++	for (i = 0; i < p->xfrm_nr; i++) {
++		printk(KERN_INFO "vec[%d]:\n", i);
++		printk(KERN_INFO "  id: daddr=%08x-%08x-%08x-%08x, spi=0x%08x, proto=0x%02x\n",
++			ntohl(p->xfrm_vec[i].id.daddr.a6[0]), ntohl(p->xfrm_vec[i].id.daddr.a6[1]),
++			ntohl(p->xfrm_vec[i].id.daddr.a6[2]), ntohl(p->xfrm_vec[i].id.daddr.a6[3]),
++			ntohl(p->xfrm_vec[i].id.spi), p->xfrm_vec[i].id.proto);
++		printk(KERN_INFO "  saddr=%08x-%08x-%08x-%08x\n",
++			ntohl(p->xfrm_vec[i].saddr.a6[0]), ntohl(p->xfrm_vec[i].saddr.a6[1]),
++			ntohl(p->xfrm_vec[i].saddr.a6[2]), ntohl(p->xfrm_vec[i].saddr.a6[3]));
++		printk(KERN_INFO "  encap_family=%u, reqid=%u, mode=%u, share=%u\n",
++			p->xfrm_vec[i].encap_family, p->xfrm_vec[i].reqid, p->xfrm_vec[i].mode, p->xfrm_vec[i].share);
++	}
++}
++#endif
++
++
+ static int verify_one_alg(struct nlattr **attrs, enum xfrm_attr_type_t type)
+ {
+ 	struct nlattr *rt = attrs[type];
+@@ -1733,6 +1894,80 @@ static int xfrm_add_policy(struct sk_buf
+ 
+ 	xfrm_pol_put(xp);
+ 
++#if defined(CONFIG_RTK_FC_IPSEC_FASTFWD)
++	//printk("\033[1;33;41m p->dir = %d xp->xfrm_nr = %d xp->action = %d \033[0m\n", p->dir, xp->xfrm_nr, xp->action);
++
++	if (((p->dir == XFRM_POLICY_IN) || (p->dir == XFRM_POLICY_OUT)) && (xp->xfrm_nr != 0) && (xp->action == XFRM_POLICY_ALLOW))
++	{
++		struct xfrm_state *x = NULL, *rev_x = NULL;
++		struct xfrm_policy *tmp_xp, *rev_xp = NULL;
++		struct xfrm_selector tmp_selector;
++		xfrm_address_t tmp_addr;
++		int i;
++
++		tmp_xp = xfrm_policy_construct(net, p, attrs, &err);
++
++		/* reverse the data within tmp_xp->selector */
++		tmp_selector = tmp_xp->selector;
++		tmp_selector.daddr = tmp_xp->selector.saddr;
++		tmp_selector.saddr = tmp_xp->selector.daddr;
++		tmp_selector.dport = tmp_xp->selector.sport;
++		tmp_selector.dport_mask = tmp_xp->selector.sport_mask;
++		tmp_selector.sport = tmp_xp->selector.dport;
++		tmp_selector.sport_mask = tmp_xp->selector.dport_mask;
++		tmp_selector.prefixlen_d = tmp_xp->selector.prefixlen_s;
++		tmp_selector.prefixlen_s = tmp_xp->selector.prefixlen_d;
++		tmp_xp->selector = tmp_selector;
++
++		/* reverse the data within each tmp_xp->xfrm_vec[] */
++		for (i = 0; i < tmp_xp->xfrm_nr; i++) {
++			tmp_addr = tmp_xp->xfrm_vec[i].id.daddr;
++			tmp_xp->xfrm_vec[i].id.daddr = tmp_xp->xfrm_vec[i].saddr;
++			tmp_xp->xfrm_vec[i].saddr = tmp_addr;
++		}
++
++		//printk("\033[1;33;41m 111111111111111111111111111 \033[0m\n");
++/*
++		rev_xp = get_policy_by_partial_policy((p->dir == XFRM_POLICY_IN) ? XFRM_POLICY_OUT : XFRM_POLICY_IN, tmp_xp);
++		if (rev_xp != NULL) {
++			//printk(KERN_INFO "%s: FOUND REVERSED xfrm_policy! rev_xp = %p \n", __func__, rev_xp);
++			//dump_xfrm_policy(rev_xp);
++			printk("\033[1;33;41m rev_xp->action = %d \033[0m\n", rev_xp->action);
++		}
++		else
++		{
++			
++			printk("\033[1;33;41m rev_xp = NULL \033[0m\n");
++		}
++		*/
++		if ((xp != NULL) && (xp->action == XFRM_POLICY_ALLOW))
++		{
++			printk("Try to find state by policy!\n");
++			xfrm_state_find_by_xfrm_policy(xp, &x);
++			//xfrm_state_find_by_xfrm_policy(rev_xp, &rev_x);
++
++			if (x != NULL) {
++					//printk(KERN_INFO "%s:FOUND xfrm_state! dir=%d! x = %p, x->data :%p\n", __func__, p->dir, x, x->data);
++					printk("=============================================================================\n");
++					dump_xfrm_state(x);
++					printk("=============================================================================\n");
++			}
++
++			if (x != NULL) 
++			{
++				//rtk_fc_ipsec_xfrm_info_t *pFc_ipsec_info=NULL;
++				if(ipsec_kernel_hook_func.ipsec_saInfo_add)
++					ipsec_kernel_hook_func.ipsec_saInfo_add(p->dir, x, xp);
++				else
++					printk("ipsec_kernel_hook_func.ipsec_saInfo_add is NULL\n");
++			}
++			printk("=============================DONE=============================\n\n\n");
++		}
++
++	}
++#endif
++
++
+ 	return 0;
+ }
+ 

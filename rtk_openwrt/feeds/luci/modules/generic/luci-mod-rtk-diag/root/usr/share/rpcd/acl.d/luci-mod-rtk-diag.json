@@ -1,0 +1,23 @@
+{
+	"luci-mod-rtk-network-diagnostics": {
+		"description": "Grant access to network diagnostic tools",
+		"read": {
+			"file": {
+				"/bin/ping": [ "exec" ],
+				"/bin/ping6": [ "exec", "list" ],
+				"/bin/traceroute": [ "exec" ],
+				"/bin/traceroute6": [ "exec", "list" ],
+				"/usr/bin/nslookup": [ "exec" ],
+				"/usr/bin/ping": [ "exec" ],
+				"/usr/bin/ping6": [ "exec", "list" ],
+				"/usr/bin/traceroute": [ "exec" ],
+				"/usr/bin/traceroute6": [ "exec", "list" ],
+				"/usr/bin/arp-scan": [ "exec", "list" ]
+			},
+			"ubus": {
+				"file": [ "exec", "stat" ]
+			},
+			"uci": [ "luci" ]
+		}
+	}
+}

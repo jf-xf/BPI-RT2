@@ -1,0 +1,234 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8"
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:127
+#: htdocs/luci-static/resources/view/rtk/admin/admin/omci.js:103
+msgid "Apply and keep settings"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:23
+msgid "Bias Current"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:33
+msgid "Broadcast Packets Received"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:32
+msgid "Broadcast Packets Sent"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:25
+msgid "Bytes Received"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:24
+msgid "Bytes Sent"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/omci.js:83
+msgid "CWMP Product Class"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:76
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:90
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:96
+msgid "Collecting data ..."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:74
+msgid "Configure GPON PLOAM password..."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:84
+msgid "Configure OMCI OLT Mode..."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/omci.js:61
+msgid "Configure OMCI Vendor ID..."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:89
+msgid "Customized Mode"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:86
+msgid "Default Mode"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:34
+msgid "FEC Errors"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:69
+msgid "GPON Settings"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:94
+msgid "GPON Status"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:35
+msgid "HEC Errors"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/omci.js:86
+msgid "HW version"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:87
+msgid "Huawei OLT Mode"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:49
+msgid "LOID Status"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:31
+msgid "Multicast Packets Received"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:30
+msgid "Multicast Packets Sent"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/omci.js:73
+msgid "OMCC version"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/omci.js:56
+msgid "OMCI Information"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:83
+msgid "OMCI OLT Mode"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/omci.js:60
+msgid "OMCI Vendor ID"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/omci.js:67
+msgid "OMCI software version 1"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/omci.js:70
+msgid "OMCI software version 2"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:48
+msgid "ONU ID"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:47
+msgid "ONU State"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:73
+msgid "PLOAM Password"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:72
+msgid "PON Statistics"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:85
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:88
+msgid "PON Status"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:36
+msgid "Packets Dropped"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:27
+msgid "Packets Received"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:26
+msgid "Packets Sent"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:18
+msgid "Part Number"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:38
+msgid "Pause Packets Received"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:37
+msgid "Pause Packets Sent"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:85
+msgid "Reset Statistics."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:22
+msgid "Rx Power"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:80
+msgid "Serial Number"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:19
+msgid "Temperature"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:130
+#: htdocs/luci-static/resources/view/rtk/admin/admin/omci.js:106
+msgid "There are no changes to apply"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:54
+msgid "This item length is too long!"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:46
+#: htdocs/luci-static/resources/view/rtk/admin/admin/omci.js:42
+msgid "This item should NOT be NULL"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:69
+#: htdocs/luci-static/resources/view/rtk/admin/admin/omci.js:56
+msgid ""
+"This page is used to configure the parameters for your GPON network access."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:73
+msgid "This page shows the current statistics of PON."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:86
+msgid "This page shows the current system status of PON."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/omci.js:80
+msgid "Traffic Managament option"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:21
+msgid "Tx Power"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:29
+msgid "Unicast Packets Received"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_statistics.js:28
+msgid "Unicast Packets Sent"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:17
+msgid "Vendor Name"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/status/status/pon_status.js:20
+msgid "Voltage"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/rtk/admin/admin/gpon.js:88
+msgid "ZTE OLT Mode"
+msgstr ""

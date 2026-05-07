@@ -1,0 +1,25 @@
+
+# Realtek RTL8367 Module configuration
+#
+
+config RTL8367_MODULE
+        tristate "Add RTL8367 Module (do not use built-in on ca platform, use module if needed)"
+        depends on RTL8367_SUPPORT
+        default n
+        help
+          Add init module for RTL8367
+
+config DAL_RTL8367C
+        bool "Enable RTL8367C series"
+        depends on RTL8367_SUPPORT
+        default n
+        help
+          Support RTL8363NB, RTL8363NB-VB, RTL8363SC, RTL8363SC-VB, RTL8364NB, RTL8364NB-VB,
+	  RTL8365MB-VC, RTL8366SC, RTL8367RB-VB, RTL8367SB, RTL8367S, RTL8370MB, RTL8310SR
+
+config DAL_RTL8367D
+        bool "Enable RTL8367D series"
+        depends on RTL8367_SUPPORT
+        default n
+        help
+          Support RTL8365MB-VD, RTL8366SD, RTL8367RB-VC, RTL8367S-VB, RTL8367SC

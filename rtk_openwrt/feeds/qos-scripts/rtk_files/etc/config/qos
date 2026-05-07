@@ -1,0 +1,40 @@
+config interface 'veip0'
+        option classgroup 'Default'
+        option enabled '1'
+
+config classgroup 'Default'
+        option classes 'Q1 Q2 Q3 Q4 Q5 Q6 Q7 Q8'
+        option mode 'prio'
+
+config class 'Q1'
+        option order '1'
+        option enabled '1'
+
+config class 'Q2'
+        option order '2'
+        option enabled '1'
+
+config class 'Q3'
+        option order '3'
+        option enabled '1'
+
+config class 'Q4'
+        option order '4'
+        option enabled '1'
+
+config class 'Q5'
+        option order '5'
+        option enabled '1'
+
+config class 'Q6'
+        option order '6'
+        option enabled '1'
+
+config class 'Q7'
+        option order '7'
+        option enabled '1'
+
+config class 'Q8'
+        option order '8'
+        option enabled '1'
+

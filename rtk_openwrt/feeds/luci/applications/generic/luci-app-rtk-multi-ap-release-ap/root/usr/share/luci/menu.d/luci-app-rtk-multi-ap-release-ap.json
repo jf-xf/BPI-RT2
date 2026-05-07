@@ -1,0 +1,49 @@
+{
+  "admin/network/rtkmap": {
+    "title": "Easymesh",
+    "order": 60,
+    "action": {
+      "type": "alias",
+      "path": "admin/network/rtkmap/form"
+    },
+    "depends": {
+      "acl": [ "luci-app-rtk-multi-ap-release-ap" ],
+      "uci": { "rtkmap": true }
+    }
+  },
+  "admin/network/rtkmap/form": {
+    "title": "Settings",
+    "order": 10,
+    "action": {
+      "type": "view",
+      "path": "rtk/rtkmap_form"
+    }
+  },
+
+  "admin/network/rtkmap/chnscan": {
+    "title": "Channel Scan",
+    "order": 20,
+    "action": {
+      "type": "view",
+      "path": "rtk/rtkmap_chnscan"
+    }
+  },
+
+  "admin/network/rtkmap/topology": {
+    "title": "Topology",
+    "order": 30,
+    "action": {
+      "type": "view",
+      "path": "rtk/rtkmap_topology"
+    }
+  },
+
+  "admin/network/rtkmap/vlan": {
+    "title": "VLAN",
+    "order": 40,
+    "action": {
+      "type": "view",
+      "path": "rtk/rtkmap_vlan"
+    }
+  }
+}

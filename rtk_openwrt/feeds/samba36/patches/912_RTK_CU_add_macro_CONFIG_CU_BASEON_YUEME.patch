@@ -1,0 +1,34 @@
+commit 64e336ff102e3e19917fdb4dbcf0f327ede7d386
+Author: Xing Zhang <star_zhang@realsil.com.cn>
+Date:   Sun Feb 23 12:27:25 2020 +0800
+
+    [CU DBUS]add macro CONFIG_CU_BASEON_YUEME
+    
+    Change-Id: Ieee6172d4f8679d11a96c4471b99450bbde48c0c
+
+diff --git a/lib/util/system.c b/lib/util/system.c
+index efa739ad..8bacd1cf 100755
+--- a/lib/util/system.c
++++ b/lib/util/system.c
+@@ -158,7 +158,7 @@ _PUBLIC_ pid_t sys_fork(void)
+ 	pid_t forkret = fork();
+ 	DEBUG( 0, ( "forkret %d.\n", forkret ) );
+ 
+-#if defined(CONFIG_YUEME) && defined(CONFIG_CGROUPS)	
++#if (defined(CONFIG_YUEME) || defined(CONFIG_CU_BASEON_YUEME)) && defined(CONFIG_CGROUPS)	
+ 	setLimit(forkret);
+ #endif
+ 
+diff --git a/source3/include/version.h b/source3/include/version.h
+index c2898e82..d8ef6119 100755
+--- a/source3/include/version.h
++++ b/source3/include/version.h
+@@ -2,7 +2,7 @@
+ #define SAMBA_VERSION_MAJOR 4
+ #define SAMBA_VERSION_MINOR 2
+ #define SAMBA_VERSION_RELEASE 14
+-#if defined(CONFIG_YUEME)
++#if defined(CONFIG_YUEME) || defined(CONFIG_CU_BASEON_YUEME)
+ /*
+ 	Workarround for NESSUS testing
+ */

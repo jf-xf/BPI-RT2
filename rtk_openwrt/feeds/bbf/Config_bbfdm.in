@@ -1,0 +1,31 @@
+config BBF_VENDOR_EXTENSION
+	bool "Enable Vendor Extension"
+	default y
+
+config BBF_VENDOR_LIST
+	string "Vendor List"
+	default "realtek"
+
+config BBF_VENDOR_PREFIX
+	string "Vendor Prefix"
+	default "X_REALTEK_"
+
+config BBF_TR104
+	bool "Enable TR-104 Data Model Support"
+	default y
+
+config BBF_TR143
+	bool "Enable TR-143 Data Model Support"
+	default y
+
+config BBFDM_ENABLE_JSON_PLUGIN
+	bool "Enable json plugin to extend datamodel"
+	default y
+
+config BBFDM_ENABLE_DOTSO_PLUGIN
+	bool "Enable shared library plugin to extend datamodel"
+	default y
+
+config BBF_MAX_OBJECT_INSTANCES
+	int "Maximum number of instances per object"
+	default 255

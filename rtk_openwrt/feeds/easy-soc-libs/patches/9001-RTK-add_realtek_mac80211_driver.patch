@@ -1,0 +1,47 @@
+Index: easy-soc-libs-6.5.57/libwifi/Makefile
+===================================================================
+--- easy-soc-libs-6.5.57.orig/libwifi/Makefile
++++ easy-soc-libs-6.5.57/libwifi/Makefile
+@@ -27,6 +27,12 @@ LIBWIFI_CFLAGS += -Imodules/wpactrl -Imo
+ objs_lib += modules/wpactrl/wpactrl_util.o \
+ 	    modules/nlwifi/nlwifi.o \
+ 	    modules/mac80211/mac80211.o
++else ifeq ($(PLATFORM),REALTEK)
++objs_dir=realtek
++LIBWIFI_CFLAGS += -Imodules/wpactrl -Imodules/nlwifi -Imodules/wext
++objs_lib += modules/wpactrl/wpactrl_util.o \
++	    modules/nlwifi/nlwifi.o \
++	    modules/realtek/mac80211.o
+ else ifeq ($(PLATFORM),MAC80211)
+ objs_dir=mac80211
+ LIBWIFI_CFLAGS += -Imodules/wpactrl -Imodules/nlwifi -Imodules/wext
+Index: easy-soc-libs-6.5.57/libwifi/drivers.c
+===================================================================
+--- easy-soc-libs-6.5.57.orig/libwifi/drivers.c
++++ easy-soc-libs-6.5.57/libwifi/drivers.c
+@@ -35,6 +35,10 @@ const struct wifi_driver *wifi_drivers[]
+ 	&mac80211_driver,
+ #endif
+ 
++#ifdef IOPSYS_REALTEK
++	&rtk_driver,
++#endif
++
+ #ifdef IOPSYS_MAC80211
+ 	&mac80211_driver,
+ #endif
+Index: easy-soc-libs-6.5.57/libwifi/drivers.h
+===================================================================
+--- easy-soc-libs-6.5.57.orig/libwifi/drivers.h
++++ easy-soc-libs-6.5.57/libwifi/drivers.h
+@@ -37,6 +37,10 @@ extern const struct wifi_driver brcm_dri
+ extern const struct wifi_driver mac80211_driver;
+ #endif
+ 
++#ifdef IOPSYS_REALTEK
++extern const struct wifi_driver rtk_driver;
++#endif
++
+ #ifdef IOPSYS_MAC80211
+ extern const struct wifi_driver mac80211_driver;
+ #endif

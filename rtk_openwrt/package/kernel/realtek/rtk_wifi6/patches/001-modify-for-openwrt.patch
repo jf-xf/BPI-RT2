@@ -1,0 +1,292 @@
+--- a/Makefile
++++ b/Makefile
+@@ -16,6 +16,7 @@ EXTRA_CFLAGS += -Wno-unused-label
+ #EXTRA_CFLAGS += -Wno-unused-function
+ EXTRA_CFLAGS += -Wno-unused
+ #EXTRA_CFLAGS += -Wno-uninitialized
++EXTRA_CFLAGS += -Wno-misleading-indentation
+ 
+ GCC_VER_49 := $(shell echo `$(CC) -dumpversion | cut -f1-2 -d.` \>= 4.9 | bc )
+ ifeq ($(GCC_VER_49),1)
+@@ -26,6 +27,7 @@ EXTRA_CFLAGS += -g -I$(src)/include
+ 
+ EXTRA_LDFLAGS += --strip-debug
+ 
++include $(src)/package_rtk_wifi6.mk
+ CONFIG_AUTOCFG_CP = y
+ 
+ check_config = $(findstring y,$(value CONFIG_$(1))$(value CPTCFG_$(1)))
+@@ -749,7 +751,7 @@ endif
+ 
+ EXTRA_LDFLAGS += -Map=$(TopDIR)/$(MODULE_NAME).map
+ 
+-ifneq ($(KERNELRELEASE),)
++#ifneq ($(KERNELRELEASE),)
+ ########### COMMON #################################
+ include $(src)/common.mk
+ 
+@@ -793,7 +795,7 @@ $(shell $(DRV_PATH)/phl/gen_git_info.sh
+ endif
+ include $(src)/phl/phl.mk
+ 
+-
++ifneq ($(CONFIG_RTLWIFI6),)
+ obj-$(CONFIG_RTLWIFI6) := $(MODULE_NAME).o
+ obj-$(CPTCFG_RTLWIFI6) := $(MODULE_NAME).o
+ $(MODULE_NAME)-y = $(OBJS)
+--- a/include/linux/wireless.h
++++ /dev/null
+@@ -1,87 +0,0 @@
+-/******************************************************************************
+- *
+- * Copyright(c) 2007 - 2019 Realtek Corporation.
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of version 2 of the GNU General Public License as
+- * published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful, but WITHOUT
+- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+- * more details.
+- *
+- *****************************************************************************/
+-
+-#ifndef _LINUX_WIRELESS_H
+-#define _LINUX_WIRELESS_H
+-
+-/***************************** INCLUDES *****************************/
+-
+-#if 0
+-	#include <linux/types.h>		/* for __u* and __s* typedefs */
+-	#include <linux/socket.h>		/* for "struct sockaddr" et al	*/
+-	#include <linux/if.h>			/* for IFNAMSIZ and co... */
+-#else
+-	#define __user
+-	/* typedef uint16_t	__u16; */
+-	#include <sys/socket.h>			/* for "struct sockaddr" et al	*/
+-	#include <net/if.h>			/* for IFNAMSIZ and co... */
+-#endif
+-
+-/****************************** TYPES ******************************/
+-#ifdef CONFIG_COMPAT
+-struct compat_iw_point {
+-	compat_caddr_t pointer;
+-	__u16 length;
+-	__u16 flags;
+-};
+-#endif
+-/* --------------------------- SUBTYPES --------------------------- */
+-/*
+- *	For all data larger than 16 octets, we need to use a
+- *	pointer to memory allocated in user space.
+- */
+-struct	iw_point {
+-	void __user	*pointer;	/* Pointer to the data  (in user space) */
+-	__u16		length;		/* number of fields or size in bytes */
+-	__u16		flags;		/* Optional params */
+-};
+-
+-
+-/* ------------------------ IOCTL REQUEST ------------------------ */
+-/*
+- * This structure defines the payload of an ioctl, and is used
+- * below.
+- *
+- * Note that this structure should fit on the memory footprint
+- * of iwreq (which is the same as ifreq), which mean a max size of
+- * 16 octets = 128 bits. Warning, pointers might be 64 bits wide...
+- * You should check this when increasing the structures defined
+- * above in this file...
+- */
+-union	iwreq_data {
+-	/* Config - generic */
+-	char		name[IFNAMSIZ];
+-	/* Name : used to verify the presence of  wireless extensions.
+-	 * Name of the protocol/provider... */
+-
+-	struct iw_point	data;		/* Other large parameters */
+-};
+-
+-/*
+- * The structure to exchange data for ioctl.
+- * This structure is the same as 'struct ifreq', but (re)defined for
+- * convenience...
+- * Do I need to remind you about structure size (32 octets) ?
+- */
+-struct	iwreq {
+-	union {
+-		char	ifrn_name[IFNAMSIZ];	/* if name, e.g. "eth0" */
+-	} ifr_ifrn;
+-
+-	/* Data part (defined just above) */
+-	union	iwreq_data	u;
+-};
+-
+-#endif	/* _LINUX_WIRELESS_H */
+--- a/platform/i386_pc.mk
++++ b/platform/i386_pc.mk
+@@ -43,17 +43,17 @@ endif
+
+ OBJS += $(_PLATFORM_FILES)
+
+-$(shell mkdir -p $(ROMFSDIR)/etc/conf)
+-ifeq ($(CONFIG_RTL8852AE), y)
+-$(shell cp -rf $(src)/platform/mips_98d/rtl8852ae $(ROMFSDIR)/etc/conf)
+-endif
+-ifeq ($(CONFIG_RTL8852CE), y)
+-$(shell cp -rf $(src)/platform/mips_98d/rtl8852ce $(ROMFSDIR)/etc/conf)
+-endif
+-ifeq ($(CONFIG_RTL8192XB), y)
+-$(shell cp -rf $(src)/platform/mips_98d/rtl8192xbe $(ROMFSDIR)/etc/conf)
+-endif
+-ifeq ($(CONFIG_RTL8832BR), y)
+-$(shell cp -rf $(src)/platform/mips_98d/rtl8832bre $(ROMFSDIR)/etc/conf)
+-endif
++#$(shell mkdir -p $(ROMFSDIR)/etc/conf)
++#ifeq ($(CONFIG_RTL8852AE), y)
++#$(shell cp -rf $(src)/platform/mips_98d/rtl8852ae $(ROMFSDIR)/etc/conf)
++#endif
++#ifeq ($(CONFIG_RTL8852CE), y)
++#$(shell cp -rf $(src)/platform/mips_98d/rtl8852ce $(ROMFSDIR)/etc/conf)
++#endif
++#ifeq ($(CONFIG_RTL8192XB), y)
++#$(shell cp -rf $(src)/platform/mips_98d/rtl8192xbe $(ROMFSDIR)/etc/conf)
++#endif
++#ifeq ($(CONFIG_RTL8832BR), y)
++#$(shell cp -rf $(src)/platform/mips_98d/rtl8832bre $(ROMFSDIR)/etc/conf)
++#endif
+ endif
+--- a/platform/mips_97f.mk
++++ b/platform/mips_97f.mk
+@@ -46,17 +46,17 @@ endif
+
+ OBJS += $(_PLATFORM_FILES)
+
+-$(shell mkdir -p $(DIR_ROMFS)/etc/conf)
+-ifeq ($(CONFIG_RTL8852AE), y)
+-$(shell cp -rf $(src)/platform/mips_98d/rtl8852ae $(DIR_ROMFS)/etc/conf)
+-endif
+-ifeq ($(CONFIG_RTL8852CE), y)
+-$(shell cp -rf $(src)/platform/mips_98d/rtl8852ce $(DIR_ROMFS)/etc/conf)
+-endif
+-ifeq ($(CONFIG_RTL8192XB), y)
+-$(shell cp -rf $(src)/platform/mips_98d/rtl8192xbe $(DIR_ROMFS)/etc/conf)
+-endif
+-ifeq ($(CONFIG_RTL8832BR), y)
+-$(shell cp -rf $(src)/platform/mips_98d/rtl8832bre $(DIR_ROMFS)/etc/conf)
+-endif
++#$(shell mkdir -p $(DIR_ROMFS)/etc/conf)
++#ifeq ($(CONFIG_RTL8852AE), y)
++#$(shell cp -rf $(src)/platform/mips_98d/rtl8852ae $(DIR_ROMFS)/etc/conf)
++#endif
++#ifeq ($(CONFIG_RTL8852CE), y)
++#$(shell cp -rf $(src)/platform/mips_98d/rtl8852ce $(DIR_ROMFS)/etc/conf)
++#endif
++#ifeq ($(CONFIG_RTL8192XB), y)
++#$(shell cp -rf $(src)/platform/mips_98d/rtl8192xbe $(DIR_ROMFS)/etc/conf)
++#endif
++#ifeq ($(CONFIG_RTL8832BR), y)
++#$(shell cp -rf $(src)/platform/mips_98d/rtl8832bre $(DIR_ROMFS)/etc/conf)
++#endif
+ endif
+--- a/platform/mips_98d.mk
++++ b/platform/mips_98d.mk
+@@ -48,18 +48,18 @@ endif
+ OBJS += $(_PLATFORM_FILES)
+
+ ifneq ($(ROMFSDIR),)
+-$(shell mkdir -p $(ROMFSDIR)/etc/conf)
+-ifeq ($(CONFIG_RTL8852AE), y)
+-$(shell cp -rf $(src)/platform/mips_98d/rtl8852ae $(ROMFSDIR)/etc/conf)
+-endif
+-ifeq ($(CONFIG_RTL8852CE), y)
+-$(shell cp -rf $(src)/platform/mips_98d/rtl8852ce $(ROMFSDIR)/etc/conf)
+-endif
+-ifeq ($(CONFIG_RTL8192XB), y)
+-$(shell cp -rf $(src)/platform/mips_98d/rtl8192xbe $(ROMFSDIR)/etc/conf)
+-endif
+-ifeq ($(CONFIG_RTL8832BR), y)
+-$(shell cp -rf $(src)/platform/mips_98d/rtl8832bre $(ROMFSDIR)/etc/conf)
+-endif
++#$(shell mkdir -p $(ROMFSDIR)/etc/conf)
++#ifeq ($(CONFIG_RTL8852AE), y)
++#$(shell cp -rf $(src)/platform/mips_98d/rtl8852ae $(ROMFSDIR)/etc/conf)
++#endif
++#ifeq ($(CONFIG_RTL8852CE), y)
++#$(shell cp -rf $(src)/platform/mips_98d/rtl8852ce $(ROMFSDIR)/etc/conf)
++#endif
++#ifeq ($(CONFIG_RTL8192XB), y)
++#$(shell cp -rf $(src)/platform/mips_98d/rtl8192xbe $(ROMFSDIR)/etc/conf)
++#endif
++#ifeq ($(CONFIG_RTL8832BR), y)
++#$(shell cp -rf $(src)/platform/mips_98d/rtl8832bre $(ROMFSDIR)/etc/conf)
++#endif
+ endif
+ endif
+--- a/platform/mips_pon.mk
++++ b/platform/mips_pon.mk
+@@ -43,17 +43,17 @@ endif
+
+ OBJS += $(_PLATFORM_FILES)
+
+-$(shell mkdir -p $(ROMFSDIR)/etc/conf)
+-ifeq ($(CONFIG_RTL8852AE), y)
+-$(shell cp -rf $(src)/platform/mips_98d/rtl8852ae $(ROMFSDIR)/etc/conf)
+-endif
+-ifeq ($(CONFIG_RTL8852CE), y)
+-$(shell cp -rf $(src)/platform/mips_98d/rtl8852ce $(ROMFSDIR)/etc/conf)
+-endif
+-ifeq ($(CONFIG_RTL8192XB), y)
+-$(shell cp -rf $(src)/platform/mips_98d/rtl8192xbe $(ROMFSDIR)/etc/conf)
+-endif
+-ifeq ($(CONFIG_RTL8832BR), y)
+-$(shell cp -rf $(src)/platform/mips_98d/rtl8832bre $(ROMFSDIR)/etc/conf)
+-endif
++#$(shell mkdir -p $(ROMFSDIR)/etc/conf)
++#ifeq ($(CONFIG_RTL8852AE), y)
++#$(shell cp -rf $(src)/platform/mips_98d/rtl8852ae $(ROMFSDIR)/etc/conf)
++#endif
++#ifeq ($(CONFIG_RTL8852CE), y)
++#$(shell cp -rf $(src)/platform/mips_98d/rtl8852ce $(ROMFSDIR)/etc/conf)
++#endif
++#ifeq ($(CONFIG_RTL8192XB), y)
++#$(shell cp -rf $(src)/platform/mips_98d/rtl8192xbe $(ROMFSDIR)/etc/conf)
++#endif
++#ifeq ($(CONFIG_RTL8832BR), y)
++#$(shell cp -rf $(src)/platform/mips_98d/rtl8832bre $(ROMFSDIR)/etc/conf)
++#endif
+ endif
+--- a/platform/mips_xdsl.mk
++++ b/platform/mips_xdsl.mk
+@@ -43,17 +43,17 @@ endif
+
+ OBJS += $(_PLATFORM_FILES)
+
+-$(shell mkdir -p $(ROMFSDIR)/etc/conf)
+-ifeq ($(CONFIG_RTL8852AE), y)
+-$(shell cp -rf $(src)/platform/mips_98d/rtl8852ae $(ROMFSDIR)/etc/conf)
+-endif
+-ifeq ($(CONFIG_RTL8852CE), y)
+-$(shell cp -rf $(src)/platform/mips_98d/rtl8852ce $(ROMFSDIR)/etc/conf)
+-endif
+-ifeq ($(CONFIG_RTL8192XB), y)
+-$(shell cp -rf $(src)/platform/mips_98d/rtl8192xbe $(ROMFSDIR)/etc/conf)
+-endif
+-ifeq ($(CONFIG_RTL8832BR), y)
+-$(shell cp -rf $(src)/platform/mips_98d/rtl8832bre $(ROMFSDIR)/etc/conf)
+-endif
++#$(shell mkdir -p $(ROMFSDIR)/etc/conf)
++#ifeq ($(CONFIG_RTL8852AE), y)
++#$(shell cp -rf $(src)/platform/mips_98d/rtl8852ae $(ROMFSDIR)/etc/conf)
++#endif
++#ifeq ($(CONFIG_RTL8852CE), y)
++#$(shell cp -rf $(src)/platform/mips_98d/rtl8852ce $(ROMFSDIR)/etc/conf)
++#endif
++#ifeq ($(CONFIG_RTL8192XB), y)
++#$(shell cp -rf $(src)/platform/mips_98d/rtl8192xbe $(ROMFSDIR)/etc/conf)
++#endif
++#ifeq ($(CONFIG_RTL8832BR), y)
++#$(shell cp -rf $(src)/platform/mips_98d/rtl8832bre $(ROMFSDIR)/etc/conf)
++#endif
+ endif

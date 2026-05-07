@@ -1,0 +1,307 @@
+#!/usr/bin/lua
+
+local function execute(cmd)
+  print(cmd)
+  os.execute(cmd)
+end
+
+local function fexist(name)
+  local f = io.open(name, "r")
+  if f ~= nil then
+    io.close(f)
+    return true
+  else
+    return false
+  end
+end
+
+local function fwrite(path, s)
+  local f
+  f = assert(io.open(path, "w+"))
+  f:write(s)
+  f:close()
+end
+
+local function fread(path)
+  local f, s
+  f = assert(io.open(path, "r"))
+  s = f:read("*all")
+  f:close()
+  return s
+end
+
+----------------------
+
+local uci = require("luci.model.uci").cursor()
+local socket = require("socket")
+socket.unix = require("socket.unix")
+
+-- wireless parameters
+INTERFACE_NUM = 5
+RADIO_NUM = 2
+
+-- DPP file paths
+DPP_CONNECTOR_PATH="/tmp/dpp_"
+DPP_CONNECTOR_PATH_1905="/tmp/dpp_map_conn"
+DPP_CSIGN_KEY_PATH="/tmp/dpp_csign_key"
+DPP_PRIVACY_PROTECTION_KEY_PATH="/tmp/dpp_pp_key"
+DPP_NET_ACCESS_KEY_PATH="/tmp/dpp_netaccess_key"
+DPP_AKM_PATH="/tmp/dpp_akm"
+DPP_RECONFIG_SCRIPT_PATH="/tmp/dpp_reconfig.sh"
+DPP_RECONFIG_FLAG="/tmp/dpp_reconfig_flag"
+
+-- WPAS config file path
+WPAS_CONFIG_PATH="/var/run/wpa_supplicant"
+
+-- hostapd map action file path
+HOSTAPD_MAP_ACTION_PATH="/tmp/hostapd_action_map_sock"
+
+-- AKM numeric values
+AKM_UNKNOWN=0
+AKM_DPP=1
+AKM_PSK=2
+AKM_SAE=3
+AKM_PSK_SAE=4
+AKM_SAE_DPP=5
+AKM_PSK_SAE_DPP=6
+AKM_DOT1X=7
+
+-- key_mgmt values
+KEY_MGMT_PSK = "WPA%-PSK"
+KEY_MGMT_SAE = "SAE"
+
+local function check_arg(args, arg_num)
+  for i = 1,arg_num do
+    if not args[i] then
+      return nil
+    end
+  end
+  return 1
+end
+
+local function get_radio_name(ifname)
+  for i = 0,RADIO_NUM-1 do
+    for j = 0,INTERFACE_NUM do
+      local radio_name = "default_radio"..i..j
+      uci_ifname = uci:get("wireless", radio_name, "ifname")
+      if uci_ifname == ifname then
+        return radio_name
+      end
+    end
+  end
+  return nil
+end
+
+local function akm_to_str(akm_val)
+  if akm_val == AKM_DPP then
+    return "dpp"
+  elseif akm_val == AKM_PSK then
+    return "psk"
+  elseif akm_val == AKM_SAE then
+    return "sae"
+  elseif akm_val == AKM_PSK_SAE then
+    return "psk+sae"
+  elseif akm_val == AKM_SAE_DPP then
+    return "dpp+sae"
+  elseif akm_val == AKM_PSK_SAE_DPP then
+    return "dpp+psk+sae"
+  elseif akm_val == AKM_DOT1X then
+    return "dot1x"
+  else
+    return nil
+  end
+end
+
+local function akm_to_encryption(akm_val)
+  if akm_val == AKM_SAE or akm_val == AKM_SAE_DPP then
+    return "sae"
+  elseif akm_val == AKM_PSK_SAE or akm_val == AKM_PSK_SAE_DPP then
+    return "sae-mixed"
+  elseif akm_val == AKM_DPP or akm_val == AKM_PSK then
+    return "psk2"
+  else
+    return "none"
+  end
+end
+
+local function key_mgmt_to_encryption(key_mgmt)
+  if string.find(key_mgmt, KEY_MGMT_SAE) and string.find(key_mgmt, KEY_MGMT_PSK) then
+    return "sae-mixed"
+  elseif string.find(key_mgmt, KEY_MGMT_SAE) then
+    return "sae"
+  elseif string.find(key_mgmt, KEY_MGMT_PSK) then
+    return "psk2"
+  else
+    return "none"
+  end
+end
+
+local function main(args)
+  -- print for debugging purpose
+  for i,arg in ipairs(args) do
+    print("arg #"..i.." = "..arg)
+  end
+
+  local command = args[1]
+  if not command then
+    return nil
+  end
+
+  local arg_valid = nil
+  local filename = nil
+  local file = nil
+  local ifname = nil
+  local radio_name = nil
+
+  if command == "do_dpp_store_connector" then
+    arg_valid = check_arg(args, 3)
+    if not arg_valid then
+      return nil
+    end
+    ifname = args[2]
+    filename = DPP_CONNECTOR_PATH..ifname.."_conn"
+    fwrite(filename, args[3])
+  elseif command == "do_dpp_store_connector_1905" then
+    arg_valid = check_arg(args, 2)
+    if not arg_valid then
+      return nil
+    end
+    fwrite(DPP_CONNECTOR_PATH_1905, args[2])
+  elseif command == "do_dpp_store_csign_key" then
+    arg_valid = check_arg(args, 2)
+    if not arg_valid then
+      return nil
+    end
+    fwrite(DPP_CSIGN_KEY_PATH, string.upper(args[2]))
+  elseif command == "do_dpp_store_pp_key" then
+    arg_valid = check_arg(args, 2)
+    if not arg_valid then
+      return nil
+    end
+    fwrite(DPP_PRIVACY_PROTECTION_KEY_PATH, string.upper(args[2]))
+  elseif command == "do_dpp_store_net_access_key" then
+    arg_valid = check_arg(args, 2)
+    if not arg_valid then
+      return nil
+    end
+    fwrite(DPP_NET_ACCESS_KEY_PATH, string.upper(args[2]))
+  elseif command == "do_dpp_store_akm" then
+    arg_valid = check_arg(args, 3)
+    if not arg_valid then
+      return nil
+    end
+    local akm_val = tonumber(args[3])
+    ifname = args[2]
+    radio_name = get_radio_name(ifname)
+    if not radio_name then
+      return nil
+    end
+    local encryption = akm_to_encryption(akm_val)
+    uci:set("wireless", radio_name, "encryption", encryption)
+    local akm_str = akm_to_str(akm_val)
+    ifname = args[2]
+    filename = DPP_AKM_PATH.."_"..ifname
+    fwrite(filename, akm_str)
+  elseif command == "do_dpp_store_ssid" then
+    arg_valid = check_arg(args, 3)
+    if not arg_valid then
+      return nil
+    end
+    ifname = args[2]
+    radio_name = get_radio_name(ifname)
+    if not radio_name then
+      return nil
+    end
+    uci:set("wireless", radio_name, "ssid", args[3])
+  elseif command == "do_dpp_store_psk" then
+    arg_valid = check_arg(args, 3)
+    if not arg_valid then
+      return nil
+    end
+    ifname = args[2]
+    radio_name = get_radio_name(ifname)
+    if not radio_name then
+      return nil
+    end
+    uci:set("wireless", radio_name, "key", args[3])
+  elseif command == "do_dpp_store_success" then
+    -- commit uci
+    uci:commit("rtkmap")
+    uci:commit("wireless")
+  elseif command == "do_dpp_disconnected" then
+    -- set dpp reconfig flag
+    fwrite(DPP_RECONFIG_FLAG, "1")
+    -- write reconfig script and run
+    local reconfig_script = "sleep 30; if [ -e " .. DPP_RECONFIG_FLAG .. " ]; then for i in `seq 1 4`; do wpa_cli dpp_reconfig 0 multi_ap=1; sleep 15; done; fi"
+    fwrite(DPP_RECONFIG_SCRIPT_PATH, reconfig_script)
+    execute("/bin/sh "..DPP_RECONFIG_SCRIPT_PATH.." &")
+  elseif command == "do_dpp_connected" then
+    if fexist(DPP_RECONFIG_FLAG) then
+      -- remove dpp reconfig flag
+      execute("rm " .. DPP_RECONFIG_FLAG)
+    end
+  elseif command == "do_sta_connected" then
+    ifname = args[2]
+    filename = WPAS_CONFIG_PATH.."-"..ifname..".conf"
+    config = fread(filename)
+
+    network = {}
+    for v in string.gmatch(config, 'network={(.-)}') do
+      -- will get the last appended network config
+      network = v
+    end
+
+    entry = {}
+    for key, value in string.gmatch(network, "(%S+)=(.-)\n") do
+      entry[key] = value
+    end
+
+    ssid = entry["ssid"]
+    ssid = string.match(ssid, '"([^"]+)') -- remove quotation-marks
+    key_mgmt = entry["key_mgmt"]
+    encryption = key_mgmt_to_encryption(key_mgmt)
+    if (encryption == "psk2" or encryption == "sae-mixed") then
+      psk = entry["psk"]
+      if not psk then
+        return nil
+      end
+      psk = string.match(psk, '"([^"]+)') -- remove quotation-marks
+    end
+    -- ieee80211w = entry["ieee80211w"]
+
+    radio_name = get_radio_name(ifname)
+    if not radio_name then
+      return nil
+    end
+    uci:set("wireless", radio_name, "ssid", ssid)
+    uci:set("wireless", radio_name, "encryption", encryption)
+    uci:set("wireless", radio_name, "ssid", ssid)
+    if (encryption == "psk2" or encryption == "sae-mixed") then
+      uci:set("wireless", radio_name, "key", psk)
+    end
+    uci:commit("wireless")
+  elseif command == "do_send_map_unix_socket_message" then
+    send_buffer = ""
+    for i,v in ipairs(args) do
+      -- command not included in message
+      if i ~= 1 then
+        send_buffer = send_buffer..v.." "
+      end
+    end
+    send_buffer = send_buffer:sub(1, -2)
+
+    -- send stdin through unix socket
+    c = assert(socket.unix())
+    assert(c:connect(HOSTAPD_MAP_ACTION_PATH))
+    assert(c:send(send_buffer))
+  else
+    -- unknown command
+    print("Unknown map hapd/wpas command!")
+    return nil
+  end
+
+end
+
+local args = {...}
+
+main(args)

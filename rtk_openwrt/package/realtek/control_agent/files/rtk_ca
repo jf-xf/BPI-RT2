@@ -1,0 +1,13 @@
+#!/bin/sh /etc/rc.common
+START=98
+
+USE_PROCD=1
+
+MAP_CA="/etc/ca/map_ca.lua"
+
+start_service() {
+  procd_open_instance control_agent
+  procd_set_param command lua "$MAP_CA"
+  procd_set_param respawn ${respawn_threshold:-3600} ${respawn_timeout:-5} ${respawn_retry:-5}
+  procd_close_instance
+}

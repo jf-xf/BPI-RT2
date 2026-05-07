@@ -1,0 +1,62 @@
+{
+	"admin/network/easymesh": {
+		"title": "EasyMesh",
+		"order": 16,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		},
+		"depends": {
+			"uci": { "rtkmap": { "@rtk_map": true } },
+			"fs": { "/www/luci-static/resources/view/rtk/easymesh": "directory", "/usr/share/luci/menu.d/luci-mod-network.json": "file" }
+		}
+	},
+
+	"admin/network/easymesh/interface": {
+		"title": "Interface Setup",
+		"order": 20,
+		"action": {
+			"type": "view",
+			"path": "rtk/easymesh/interface"
+		},
+		"depends": {
+			"acl": [ "luci-mod-rtk-network-config-easymesh" ]
+		}
+	},
+
+	"admin/network/easymesh/topology": {
+		"title": "Topology",
+		"order": 30,
+		"action": {
+			"type": "view",
+			"path": "rtk/easymesh/topology"
+		},
+		"depends": {
+			"acl": [ "luci-mod-rtk-network-config-easymesh" ]
+		}
+	},
+
+	"admin/network/easymesh/channel": {
+		"title": "Channel Scan",
+		"order": 40,
+		"action": {
+			"type": "view",
+			"path": "rtk/easymesh/channel"
+		},
+		"depends": {
+			"acl": [ "luci-mod-rtk-network-config-easymesh" ]
+		}
+	},
+
+	"admin/network/easymesh/vlan": {
+		"title": "Vlan",
+		"order": 50,
+		"action": {
+			"type": "view",
+			"path": "rtk/easymesh/vlan"
+		},
+		"depends": {
+			"acl": [ "luci-mod-rtk-network-config-easymesh" ]
+		}
+	}
+}

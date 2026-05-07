@@ -1,0 +1,21 @@
+--- a/drivers/net/ppp/ppp_generic.c
++++ b/drivers/net/ppp/ppp_generic.c
+@@ -1529,6 +1529,18 @@ static void ppp_setup(struct net_device
+ 
+ 	dev->features |= NETIF_F_LLTX;
+ 
++	dev->features |= NETIF_F_CSUM_MASK | NETIF_F_SG |
++						NETIF_F_HW_CSUM | NETIF_F_RXCSUM |
++						NETIF_F_FRAGLIST | NETIF_F_ALL_TSO |
++						NETIF_F_HIGHDMA | NETIF_F_SCTP_CRC |
++						NETIF_F_ALL_FCOE | NETIF_F_TSO | NETIF_F_TSO6;
++
++	dev->hw_features |= NETIF_F_CSUM_MASK | NETIF_F_SG |
++						NETIF_F_HW_CSUM | NETIF_F_RXCSUM |
++						NETIF_F_FRAGLIST | NETIF_F_ALL_TSO |
++						NETIF_F_HIGHDMA | NETIF_F_SCTP_CRC |
++						NETIF_F_ALL_FCOE | NETIF_F_TSO | NETIF_F_TSO6;
++
+ 	dev->hard_header_len = PPP_HDRLEN;
+ 	dev->mtu = PPP_MRU;
+ 	dev->addr_len = 0;

@@ -1,0 +1,12 @@
+
+#
+#check package if updated
+#
+ifneq ("$(wildcard kernel/uClinux)","")
+PACKAGE_MAGIC := $(shell ls|grep sdkPackage_|cut -d. -f1)
+ifeq ("$(wildcard kernel/uClinux/$(PACKAGE_MAGIC))","")
+  ifneq ("$(MAKECMDGOALS)","package")
+    $(error Package files were updated. Please "make package" again ***)
+  endif
+endif
+endif

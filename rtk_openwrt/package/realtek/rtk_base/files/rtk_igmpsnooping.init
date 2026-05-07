@@ -1,0 +1,30 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+USE_PROCD=1
+
+start_service() {
+	local igmpsnoop_enable mldsnoop_enable
+
+	config_load "igmpsnooping"
+	config_get_bool igmpsnoop_enable 'snooping' igmpsnoopingenabled 1
+	config_get_bool mldsnoop_enable 'snooping' mldsnoopingenabled 1
+
+	if [[ "$igmpsnoop_enable" -eq 1 ]] ; then
+			igmpsnoop_enable="true"
+	else
+			igmpsnoop_enable="false"
+	fi
+
+	if [[ "$mldsnoop_enable" -eq 1 ]] ; then
+			mldsnoop_enable="true"
+	else
+			mldsnoop_enable="false"
+	fi
+
+	ubus call rtk-rpc set_igmpsnoop "$(printf '{ "is_igmpsnoop_enabled": %s, "is_mldsnoop_enabled": %s }' $igmpsnoop_enable $mldsnoop_enable)"
+}
+
+service_triggers() {
+	procd_add_reload_trigger "igmpsnooping"
+}

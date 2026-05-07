@@ -1,0 +1,12 @@
+Index: netifd-2022-06-01-39ef9fe1/scripts/netifd-wireless.sh
+===================================================================
+--- netifd-2022-06-01-39ef9fe1.orig/scripts/netifd-wireless.sh
++++ netifd-2022-06-01-39ef9fe1/scripts/netifd-wireless.sh
+@@ -317,6 +317,7 @@ for_each_interface() {
+ 			json_get_var network_bridge bridge
+ 			json_get_var network_ifname bridge-ifname
+ 			json_get_var multicast_to_unicast multicast_to_unicast
++			rtk_brsnoop_isolation_set_default
+ 			json_select config
+ 			_wireless_set_brsnoop_isolation "$multicast_to_unicast"
+ 			json_get_var _w_type mode

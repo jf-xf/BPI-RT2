@@ -1,0 +1,96 @@
+From 60d1b16726895d2225fef8e656849c0902ad7ac4 Mon Sep 17 00:00:00 2001
+From: "ryan.kuo" <ryan.kuo@realtek.com>
+Date: Fri, 10 Feb 2023 15:10:23 +0800
+Subject: [PATCH] [hostapd-2.10] Add functions to write PMK PTK from
+ wpa_state_machine to a file.
+
+To provide the 802.11 PTK and PMK for the UCC to decrypt packets in EasyMesh logo DPP testcases
+---
+ src/ap/wpa_auth.c | 54 +++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 54 insertions(+)
+ mode change 100644 => 100755 src/ap/wpa_auth.c
+
+diff --git a/src/ap/wpa_auth.c b/src/ap/wpa_auth.c
+old mode 100644
+new mode 100755
+index 15bf9bf..eb62a0a
+--- a/src/ap/wpa_auth.c
++++ b/src/ap/wpa_auth.c
+@@ -65,6 +65,9 @@ static void wpa_group_get(struct wpa_authenticator *wpa_auth,
+ 			  struct wpa_group *group);
+ static void wpa_group_put(struct wpa_authenticator *wpa_auth,
+ 			  struct wpa_group *group);
++#ifdef CONFIG_USER_RTK_MULTI_AP_WFA
++static int wpa_auth_get_ptk(struct wpa_state_machine *sm, int *len, u8 **ptk);
++#endif
+ static int ieee80211w_kde_len(struct wpa_state_machine *sm);
+ static u8 * ieee80211w_kde_add(struct wpa_state_machine *sm, u8 *pos);
+ 
+@@ -3697,6 +3700,43 @@ SM_STATE(WPA_PTK, PTKINITDONE)
+ 	wpa_msg(sm->wpa_auth->conf.msg_ctx, MSG_INFO, "EAPOL-4WAY-HS-COMPLETED "
+ 		MACSTR, MAC2STR(sm->addr));
+ 
++#ifdef CONFIG_USER_RTK_MULTI_AP_WFA
++	// Construct PTK and PMK, write to text files in tmp folder
++	const u8 *ptk;
++	int ptk_len;
++	const u8 *pmk;
++	int pmk_len;
++	int buflen = 256;
++	char buf[buflen];
++	FILE *fp;
++	char c;
++
++	pmk = wpa_auth_get_pmk(sm, &pmk_len);
++	wpa_snprintf_hex(buf, buflen, pmk, pmk_len);
++
++	fp = fopen("/tmp/pmk","a+");
++	c=fgetc(fp);
++	if (c != EOF)
++		fprintf(fp, "%s", "\n");
++	fprintf(fp, MACSTR, MAC2STR(sm->addr));
++	fprintf(fp, "%s", "_");
++	fprintf(fp, "%s", buf);
++	fclose(fp);
++
++	wpa_auth_get_ptk(sm, &ptk_len, &ptk);
++	wpa_snprintf_hex(buf, buflen, ptk, ptk_len);
++
++	fp = fopen("/tmp/ptk","a+");
++	c=fgetc(fp);
++	if (c != EOF)
++		fprintf(fp, "%s", "\n");
++	fprintf(fp, MACSTR, MAC2STR(sm->addr));
++	fprintf(fp, "%s", "_");
++	fprintf(fp, "%s", buf);
++	fclose(fp);
++	free(ptk);
++#endif
++
+ #ifdef CONFIG_IEEE80211R_AP
+ 	wpa_ft_push_pmk_r1(sm->wpa_auth, sm->addr);
+ #endif /* CONFIG_IEEE80211R_AP */
+@@ -4699,6 +4739,20 @@ const u8 * wpa_auth_get_pmk(struct wpa_state_machine *sm, int *len)
+ 	return sm->PMK;
+ }
+ 
++#ifdef CONFIG_USER_RTK_MULTI_AP_WFA
++int wpa_auth_get_ptk(struct wpa_state_machine *sm, int *len, u8 **ptk)
++{
++	if (!sm)
++		return -1;
++	*len = sm->PTK.kck_len + sm->PTK.kek_len + sm->PTK.tk_len;
++	u8 *temp_ptk = malloc(sm->PTK.kck_len + sm->PTK.kek_len + sm->PTK.tk_len);
++	os_memcpy(temp_ptk, &sm->PTK.kck, sm->PTK.kck_len);
++	os_memcpy(temp_ptk + sm->PTK.kck_len, &sm->PTK.kek, sm->PTK.kek_len);
++	os_memcpy(temp_ptk + sm->PTK.kck_len + sm->PTK.kek_len, &sm->PTK.tk, sm->PTK.tk_len);
++	*ptk = temp_ptk;
++	return 0;
++}
++#endif
+ 
+ int wpa_auth_sta_key_mgmt(struct wpa_state_machine *sm)
+ {
+-- 
+2.17.1
+

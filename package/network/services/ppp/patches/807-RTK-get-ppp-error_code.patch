@@ -1,0 +1,583 @@
+Index: ppp-2.4.9.git-2021-01-04/pppd/auth.c
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/auth.c
++++ ppp-2.4.9.git-2021-01-04/pppd/auth.c
+@@ -599,6 +599,7 @@ link_required(int unit)
+ void start_link(int unit)
+ {
+     status = EXIT_CONNECT_FAILED;
++    write_last_error(status, NULL);
+     new_phase(PHASE_SERIALCONN);
+ 
+     hungup = 0;
+@@ -617,6 +618,7 @@ void start_link(int unit)
+     fd_ppp = the_channel->establish_ppp(devfd);
+     if (fd_ppp < 0) {
+ 	status = EXIT_FATAL_ERROR;
++	write_last_error(status, NULL);
+ 	goto disconnect;
+     }
+ 
+@@ -634,6 +636,7 @@ void start_link(int unit)
+     add_fd(fd_ppp);
+ 
+     status = EXIT_NEGOTIATION_FAILED;
++    write_last_error(status, NULL);
+     new_phase(PHASE_ESTABLISH);
+ 
+     lcp_lowerup(0);
+@@ -804,6 +807,7 @@ link_established(int unit)
+ 	} else if (!wo->neg_upap || uselogin || !null_login(unit)) {
+ 	    warn("peer refused to authenticate: terminating link");
+ 	    status = EXIT_PEER_AUTH_FAILED;
++	    write_last_error(status, NULL);
+ 	    lcp_close(unit, "peer refused to authenticate");
+ 	    return;
+ 	}
+@@ -979,6 +983,7 @@ auth_peer_fail(int unit, int protocol)
+      * Authentication failure: take the link down
+      */
+     status = EXIT_PEER_AUTH_FAILED;
++    write_last_error(status, NULL);
+     lcp_close(unit, "Authentication failed");
+ }
+ 
+@@ -1043,7 +1048,7 @@ auth_peer_success(int unit, int protocol
+  * We have failed to authenticate ourselves to the peer using `protocol'.
+  */
+ void
+-auth_withpeer_fail(int unit, int protocol)
++auth_withpeer_fail(int unit, int protocol, char *msg)
+ {
+     if (passwd_from_file)
+ 	BZERO(passwd, MAXSECRETLEN);
+@@ -1054,6 +1059,7 @@ auth_withpeer_fail(int unit, int protoco
+      * authentication secrets.
+      */
+     status = EXIT_AUTH_TOPEER_FAILED;
++    write_last_error(status, msg);
+     lcp_close(unit, "Failed to authenticate ourselves to peer");
+ }
+ 
+@@ -1125,7 +1131,13 @@ np_up(int unit, int proto)
+ 	/*
+ 	 * At this point we consider that the link has come up successfully.
+ 	 */
+-	status = EXIT_OK;
++	if(status==EXIT_ISP_DISCONNECT_IPv4 || status ==EXIT_ISP_DISCONNECT_IPv6){
++	    //RTK: we want to know which ip protocol has error
++	    write_last_error(status, NULL);
++	} else {
++		status = EXIT_OK;
++		write_last_error(status, NULL);
++	}
+ 	unsuccess = 0;
+ 	new_phase(PHASE_RUNNING);
+ 
+@@ -1219,6 +1231,7 @@ check_maxoctets(void *arg)
+     if (used > maxoctets) {
+ 	notice("Traffic limit reached. Limit: %u Used: %u", maxoctets, used);
+ 	status = EXIT_TRAFFIC_LIMIT;
++	write_last_error(status, NULL);
+ 	lcp_close(0, "Traffic limit");
+ 	need_holdoff = 0;
+     } else {
+@@ -1250,6 +1263,7 @@ check_idle(void *arg)
+ 	/* link is idle: shut it down. */
+ 	notice("Terminating connection due to lack of activity.");
+ 	status = EXIT_IDLE_TIMEOUT;
++	write_last_error(status, NULL);
+ 	lcp_close(0, "Link inactive");
+ 	need_holdoff = 0;
+     } else {
+@@ -1265,6 +1279,7 @@ connect_time_expired(void *arg)
+ {
+     info("Connect time expired");
+     status = EXIT_CONNECT_TIME;
++    write_last_error(status, NULL);
+     lcp_close(0, "Connect time expired");	/* Close connection */
+ }
+ 
+@@ -1367,6 +1382,7 @@ auth_check_options(void)
+      */
+     if (!auth_number()) {
+ 	warn("calling number %q is not authorized", remote_number);
++	write_last_error(status, NULL);
+ 	exit(EXIT_CNID_AUTH_FAILED);
+     }
+ }
+Index: ppp-2.4.9.git-2021-01-04/pppd/cbcp.c
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/cbcp.c
++++ ppp-2.4.9.git-2021-01-04/pppd/cbcp.c
+@@ -459,5 +459,6 @@ cbcp_up(cbcp_state *us)
+ {
+     persist = 0;
+     status = EXIT_CALLBACK;
++    write_last_error(status, NULL);
+     lcp_close(0, "Call me back, please");
+ }
+Index: ppp-2.4.9.git-2021-01-04/pppd/chap-new.c
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/chap-new.c
++++ ppp-2.4.9.git-2021-01-04/pppd/chap-new.c
+@@ -302,7 +302,7 @@ chap_client_timeout(void *arg)
+ 	cs->flags &= ~TIMEOUT_PENDING;
+ 	cs->flags |= AUTH_DONE | AUTH_FAILED;
+ 	error("CHAP authentication timed out");
+-	auth_withpeer_fail(0, PPP_CHAP);
++	auth_withpeer_fail(0, PPP_CHAP, NULL);
+ }
+ 
+ /*
+@@ -531,6 +531,7 @@ chap_handle_status(struct chap_client_st
+ 		   unsigned char *pkt, int len)
+ {
+ 	const char *msg = NULL;
++	char message[128]={0};
+ 
+ 	if ((cs->flags & (AUTH_DONE|AUTH_STARTED|LOWERUP))
+ 	    != (AUTH_STARTED|LOWERUP))
+@@ -555,7 +556,11 @@ chap_handle_status(struct chap_client_st
+ 	}
+ 	if (msg) {
+ 		if (len > 0)
++		{
+ 			info("%s: %.*v", msg, len, pkt);
++			snprintf(message, sizeof(message), "%s", pkt);
++			message[len]=0;
++		}
+ 		else
+ 			info("%s", msg);
+ 	}
+@@ -564,7 +569,7 @@ chap_handle_status(struct chap_client_st
+ 	else {
+ 		cs->flags |= AUTH_FAILED;
+ 		error("CHAP authentication failed");
+-		auth_withpeer_fail(0, PPP_CHAP);
++		auth_withpeer_fail(0, PPP_CHAP, message);
+ 	}
+ }
+ 
+@@ -616,7 +621,7 @@ chap_protrej(int unit)
+ 	if ((cs->flags & (AUTH_STARTED|AUTH_DONE)) == AUTH_STARTED) {
+ 		cs->flags &= ~AUTH_STARTED;
+ 		error("CHAP authentication failed due to protocol-reject");
+-		auth_withpeer_fail(0, PPP_CHAP);
++		auth_withpeer_fail(0, PPP_CHAP, NULL);
+ 	}
+ }
+ 
+Index: ppp-2.4.9.git-2021-01-04/pppd/eap.c
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/eap.c
++++ ppp-2.4.9.git-2021-01-04/pppd/eap.c
+@@ -240,7 +240,7 @@ eap_client_timeout(void *arg)
+ 		return;
+ 
+ 	error("EAP: timeout waiting for Request from peer");
+-	auth_withpeer_fail(esp->es_unit, PPP_EAP);
++	auth_withpeer_fail(esp->es_unit, PPP_EAP, NULL);
+ 	esp->es_client.ea_state = eapBadAuth;
+ }
+ 
+@@ -1353,7 +1353,7 @@ eap_protrej(int unit)
+ 
+ 	if (eap_client_active(esp)) {
+ 		error("EAP authentication failed due to Protocol-Reject");
+-		auth_withpeer_fail(unit, PPP_EAP);
++		auth_withpeer_fail(unit, PPP_EAP, NULL);
+ 	}
+ 	if (eap_server_active(esp)) {
+ 		error("EAP authentication of peer failed on Protocol-Reject");
+@@ -1755,7 +1755,7 @@ eap_request(eap_state *esp, u_char *inp,
+ 		if (esp->es_client.ea_timeout > 0) {
+ 			UNTIMEOUT(eap_client_timeout, (void *)esp);
+ 		}
+-		auth_withpeer_fail(esp->es_unit, PPP_EAP);
++		auth_withpeer_fail(esp->es_unit, PPP_EAP, NULL);
+ 		return;
+ 	}
+ 
+@@ -2319,7 +2319,7 @@ client_failure:
+ 	esp->es_client.ea_session = NULL;
+ #ifdef USE_SRP
+ 	t_clientclose(tc);
+-	auth_withpeer_fail(esp->es_unit, PPP_EAP);
++	auth_withpeer_fail(esp->es_unit, PPP_EAP, NULL);
+ #endif /* USE_SRP */
+ }
+ 
+@@ -2872,7 +2872,7 @@ eap_failure(eap_state *esp, u_char *inp,
+ 	esp->es_client.ea_state = eapBadAuth;
+ 
+ 	error("EAP: peer reports authentication failure");
+-	auth_withpeer_fail(esp->es_unit, PPP_EAP);
++	auth_withpeer_fail(esp->es_unit, PPP_EAP, NULL);
+ }
+ 
+ /*
+Index: ppp-2.4.9.git-2021-01-04/pppd/ipcp.c
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/ipcp.c
++++ ppp-2.4.9.git-2021-01-04/pppd/ipcp.c
+@@ -663,6 +663,8 @@ ipcp_input(int unit, u_char *p, int len)
+ static void
+ ipcp_protrej(int unit)
+ {
++    status = EXIT_ISP_DISCONNECT_IPv4;
++    write_last_error(status, NULL);
+     fsm_lowerdown(&ipcp_fsm[unit]);
+ }
+ 
+Index: ppp-2.4.9.git-2021-01-04/pppd/ipv6cp.c
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/ipv6cp.c
++++ ppp-2.4.9.git-2021-01-04/pppd/ipv6cp.c
+@@ -511,6 +511,8 @@ ipv6cp_input(int unit, u_char *p, int le
+ static void
+ ipv6cp_protrej(int unit)
+ {
++    status = EXIT_ISP_DISCONNECT_IPv6;
++    write_last_error(status, NULL);
+     fsm_lowerdown(&ipv6cp_fsm[unit]);
+ }
+ 
+Index: ppp-2.4.9.git-2021-01-04/pppd/lcp.c
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/lcp.c
++++ ppp-2.4.9.git-2021-01-04/pppd/lcp.c
+@@ -1272,6 +1272,7 @@ lcp_nakci(fsm *f, u_char *p, int len, in
+ 	    if (++try.numloops >= lcp_loopbackfail) {
+ 		notice("Serial line is looped back.");
+ 		status = EXIT_LOOPBACK;
++		write_last_error(status, NULL);
+ 		lcp_close(f->unit, "Loopback detected");
+ 	    }
+ 	} else
+@@ -2182,6 +2183,7 @@ void LcpLinkFailure (fsm *f)
+ 	info("No response to %d echo-requests", lcp_echos_pending);
+         notice("Serial link appears to be disconnected.");
+ 	status = EXIT_PEER_DEAD;
++	write_last_error(status, NULL);
+ 	lcp_close(f->unit, "Peer not responding");
+     }
+ }
+Index: ppp-2.4.9.git-2021-01-04/pppd/main.c
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/main.c
++++ ppp-2.4.9.git-2021-01-04/pppd/main.c
+@@ -349,8 +349,10 @@ main(int argc, char *argv[])
+      */
+     if (!options_from_file(_PATH_SYSOPTIONS, !privileged, 0, 1)
+ 	|| !options_from_user()
+-	|| !parse_args(argc-1, argv+1))
++	|| !parse_args(argc-1, argv+1)) {
++	write_last_error(EXIT_OPTION_ERROR, NULL);
+ 	exit(EXIT_OPTION_ERROR);
++    }
+     devnam_fixed = 1;		/* can no longer change device name */
+ 
+     /*
+@@ -369,11 +371,13 @@ main(int argc, char *argv[])
+     if (geteuid() != 0) {
+ 	option_error("must be root to run %s, since it is not setuid-root",
+ 		     argv[0]);
++	write_last_error(EXIT_NOT_ROOT, NULL);
+ 	exit(EXIT_NOT_ROOT);
+     }
+ 
+     if (!ppp_available()) {
+ 	option_error("%s", no_ppp_msg);
++	write_last_error(EXIT_NO_KERNEL_SUPPORT, NULL);
+ 	exit(EXIT_NO_KERNEL_SUPPORT);
+     }
+ 
+@@ -381,8 +385,10 @@ main(int argc, char *argv[])
+      * Check that the options given are valid and consistent.
+      */
+     check_options();
+-    if (!sys_check_options())
++    if (!sys_check_options()) {
++	write_last_error(EXIT_OPTION_ERROR, NULL);
+ 	exit(EXIT_OPTION_ERROR);
++    }
+     auth_check_options();
+ #ifdef HAVE_MULTILINK
+     mp_check_options();
+@@ -403,8 +409,10 @@ main(int argc, char *argv[])
+ #ifdef CONFIG_RTK_PPP_IF_NS
+     if(netns[0])
+     {
+-	if(init_net_ns(netns) < 0 )
++	if(init_net_ns(netns) < 0 ) {
++	    write_last_error(EXIT_OPTION_ERROR, NULL);
+ 	    exit(EXIT_OPTION_ERROR);
++	}
+ 	script_setenv("NETNS", netns, 1);
+     }
+ #endif
+@@ -489,12 +497,14 @@ main(int argc, char *argv[])
+     do_callback = 0;
+     for (;;) {
+ 
++	reserved_last_error_file();
+ 	bundle_eof = 0;
+ 	bundle_terminating = 0;
+ 	listen_time = 0;
+ 	need_holdoff = 1;
+ 	devfd = -1;
+ 	status = EXIT_OK;
++	write_last_error(status, NULL);
+ 	++unsuccess;
+ 	doing_callback = do_callback;
+ 	do_callback = 0;
+@@ -621,8 +631,10 @@ handle_events(void)
+ 	info("Hangup (SIGHUP)");
+ 	kill_link = 1;
+ 	got_sighup = 0;
+-	if (status != EXIT_HANGUP)
++	if (status != EXIT_HANGUP) {
+ 	    status = EXIT_USER_REQUEST;
++	    write_last_error(status, NULL);
++	}
+     }
+     if (got_sigterm) {
+ 	info("Terminating on signal %d", got_sigterm);
+@@ -630,6 +642,7 @@ handle_events(void)
+ 	asked_to_quit = 1;
+ 	persist = 0;
+ 	status = EXIT_USER_REQUEST;
++	write_last_error(status, NULL);
+ 	got_sigterm = 0;
+     }
+     if (got_sigchld) {
+Index: ppp-2.4.9.git-2021-01-04/pppd/plugins/pppoe/plugin.c
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/plugins/pppoe/plugin.c
++++ ppp-2.4.9.git-2021-01-04/pppd/plugins/pppoe/plugin.c
+@@ -146,6 +146,7 @@ PPPOEConnectDevice(void)
+     struct sockaddr_pppox sp;
+     struct ifreq ifr;
+     int s;
++    char strSession[10]={0};
+ 
+     /* Open session socket before discovery phase, to avoid losing session */
+     /* packets sent by peer just after PADS packet (noted on some Cisco    */
+@@ -250,6 +251,9 @@ PPPOEConnectDevice(void)
+ 
+     script_setenv("MACREMOTE", remote_number, 0);
+ 
++    snprintf(strSession, sizeof(strSession), "%u", ppp_session_number);
++    script_setenv("SESSION", strSession, 0);
++
+     if (connect(conn->sessionSocket, (struct sockaddr *) &sp,
+ 		sizeof(struct sockaddr_pppox)) < 0) {
+ 	error("Failed to connect PPPoE socket: %d %m", errno);
+@@ -316,8 +320,10 @@ PPPOEDeviceOptions(void)
+ 
+     strlcpy(buf, _PATH_ETHOPT, MAXPATHLEN);
+     strlcat(buf, devnam, MAXPATHLEN);
+-    if (!options_from_file(buf, 0, 0, 1))
++    if (!options_from_file(buf, 0, 0, 1)) {
++	write_last_error(EXIT_OPTION_ERROR, NULL);
+ 	exit(EXIT_OPTION_ERROR);
++    }
+ 
+ }
+ 
+@@ -419,6 +425,7 @@ void pppoe_check_options(void)
+ 		   &mac[0], &mac[1], &mac[2], &mac[3],
+ 		   &mac[4], &mac[5]) != 6) {
+ 	    option_error("cannot parse pppoe-mac option value");
++	    write_last_error(EXIT_OPTION_ERROR, NULL);
+ 	    exit(EXIT_OPTION_ERROR);
+ 	}
+ 	for (i = 0; i < 6; ++i)
+Index: ppp-2.4.9.git-2021-01-04/pppd/pppd.h
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/pppd.h
++++ ppp-2.4.9.git-2021-01-04/pppd/pppd.h
+@@ -588,7 +588,7 @@ void auth_peer_fail(int, int);
+ 				/* peer failed to authenticate itself */
+ void auth_peer_success(int, int, int, char *, int);
+ 				/* peer successfully authenticated itself */
+-void auth_withpeer_fail(int, int);
++void auth_withpeer_fail(int, int, char *);
+ 				/* we failed to authenticate ourselves */
+ void auth_withpeer_success(int, int, int);
+ 				/* we successfully authenticated ourselves */
+@@ -754,6 +754,13 @@ void print_options(printer_func, void *)
+ 
+ int parse_dotted_ip(char *, u_int32_t *);
+ 
++/*************    RTK       *******************/
++extern const char PPPD_ERROR_LOG[];
++void write_last_error __P((int, char *));
++void reserved_last_error_file __P((void));
++/*************    RTK  End*******************/
++
++
+ /*
+  * Hooks to enable plugins to change various things.
+  */
+@@ -872,6 +879,8 @@ extern void (*snoop_send_hook)(unsigned
+ #define EXIT_TRAFFIC_LIMIT	20
+ #endif
+ #define EXIT_CNID_AUTH_FAILED	21
++#define EXIT_ISP_DISCONNECT_IPv4 22
++#define EXIT_ISP_DISCONNECT_IPv6 23
+ 
+ /*
+  * Debug macros.  Slightly useful for finding bugs in pppd, not particularly
+Index: ppp-2.4.9.git-2021-01-04/pppd/sys-linux.c
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/sys-linux.c
++++ ppp-2.4.9.git-2021-01-04/pppd/sys-linux.c
+@@ -3727,3 +3727,34 @@ int net_bind_ns(void)
+     return 0;
+ }
+ #endif
++
++
++/*************    RTK       *******************/
++const char PPPD_ERROR_LOG[] = "/tmp/ppp_error_log";
++void write_last_error(int errorcode, char* msg)
++{
++    char cmd[512] = {0};
++    char message[128] = {0};
++
++    if(msg != NULL) {
++	snprintf(message, sizeof(message), "%s", msg);
++    }
++    else {
++	snprintf(message, sizeof(message), "NULL");
++    }
++#ifdef CONFIG_USER_RTK_SYSTEMD
++    snprintf(cmd, sizeof(cmd), "sysconf send_unix_sock_message /var/run/systemd.usock do_update_ppp_error_code %d %d \\\"%s\\\"", req_unit, errorcode, message);
++    system(cmd);
++#endif
++}
++
++void reserved_last_error_file(void)
++{
++    char cmd[512]={0};
++#ifdef CONFIG_USER_RTK_SYSTEMD
++    snprintf(cmd, sizeof(cmd), "sysconf send_unix_sock_message /var/run/systemd.usock do_reserved_ppp_last_error_file %d ", req_unit);
++    system(cmd);
++#endif
++}
++/*************    RTK  End*******************/
++
+Index: ppp-2.4.9.git-2021-01-04/pppd/tty.c
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/tty.c
++++ ppp-2.4.9.git-2021-01-04/pppd/tty.c
+@@ -410,6 +410,7 @@ void tty_process_extra_options(void)
+ 		char *p;
+ 		if (!isatty(0) || (p = ttyname(0)) == NULL) {
+ 			option_error("no device specified and stdin is not a tty");
++			write_last_error(EXIT_OPTION_ERROR, NULL);
+ 			exit(EXIT_OPTION_ERROR);
+ 		}
+ 		strlcpy(devnam, p, sizeof(devnam));
+@@ -425,8 +426,10 @@ void tty_process_extra_options(void)
+ 	 * options_for_tty doesn't override options set on the command line,
+ 	 * except for some privileged options.
+ 	 */
+-	if (!options_for_tty())
++	if (!options_for_tty()) {
++		write_last_error(EXIT_OPTION_ERROR, NULL);
+ 		exit(EXIT_OPTION_ERROR);
++	}
+ }
+ 
+ /*
+@@ -440,11 +443,13 @@ tty_check_options(void)
+ 
+ 	if (demand && notty) {
+ 		option_error("demand-dialling is incompatible with notty");
++		write_last_error(EXIT_OPTION_ERROR, NULL);
+ 		exit(EXIT_OPTION_ERROR);
+ 	}
+ 	if (demand && connect_script == 0 && ptycommand == NULL
+ 	    && pty_socket == NULL) {
+ 		option_error("connect script is required for demand-dialling\n");
++		write_last_error(EXIT_OPTION_ERROR, NULL);
+ 		exit(EXIT_OPTION_ERROR);
+ 	}
+ 	/* default holdoff to 0 if no connect script has been given */
+@@ -455,14 +460,17 @@ tty_check_options(void)
+ 		if (!default_device) {
+ 			option_error("%s option precludes specifying device name",
+ 				     pty_socket? "socket": notty? "notty": "pty");
++			write_last_error(EXIT_OPTION_ERROR, NULL);
+ 			exit(EXIT_OPTION_ERROR);
+ 		}
+ 		if (ptycommand != NULL && notty) {
+ 			option_error("pty option is incompatible with notty option");
++			write_last_error(EXIT_OPTION_ERROR, NULL);
+ 			exit(EXIT_OPTION_ERROR);
+ 		}
+ 		if (pty_socket != NULL && (ptycommand != NULL || notty)) {
+ 			option_error("socket option is incompatible with pty and notty");
++			write_last_error(EXIT_OPTION_ERROR, NULL);
+ 			exit(EXIT_OPTION_ERROR);
+ 		}
+ 		default_device = notty;
+@@ -750,6 +758,7 @@ int connect_tty(void)
+ 	if (real_ttyfd >= 0)
+ 		tcflush(real_ttyfd, TCIOFLUSH);
+  errret:
++	write_last_error(status, NULL);
+ 	if (pty_master >= 0) {
+ 		close(pty_master);
+ 		pty_master = -1;
+Index: ppp-2.4.9.git-2021-01-04/pppd/upap.c
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/upap.c
++++ ppp-2.4.9.git-2021-01-04/pppd/upap.c
+@@ -202,7 +202,7 @@ upap_timeout(void *arg)
+ 	/* give up in disgust */
+ 	error("No response to PAP authenticate-requests");
+ 	u->us_clientstate = UPAPCS_BADAUTH;
+-	auth_withpeer_fail(u->us_unit, PPP_PAP);
++	auth_withpeer_fail(u->us_unit, PPP_PAP, NULL);
+ 	return;
+     }
+ 
+@@ -284,7 +284,7 @@ upap_protrej(int unit)
+ 
+     if (u->us_clientstate == UPAPCS_AUTHREQ) {
+ 	error("PAP authentication failed due to protocol-reject");
+-	auth_withpeer_fail(unit, PPP_PAP);
++	auth_withpeer_fail(unit, PPP_PAP, NULL);
+     }
+     if (u->us_serverstate == UPAPSS_LISTEN) {
+ 	error("PAP authentication of peer failed (protocol-reject)");
+@@ -487,6 +487,8 @@ upap_rauthnak(upap_state *u, u_char *inp
+ {
+     u_char msglen;
+     char *msg;
++    char message[128]={0};
++
+ 
+     if (u->us_clientstate != UPAPCS_AUTHREQ) /* XXX */
+ 	return;
+@@ -506,13 +508,15 @@ upap_rauthnak(upap_state *u, u_char *inp
+ 	    }
+ 	    msg = (char *) inp;
+ 	    PRINTMSG(msg, msglen);
++	    snprintf(message, sizeof(message), "%s", msg);
++	    message[msglen]=0;
+ 	}
+     }
+ 
+     u->us_clientstate = UPAPCS_BADAUTH;
+ 
+     error("PAP authentication failed");
+-    auth_withpeer_fail(u->us_unit, PPP_PAP);
++    auth_withpeer_fail(u->us_unit, PPP_PAP, message);
+ }
+ 
+ 

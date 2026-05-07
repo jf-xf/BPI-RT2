@@ -1,0 +1,11 @@
+#!/bin/sh
+#
+
+if [ $# -lt 3 ]; then echo "Usage: $0 <path> <offset> <data>";  exit 1 ; fi
+
+if [ -d /proc/net/rtk_wifi6/wlan0 ] || [ -d /proc/net/rtl8852ae/wlan0 ]
+then 
+	iwpriv wlan0 rfw $1 $2 $3
+else
+	iwpriv wlan0 write_rf $1,$2,$3
+fi

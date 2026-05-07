@@ -1,0 +1,104 @@
+{
+	"realtek/status/status/voip_status": {
+		"title": "VoIP",
+		"order": 50,
+		"action": {
+			"type": "view",
+			"path": "rtk/voip/voip/reg_status"
+		}
+	},
+
+	"realtek/voip/voip": {
+		"title": "VoIP",
+		"order": 10,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		}
+	},
+
+	"realtek/voip/voip/port": {
+		"title": "Port Setting",
+		"order": 10,
+		"action": {
+			"type": "view",
+			"path": "rtk/voip/voip/port"
+		},
+		"depends": {
+			"uci": { "rtkvoip": true }
+		}
+	},
+
+	"realtek/voip/voip/advance": {
+		"title": "Advance",
+		"order": 20,
+		"action": {
+			"type": "view",
+			"path": "rtk/voip/voip/advance"
+		},
+		"depends": {
+			"uci": { "rtkvoip": true }
+		}
+	},
+
+	"realtek/voip/voip/tone": {
+		"title": "Tone",
+		"order": 30,
+		"action": {
+			"type": "view",
+			"path": "rtk/voip/voip/tone"
+		},
+		"depends": {
+			"uci": { "rtkvoip": true }
+		}
+	},
+
+	"realtek/voip/voip/other": {
+		"title": "Others",
+		"order": 40,
+		"action": {
+			"type": "view",
+			"path": "rtk/voip/voip/other"
+		},
+		"depends": {
+			"uci": { "rtkvoip": true }
+		}
+	},
+
+	"realtek/voip/voip/network": {
+		"title": "Network",
+		"order": 50,
+		"action": {
+			"type": "view",
+			"path": "rtk/voip/voip/network"
+		},
+		"depends": {
+			"uci": { "rtkvoip": true }
+		}
+	},
+
+	"realtek/voip/voip/history": {
+		"title": "Call History",
+		"order": 60,
+		"action": {
+			"type": "view",
+			"path": "rtk/voip/voip/history"
+		},
+		"depends": {
+			"uci": { "rtkvoip": true },
+			"acl": [ "luci-mod-rtk-voip-history" ]
+		}
+	},
+
+	"realtek/voip/voip/reg_status": {
+		"title": "Register Status",
+		"order": 70,
+		"action": {
+			"type": "view",
+			"path": "rtk/voip/voip/reg_status"
+		},
+		"depends": {
+			"uci": { "rtkvoip": true }
+		}
+	}
+}

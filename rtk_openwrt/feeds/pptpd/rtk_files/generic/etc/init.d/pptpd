@@ -1,0 +1,155 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2015 OpenWrt.org
+
+START=60
+USE_PROCD=1
+
+BIN=/usr/sbin/pptpd
+CONFIG=/var/etc/pptpd.conf
+CHAP_SECRETS=/var/run/chap-secrets	# default ppp secrets file path
+OPTIONS_PPTP=/var/etc/options.pptpd
+PID_FILE=/var/run/pptpd.pid
+FW_SCRIPT=/usr/share/pptpd/firewall.include
+PPTPD_SECRET_NAME=pptp-server
+
+validate_login_section() {
+	uci_load_validate pptpd login "$1" "$2" \
+		'username:string' \
+		'password:string' \
+		'remoteip:string'
+}
+
+validate_pptpd_section() {
+	uci_load_validate pptpd service "$1" "$2" \
+		'enabled:uinteger:0' \
+		'localip:string:192.168.0.1' \
+		'remoteip:string:192.168.0.23-30' \
+		'auth:uinteger:0' \
+		'authmode:string' \
+		'mppe:string' \
+		'logwtmp:uinteger:0'
+}
+
+remove_login() {
+        [ "$2" = 0 ] || {
+                echo "validation failed"
+                return 1
+        }
+
+        [ -n "$username" ] || return 1
+        [ -n "$password" ] || return 1
+        [ -n "$remoteip" ] || remoteip=*
+
+        # Remove PPTPD secret
+        sed -i "/$username $PPTPD_SECRET_NAME $password $remoteip/d" $CHAP_SECRETS
+}
+
+setup_login() {
+	[ "$2" = 0 ] || {
+		echo "validation failed"
+		return 1
+	}
+
+	[ -n "$username" ] || return 1
+	[ -n "$password" ] || return 1
+	[ -n "$remoteip" ] || remoteip=*
+
+	# Remove PPTPD secret
+	sed -i "/$username $PPTPD_SECRET_NAME $password $remoteip/d" $CHAP_SECRETS
+	echo "$username $PPTPD_SECRET_NAME $password $remoteip" >> $CHAP_SECRETS
+}
+
+setup_config() {
+	[ "$2" = 0 ] || {
+		echo "validation failed"
+		return 1
+	}
+
+	# remove firewall rule
+        if [ $enabled -eq 0 ]; then
+                local fw_rule
+                config_load firewall
+                config_get fw_rule pptpd enabled
+                if [ $fw_rule -ne 0 ]; then
+                        uci set firewall.pptpd.enabled=0
+                        uci commit
+                        fw3 reload
+                fi
+                return 1	#ignore start_service procedure
+        fi
+
+	mkdir -p /var/etc
+	cp /etc/pptpd.conf $CONFIG
+	cp /etc/ppp/options.pptpd $OPTIONS_PPTP
+
+	[ -n "$localip" ] && echo "localip  $localip" >> $CONFIG
+	[ -n "$remoteip" ] && echo "remoteip  $remoteip" >> $CONFIG
+	[ "$logwtmp" -eq 1 ] && echo "logwtmp" >> $CONFIG
+
+	if [ $auth -eq 1 ]; then
+		echo "auth" >> $OPTIONS_PPTP
+		[ -n "$authmode" ] && echo "$authmode" >> $OPTIONS_PPTP
+		[ -n "$mppe" ] && echo "$mppe" >> $OPTIONS_PPTP
+	fi
+	echo "ms-dns $localip" >> $OPTIONS_PPTP
+
+	return 0
+}
+
+start_service() {
+	config_load pptpd
+	validate_pptpd_section pptpd setup_config || return
+	config_foreach validate_login_section login setup_login
+
+	ln -sfn $CHAP_SECRETS /etc/ppp/chap-secrets
+
+        # start firewall
+        local fw_rule
+        config_load firewall
+        config_get fw_rule pptpd enabled
+        if [ $fw_rule -ne 1 ]; then
+                uci -q set firewall.pptpd.enabled=1
+                uci commit
+                fw3 reload
+        fi
+
+	procd_open_instance
+	procd_set_param command $BIN -c $CONFIG --fg -o $OPTIONS_PPTP -p $PID_FILE
+	procd_close_instance
+}
+
+stop_service() {
+	config_load pptpd
+	# Remove PPTPD secret
+	config_foreach validate_login_section login remove_login
+
+        local fw_rule
+        config_load firewall
+        config_get fw_rule pptpd enabled
+        if [ $fw_rule -ne 0 ]; then
+                uci set firewall.pptpd.enabled=0
+                uci commit
+                fw3 reload
+        fi
+
+	rm $PID_FILE
+}
+
+reload_service(){
+        local enabled
+        config_load pptpd
+        config_get enabled pptpd enabled
+        [ -n "$enabled" ] || enabled=0
+
+	rc_procd stop_service "$@"
+        [ $enabled -eq 1 ] && rc_procd start_service "$@"
+}
+
+service_triggers () {
+	procd_add_reload_trigger "pptpd"
+
+	procd_open_validate
+	validate_pptpd_section
+	validate_login_section
+	procd_close_validate
+}

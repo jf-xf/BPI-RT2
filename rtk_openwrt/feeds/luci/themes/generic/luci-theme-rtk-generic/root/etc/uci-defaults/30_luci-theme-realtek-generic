@@ -1,0 +1,12 @@
+#!/bin/sh
+
+if [ "$PKG_UPGRADE" != 1 ]; then
+	uci get luci.themes.RealtekGeneric >/dev/null 2>&1 || \
+	uci batch <<-EOF
+		set luci.themes.RealtekGeneric=/luci-static/realtek.generic
+		set luci.main.mediaurlbase=/luci-static/realtek.generic
+		commit luci
+	EOF
+fi
+
+exit 0

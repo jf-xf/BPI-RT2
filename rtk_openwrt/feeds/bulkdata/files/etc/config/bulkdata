@@ -1,0 +1,6 @@
+
+config bulkdata 'bulkdata'
+	option enable '0'
+	#Log levels: Error=1, Warning=2, Info=3, Debug=4
+	option log_level '3'
+

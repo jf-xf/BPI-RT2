@@ -1,0 +1,12 @@
+Index: libtrace-3.0.23/lib/format_linux.c
+===================================================================
+--- libtrace-3.0.23.orig/lib/format_linux.c
++++ libtrace-3.0.23/lib/format_linux.c
+@@ -65,6 +65,7 @@
+ #include <netpacket/packet.h>
+ #include <net/ethernet.h>
+ #include <net/if_arp.h>
++#include <linux/sockios.h>
+ 
+ #include <net/if.h>
+ #include <sys/ioctl.h>

@@ -1,0 +1,17 @@
+#!/bin/sh
+
+. /lib/functions.sh
+
+config_load ieee1905
+
+list_to_ifname() {
+	local section=$1
+
+	config_get ifname $section ifname	# get list as space separated values
+
+	uci del ieee1905.${section}.ifname	# delete entry
+	uci set ieee1905.${section}.ifname="$ifname"	# writeback entry as option
+}
+
+config_foreach list_to_ifname al-iface
+

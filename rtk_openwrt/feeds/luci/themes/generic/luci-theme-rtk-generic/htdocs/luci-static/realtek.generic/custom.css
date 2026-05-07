@@ -1,0 +1,21 @@
+:root {
+	--main-color: #fff;
+	--header-bg: #fff;
+	--header-color: #fff;
+	--border-color: #eee;
+	--font-color: #000;
+	--font-active-color: #A3238E;
+	--bar-bg: #5cb85c;
+	--menu-top-bg-color: #d1d2d4;
+	--menu-top-bg-color-hover: #eee;
+	--menu-left-bg-color: #F5F5F5;
+	--submenu-bg-color: var(--menu-top-bg-color);
+	--submenu-bg-color-hover: var(--menu-top-bg-color-hover);
+	--button-bg-color: #d1d2d4;
+	--button-border-color: #bebebe;
+
+	--menu-left-color: #5f6368;
+	--menu-left-color-hover: #202124;
+	--main-menu-color: #202124;
+	--font-body: "Microsoft Yahei", "WenQuanYi Micro Hei", "sans-serif", "Helvetica Neue", "Helvetica", "Hiragino Sans GB";
+}

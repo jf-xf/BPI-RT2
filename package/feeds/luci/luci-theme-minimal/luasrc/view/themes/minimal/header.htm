@@ -1,0 +1,53 @@
+<%# 核心导航框架 - header.htm -%>
+<%
+    local disp = require "luci.dispatcher"
+    local boardinfo = luci.util.ubus("system", "board") or {}
+    local hostname = boardinfo.hostname or "RTK-Router"
+%>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title><%=hostname%> - Admin</title>
+    <link rel="stylesheet" href="<%=resource%>/minimal/css/style.css">
+</head>
+<body>
+    <header class="main-header">
+        <div class="top-bar">
+            <div class="logo-area">
+                <img src="<%=resource%>/minimal/img/logo.png" alt="Logo">
+                <span class="divider">|</span>
+                <span class="router-name"><%=hostname%></span>
+            </div>
+            <div class="user-tools">
+                <span class="lang-switch">Language</span>
+                <span class="username">👤 Admin</span>
+                <a href="<%=disp.build_url('admin/logout')%>" class="logout-btn">退出</a>
+            </div>
+        </div>
+
+        <nav class="main-nav">
+            <a href="<%=disp.build_url('admin/status/overview')%>" class="nav-item active">
+                <i class="icon-home"></i>
+                <span>首页</span>
+            </a>
+            <a href="<%=disp.build_url('admin/network/network')%>" class="nav-item">
+                <i class="icon-ethernet"></i>
+                <span>有线网络</span>
+            </a>
+            <a href="<%=disp.build_url('admin/network/wireless')%>" class="nav-item">
+                <i class="icon-wifi"></i>
+                <span>无线网络</span>
+            </a>
+            <a href="<%=disp.build_url('admin/system/system')%>" class="nav-item">
+                <i class="icon-system"></i>
+                <span>系统</span>
+            </a>
+            <a href="<%=disp.build_url('admin/system/admin')%>" class="nav-item">
+                <i class="icon-settings"></i>
+                <span>设置</span>
+            </a>
+        </nav>
+    </header>
+
+    <main class="content-container">

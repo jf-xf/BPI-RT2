@@ -1,0 +1,57 @@
+/* 
+ * Copyright (C) 2014 Realtek Semiconductor Corp.
+ * All Rights Reserved.
+ * 
+ * This program is the proprietary software of Realtek Semiconductor
+ * Corporation and/or its licensors, and only be used, duplicated,
+ * modified or distributed under the authorized license from Realtek.
+ * 
+ * ANY USE OF THE SOFTWARE OTHER THAN AS AUTHORIZED UNDER
+ * THIS LICENSE OR COPYRIGHT LAW IS PROHIBITED.
+ * 
+ */
+
+
+#ifndef __MIB_SIPUSERDATA_TABLE_H__
+#define __MIB_SIPUSERDATA_TABLE_H__
+
+/* Table SIPUserData attribute for STRING type define each entry length */
+#define MIB_TABLE_SIPDISPLAYNAME_LEN (25)
+#define MIB_TABLE_SIPRESPONSETABLE_LEN (5)
+
+/* Table SIPUserData attribute index */
+#define MIB_TABLE_SIPUSERDATA_ATTR_NUM (14)
+#define MIB_TABLE_SIPUSERDATA_ENTITYID_INDEX ((MIB_ATTR_INDEX)1)
+#define MIB_TABLE_SIPUSERDATA_SIPAGENTPOINTER_INDEX ((MIB_ATTR_INDEX)2)
+#define MIB_TABLE_SIPUSERDATA_USERPARTAOR_INDEX ((MIB_ATTR_INDEX)3)
+#define MIB_TABLE_SIPUSERDATA_SIPDISPLAYNAME_INDEX ((MIB_ATTR_INDEX)4)
+#define MIB_TABLE_SIPUSERDATA_USERNAMEPASSWORD_INDEX ((MIB_ATTR_INDEX)5)
+#define MIB_TABLE_SIPUSERDATA_VOICEMAILSERVERSIPURI_INDEX ((MIB_ATTR_INDEX)6)
+#define MIB_TABLE_SIPUSERDATA_VOICEMAILSUBSCRIPTIONEXPIRATIONTIME_INDEX ((MIB_ATTR_INDEX)7)
+#define MIB_TABLE_SIPUSERDATA_NETWORKDIALPLANPOINTER_INDEX ((MIB_ATTR_INDEX)8)
+#define MIB_TABLE_SIPUSERDATA_APPLICATIONSERVICESPROFILEPOINTER_INDEX ((MIB_ATTR_INDEX)9)
+#define MIB_TABLE_SIPUSERDATA_FEATURECODEPOINTER_INDEX ((MIB_ATTR_INDEX)10)
+#define MIB_TABLE_SIPUSERDATA_PPTPPOINTER_INDEX ((MIB_ATTR_INDEX)11)
+#define MIB_TABLE_SIPUSERDATA_RELEASETIMER_INDEX ((MIB_ATTR_INDEX)12)
+#define MIB_TABLE_SIPUSERDATA_ROHTIMER_INDEX ((MIB_ATTR_INDEX)13)
+#define MIB_TABLE_SIPUSERDATA_SIPRESPONSETABLE_INDEX ((MIB_ATTR_INDEX)14)
+
+/* Table SIPUserData attribute len, only string attrubutes have length definition */
+typedef struct {
+	UINT16   EntityId;
+	UINT16   SIPAgentPointer;
+	UINT16   UserPartAOR;
+	CHAR     SIPDisplayName[MIB_TABLE_SIPDISPLAYNAME_LEN+1];
+	UINT16   UsernamePassword;
+	UINT16   VoicemailServerSIPURI;
+	UINT32   VoicemailSubscriptionExpirationTime;
+	UINT16   NetworkDialPlanPointer;
+	UINT16   ApplicationServicesProfilePointer;
+	UINT16   FeatureCodePointer;
+	UINT16   PPTPPointer;
+	UINT8    ReleaseTimer;
+	UINT8    ROHTimer;
+	UINT8    SIPResponseTable[MIB_TABLE_SIPRESPONSETABLE_LEN];
+} __attribute__((packed)) MIB_TABLE_SIPUSERDATA_T;
+
+#endif /* __MIB_SIPUSERDATA_TABLE_H__ */

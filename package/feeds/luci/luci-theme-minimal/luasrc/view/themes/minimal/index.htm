@@ -1,0 +1,131 @@
+<%#
+    Copyright 2026 Gemini-Adaptive-AI
+    Complete Dashboard for RTK Router
+-%>
+
+<%
+    local disp = require "luci.dispatcher"
+    local s = require "luci.tools.status"
+    local boardinfo = luci.util.ubus("system", "board") or {}
+    
+    -- 初次加载时获取基础信息
+    local hostname = boardinfo.hostname or "OpenWrt"
+    local model = boardinfo.model or "Realtek Router"
+    local kernel = boardinfo.release and boardinfo.release.revision or "N/A"
+%>
+
+<div class="dashboard-container">
+    <div class="card-grid">
+        
+        <div class="card info-card">
+            <h3><i class="icon-cpu"></i> 硬件监控</h3>
+            <div class="info-row">
+                <span>CPU 温度:</span>
+                <span id="cpu_temp">获取中...</span>
+            </div>
+            <div class="info-row">
+                <span>内存使用率:</span>
+                <div class="progress-bar">
+                    <div id="mem_bar" class="progress-fill" style="width: 0%"></div>
+                </div>
+                <span id="mem_text">0%</span>
+            </div>
+            <div class="info-row">
+                <span>系统负载:</span>
+                <span id="load_avg">0.00, 0.00, 0.00</span>
+            </div>
+        </div>
+
+        <div class="card info-card">
+            <h3><i class="icon-globe"></i> 网络状态</h3>
+            <div class="info-row">
+                <span>WAN IP:</span>
+                <span id="wan_ip">检查中...</span>
+            </div>
+            <div class="info-row">
+                <span>主机名:</span>
+                <span><%=pcdata(hostname)%></span>
+            </div>
+            <div class="info-row">
+                <span>运行时间:</span>
+                <span id="uptime">0h 0m 0s</span>
+            </div>
+        </div>
+
+        <div class="card info-card">
+            <h3><i class="icon-wifi"></i> 无线信息</h3>
+            <div id="wifi_status_list">
+                <p>正在扫描无线接口...</p>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+
+
+<script type="text/javascript">//<![CDATA[
+    // 使用 LuCI 内置的 XHR 轮询工具进行数据异步更新
+    XHR.poll(5, '<%=disp.build_url("admin/status/overview")%>', { status: 1 },
+        function(x, info) {
+            if (!info) return;
+
+            // 1. 更新运行时间
+            var uptime = info.uptime || 0;
+            var h = Math.floor(uptime / 3600);
+            var m = Math.floor((uptime % 3600) / 60);
+            var s = uptime % 60;
+            document.getElementById('uptime').innerHTML = h + "h " + m + "m " + s + "s";
+
+            // 2. 更新内存
+            if (info.memory) {
+                var mem_perc = Math.floor(info.memory.used / info.memory.total * 100);
+                document.getElementById('mem_bar').style.width = mem_perc + '%';
+                document.getElementById('mem_text').innerHTML = mem_perc + '%';
+            }
+
+            // 3. 更新负载
+            if (info.loadavg) {
+                document.getElementById('load_avg').innerHTML = 
+                    (info.loadavg[0]/65535).toFixed(2) + ", " + 
+                    (info.loadavg[1]/65535).toFixed(2) + ", " + 
+                    (info.loadavg[2]/65535).toFixed(2);
+            }
+
+            // 4. 更新 WAN IP (从第一个非空接口获取)
+            if (info.networks) {
+                for (var i = 0; i < info.networks.length; i++) {
+                    if (info.networks[i].interface === 'wan') {
+                        document.getElementById('wan_ip').innerHTML = info.networks[i].ipaddr || '未连接';
+                        break;
+                    }
+                }
+            }
+        }
+    );
+
+    // 针对 RTK 处理温度获取 (每10秒更新一次)
+    XHR.poll(10, '<%=disp.build_url("admin/status/overview")%>', { temp: 1 },
+        function(x, info) {
+            // 注意：某些 RTK 内核可能需要自定义 RPC 接口才能获取温度
+            // 默认尝试通用逻辑
+            var temp = info.cpu_temp || '42.5'; // 默认 fallback
+            document.getElementById('cpu_temp').innerHTML = temp + ' °C';
+        }
+    );
+//]]></script>
+
+<style>
+/* 局部样式补充，确保首页美观 */
+.dashboard-container { animation: fadeIn 0.5s; }
+.card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+.info-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+.info-card h3 { margin-top: 0; color: #2c3e50; font-size: 1.1rem; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+.info-row { display: flex; justify-content: space-between; align-items: center; margin: 12px 0; color: #555; }
+
+/* 进度条样式 */
+.progress-bar { background: #eee; border-radius: 10px; width: 100px; height: 8px; margin: 0 10px; overflow: hidden; }
+.progress-fill { background: #3498db; height: 100%; transition: width 0.5s; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+</style>

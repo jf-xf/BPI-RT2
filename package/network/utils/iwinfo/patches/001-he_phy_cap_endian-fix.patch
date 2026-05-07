@@ -1,0 +1,20 @@
+--- a/iwinfo_nl80211.c
++++ b/iwinfo_nl80211.c
+@@ -3037,13 +3037,13 @@
+ 		m->hw |= IWINFO_80211_AX;
+ 		m->ht |= IWINFO_HTMODE_HE20;
+ 
+-		if (m->he_phy_cap[0] & BIT(9))
++		if (((__u8 *)m->he_phy_cap)[1] & BIT(1))
+ 			m->ht |= IWINFO_HTMODE_HE40;
+-		if (m->he_phy_cap[0] & BIT(10))
++		if (((__u8 *)m->he_phy_cap)[1] & BIT(2))
+ 			m->ht |= IWINFO_HTMODE_HE40 | IWINFO_HTMODE_HE80;
+-		if (m->he_phy_cap[0] & BIT(11))
++		if (((__u8 *)m->he_phy_cap)[1] & BIT(3))
+ 			m->ht |= IWINFO_HTMODE_HE160;
+-		if (m->he_phy_cap[0] & BIT(12))
++		if (((__u8 *)m->he_phy_cap)[1] & BIT(4))
+ 			m->ht |= IWINFO_HTMODE_HE160 | IWINFO_HTMODE_HE80_80;
+ 	}
+ 

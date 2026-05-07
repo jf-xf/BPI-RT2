@@ -1,0 +1,254 @@
+Index: hostapd-2022-01-16-cff80b4f/hostapd/ctrl_iface.c
+===================================================================
+--- hostapd-2022-01-16-cff80b4f.orig/hostapd/ctrl_iface.c
++++ hostapd-2022-01-16-cff80b4f/hostapd/ctrl_iface.c
+@@ -83,6 +83,10 @@ static void hostapd_ctrl_iface_send(stru
+ 				    enum wpa_msg_type type,
+ 				    const char *buf, size_t len);
+ 
++static int hostapd_ctrl_iface_get_beacon(struct hostapd_data *hapd,
++					 const char *cmd, char *buf,
++					 size_t buflen);
++
+ static char *reload_opts = NULL;
+ 
+ static int hostapd_ctrl_iface_attach(struct hostapd_data *hapd,
+@@ -1678,6 +1682,11 @@ static int hostapd_ctrl_iface_get(struct
+ 		if (os_snprintf_error(buflen, res))
+ 			return -1;
+ 		return res;
++	} else if (os_strcmp(cmd, "beacon") == 0) {
++		res = hostapd_ctrl_iface_get_beacon(hapd, cmd, buf, buflen);
++		if (os_snprintf_error(buflen, res))
++			return -1;
++		return res;
+ 	}
+ 
+ 	return -1;
+@@ -3582,6 +3591,192 @@ static int hostapd_ctrl_iface_driver_cmd
+ }
+ #endif /* ANDROID */
+ 
++static void free_beacon(struct beacon_data *beacon)
++{
++	os_free(beacon->head);
++	beacon->head = NULL;
++	os_free(beacon->tail);
++	beacon->tail = NULL;
++	os_free(beacon->probe_resp);
++	beacon->probe_resp = NULL;
++	os_free(beacon->beacon_ies);
++	beacon->beacon_ies = NULL;
++	os_free(beacon->proberesp_ies);
++	beacon->proberesp_ies = NULL;
++	os_free(beacon->assocresp_ies);
++	beacon->assocresp_ies = NULL;
++}
++
++
++static int hostapd_build_beacon(struct hostapd_data *hapd,
++				struct beacon_data *beacon)
++{
++	struct wpabuf *beacon_extra, *proberesp_extra, *assocresp_extra;
++	struct wpa_driver_ap_params params;
++	int ret;
++
++	os_memset(beacon, 0, sizeof(*beacon));
++	ret = ieee802_11_build_ap_params(hapd, &params);
++	if (ret < 0)
++		return ret;
++
++	ret = hostapd_build_ap_extra_ies(hapd, &beacon_extra,
++					 &proberesp_extra,
++					 &assocresp_extra);
++	if (ret)
++		goto free_ap_params;
++
++	ret = -1;
++	beacon->head = os_memdup(params.head, params.head_len);
++	if (!beacon->head)
++		goto free_ap_extra_ies;
++
++	beacon->head_len = params.head_len;
++
++	beacon->tail = os_memdup(params.tail, params.tail_len);
++	if (!beacon->tail)
++		goto free_beacon;
++
++	beacon->tail_len = params.tail_len;
++
++	/* copy the extra ies */
++	if (beacon_extra) {
++		beacon->beacon_ies = os_memdup(beacon_extra->buf,
++					       wpabuf_len(beacon_extra));
++		if (!beacon->beacon_ies)
++			goto free_beacon;
++
++		beacon->beacon_ies_len = wpabuf_len(beacon_extra);
++	}
++
++	ret = 0;
++free_beacon:
++	/* if the function fails, the caller should not free beacon data */
++	if (ret)
++		free_beacon(beacon);
++
++free_ap_extra_ies:
++	hostapd_free_ap_extra_ies(hapd, beacon_extra, proberesp_extra,
++				  assocresp_extra);
++free_ap_params:
++	ieee802_11_free_ap_params(&params);
++	return ret;
++}
++
++
++static int hostapd_ctrl_iface_get_beacon(struct hostapd_data *hapd,
++					 const char *cmd, char *buf,
++					 size_t buflen)
++{
++	char *pos, *end;
++	char hexbuf[4096];
++	u8 flags;
++	u8 *ies_start;
++	int ret;
++	size_t hexbuf_len;
++	size_t ies_len;
++	struct beacon_data beacon;
++	struct ieee80211_mgmt *mgmt;
++
++	hexbuf_len = sizeof(hexbuf);
++	pos = buf;
++	end = buf + buflen;
++
++	ret = hostapd_build_beacon(hapd, &beacon);
++	if (ret)
++		return -1;
++
++	if (os_strcmp(cmd, "head") == 0) {
++		flags = 0x1;
++	} else if (os_strcmp(cmd, "ies") == 0) {
++		flags = 0x0e;
++	} else if (os_strcmp(cmd, "tail") == 0) {
++		flags = 0x4;
++	} else if (os_strcmp(cmd, "extra") == 0) {
++		flags = 0x8;
++	} else {
++		flags = 0x0ff;
++	}
++
++	if (flags & 0x1) {
++		/* beacon head, management frame, first part of ies */
++		wpa_snprintf_hex(hexbuf, hexbuf_len, beacon.head, beacon.head_len);
++		ret = os_snprintf(pos, end - pos, "%s", hexbuf);
++		if (os_snprintf_error(end - pos, ret)) {
++			hostapd_logger(hapd, NULL, HOSTAPD_MODULE_IEEE80211,
++				       HOSTAPD_LEVEL_WARNING,
++				       "Failed to process command, beacon head");
++			ret = -1;
++			goto error_return;
++		}
++		pos += ret;
++	}
++
++	if (flags & 0x2) {
++		/* beacon ies, first part */
++		mgmt = (struct ieee80211_mgmt*)beacon.head;
++		ies_start = &mgmt->u.beacon.variable[0];
++		ies_len = beacon.head_len - (ies_start - beacon.head);
++		wpa_snprintf_hex(hexbuf, hexbuf_len, ies_start, ies_len);
++		ret = os_snprintf(pos, end - pos, "%s", hexbuf);
++
++		if (os_snprintf_error(end - pos, ret)) {
++			hostapd_logger(hapd, NULL, HOSTAPD_MODULE_IEEE80211,
++				       HOSTAPD_LEVEL_WARNING,
++				       "Failed to process command, beacon ies");
++			ret = -1;
++			goto error_return;
++		}
++		pos += ret;
++	}
++
++	if (flags & 0x4) {
++		/* beacon tail, last part */
++		wpa_snprintf_hex(hexbuf, hexbuf_len, beacon.tail, beacon.tail_len);
++		ret = os_snprintf(pos, end - pos, "%s", hexbuf);
++
++		if (os_snprintf_error(end - pos, ret)) {
++			hostapd_logger(hapd, NULL, HOSTAPD_MODULE_IEEE80211,
++				       HOSTAPD_LEVEL_WARNING,
++				       "Failed to process command, beacon tail");
++			ret = -1;
++			goto error_return;
++		}
++		pos += ret;
++	}
++
++	if (flags & 0x8) {
++		/* beacon extra ie */
++		wpa_snprintf_hex(hexbuf, hexbuf_len, beacon.beacon_ies, beacon.beacon_ies_len);
++		ret = os_snprintf(pos, end - pos, "%s", hexbuf);
++
++		if (os_snprintf_error(end - pos, ret)) {
++			hostapd_logger(hapd, NULL, HOSTAPD_MODULE_IEEE80211,
++				       HOSTAPD_LEVEL_WARNING,
++				       "Failed to process command, beacon extra ie");
++			ret = -1;
++			goto error_return;
++
++		}
++		pos += ret;
++	}
++
++	ret = os_snprintf(pos, end - pos, "\n");
++	if (os_snprintf_error(end - pos, ret)) {
++		hostapd_logger(hapd, NULL, HOSTAPD_MODULE_IEEE80211,
++			       HOSTAPD_LEVEL_WARNING,
++			       "Failed to process command, adding \\n");
++		ret = -1;
++		goto error_return;
++	}
++	pos += ret;
++
++	ret = pos - buf;
++error_return:
++	free_beacon(&beacon);
++
++	return ret;
++}
+ 
+ static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
+ 					      char *buf, char *reply,
+@@ -4103,6 +4298,9 @@ static int hostapd_ctrl_iface_receive_pr
+ 		reply_len = hostapd_ctrl_iface_driver_cmd(hapd, buf + 7, reply,
+ 							  reply_size);
+ #endif /* ANDROID */
++	} else if (os_strncmp(buf, "GET_BEACON ", 11) == 0) {
++		reply_len = hostapd_ctrl_iface_get_beacon(
++			hapd, buf + 11, reply, reply_size);
+ 	} else {
+ 		os_memcpy(reply, "UNKNOWN COMMAND\n", 16);
+ 		reply_len = 16;
+Index: hostapd-2022-01-16-cff80b4f/hostapd/hostapd_cli.c
+===================================================================
+--- hostapd-2022-01-16-cff80b4f.orig/hostapd/hostapd_cli.c
++++ hostapd-2022-01-16-cff80b4f/hostapd/hostapd_cli.c
+@@ -1544,6 +1544,10 @@ static int hostapd_cli_cmd_driver(struct
+ }
+ #endif /* ANDROID */
+ 
++static int hostapd_cli_cmd_get_beacon(struct wpa_ctrl *ctrl, int argc, char *argv[])
++{
++	return hostapd_cli_cmd(ctrl, "GET_BEACON", 1, argc, argv);
++}
+ 
+ struct hostapd_cli_cmd {
+ 	const char *cmd;
+@@ -1736,6 +1740,8 @@ static const struct hostapd_cli_cmd host
+ 	{ "driver", hostapd_cli_cmd_driver, NULL,
+ 	  "<driver sub command> [<hex formatted data>] = send driver command data" },
+ #endif /* ANDROID */
++	{ "get_beacon", hostapd_cli_cmd_get_beacon, NULL,
++	  "<param> = head/tail/extra/ies/all show whole beacon or its part" },
+ 	{ NULL, NULL, NULL, NULL }
+ };
+ 

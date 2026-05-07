@@ -1,0 +1,2508 @@
+/*
+ * Copyright (C) 2018 Realtek Semiconductor Corp. - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ */
+
+#include "1905_tlvs.h"
+#include "multi_ap_tlv_test_vectors.h"
+
+// This file contains test vectors than can be used to check the
+// "parse_1905_TLV_from_packet()" and "forge_1905_TLV_from_structure()"
+// functions
+//
+// Each test vector is made up of three variables:
+//
+//   - A TLV structure
+//   - An array of bits representing the network packet
+//   - An variable holding the length of the packet
+//
+// Note that some test vectors can be used to test both functions, while others
+// can only be used to test "forge_1905_TLV_from_structure()" or
+// "parse_1905_TLV_from_packet()":
+//
+//   - Test vectors marked with "TLV --> packet" can only be used to test the
+//     "forge_1905_TLV_from_structure()" function.
+//
+//   - Test vectors marked with "TLV <-- packet" can only be used to test the
+//     "parse_1905_TLV_from_packet()" function.
+//
+//   - All the other test vectors are marked with "TLC <--> packet", meaning
+//     they can be used to test  both functions.
+//
+// The reason this is happening is that, according to the standard, sometimes
+// bits are ignored/changed/forced-to-a-value when forging a packet. Thus, not
+// all test vectors are "inversible" (ie. forge(parse(stream)) != x)
+//
+// This is how you use these test vectors:
+//
+//   A) stream = forge_non_1905_TLV_from_structure(tlv_xxx, &stream_len);
+//
+//   B) tlv = parse_non_1905_TLV_from_packet(stream_xxx);
+//
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 001 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+INT8U service_001[2] = { 0x00, 0x01 };
+
+struct SupportedServiceTLV multi_ap_tlv_structure_001 = {
+	.tlv_type             = TLV_TYPE_SUPPORTED_SERVICE,
+	.supported_service_nr = 0x02,
+	.supported_service    = service_001
+};
+
+// CheckTrue (TLV --> packet)
+INT8U multi_ap_tlv_stream_001[] = {
+	0x80,
+	0x00, 0x03,
+	0x02,
+	0x00, 0x01
+};
+
+// CheckFalse (TLV <-- packet)
+//   'supported_service' should only contains 0x00 or 0x01
+INT8U multi_ap_tlv_stream_001b[] = {
+	0x80,
+	0x00, 0x03,
+	0x02,
+	0x00, 0x02
+};
+
+INT16U multi_ap_tlv_stream_len_001 = 6;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 002 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+INT8U service_002[1] = { 0x00 };
+
+struct SearchedServiceTLV multi_ap_tlv_structure_002 = {
+	.tlv_type            = TLV_TYPE_SEARCHED_SERVICE,
+	.searched_service_nr = 0x01,
+	.searched_service    = service_002,
+};
+
+// CheckTrue (TLV --> packet)
+INT8U multi_ap_tlv_stream_002[] = {
+	0x81,
+	0x00, 0x02,
+	0x01,
+	0x00
+};
+
+// CheckFalse (TLV <-- packet)
+//   'searched_service' should only contains 0x00
+INT8U multi_ap_tlv_stream_002b[] = {
+	0x81,
+	0x00, 0x02,
+	0x01,
+	0x01
+};
+
+INT16U multi_ap_tlv_stream_len_002 = 5;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 003 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+struct ApRadioIdentifierTLV multi_ap_tlv_structure_003 = {
+	.tlv_type        = TLV_TYPE_AP_RADIO_IDENTIFIER,
+	.radio_unique_id = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 },
+};
+
+// CheckTrue (TLV --> packet)
+INT8U multi_ap_tlv_stream_003[] = {
+	0x82,
+	0x00, 0x06,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05
+};
+
+// CheckFalse (TLV <-- packet)
+INT8U multi_ap_tlv_stream_003b[] = {
+	0x82,
+	0x00, 0x06,
+	0x01, 0x01, 0x02, 0x03, 0x04, 0x05
+};
+
+INT16U multi_ap_tlv_stream_len_003 = 9;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 004 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+struct BSS bss_004[1] = {
+	{ .mac_addr = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 },
+	  .ssid_len = 4,
+	  .ssid     = "1234" }
+};
+
+struct RADIO radio_004[1] = {
+	{ .radio_unique_id = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 },
+	  .BSSs_nr         = 1,
+	  .BSSs            = bss_004 }
+};
+
+struct ApOperationalBSSTLV multi_ap_tlv_structure_004 = {
+	.tlv_type  = TLV_TYPE_AP_OPERATIONAL_BSS,
+	.radios_nr = 0x01,
+	.radios    = radio_004
+};
+
+// CheckTrue (TLV --> packet)
+INT8U multi_ap_tlv_stream_004[] = {
+	0x83,
+	0x00, 0x13,
+	0x01,
+	0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+	0x01,
+	0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+	0x04,
+	0x31, 0x32, 0x33, 0x34
+};
+
+// CheckFalse (TLV <-- packet)
+INT8U multi_ap_tlv_stream_004b[] = {
+	0x83,
+	0x00, 0x13,
+	0x01,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+	0x01,
+	0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+	0x04,
+	0x31, 0x32, 0x33, 0x35
+};
+
+INT16U multi_ap_tlv_stream_len_004 = 22;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 005 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+struct Client clients_005[1] = {
+	{ .mac_addr  = { 0x06, 0x05, 0x04, 0x03, 0x02, 0x01 },
+	  .left_time = 0x0011 }
+};
+
+struct BSSWithClients bss_005[1] = {
+	{ .bssid      = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 },
+	  .clients_nr = 1,
+	  .clients    = clients_005 }
+};
+
+struct AssociatedClientsTLV multi_ap_tlv_structure_005 = {
+	.tlv_type = TLV_TYPE_ASSOCIATED_CLIENTS,
+	.BSSs_nr  = 0x01,
+	.BSSs     = bss_005,
+};
+
+// CheckTrue (TLV --> packet)
+INT8U multi_ap_tlv_stream_005[] = {
+	0x84,
+	0x00, 0x11,
+	0x01,
+	0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+	0x00, 0x01,
+	0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+	0x00, 0x11
+};
+
+// CheckFalse (TLV <-- packet)
+INT8U multi_ap_tlv_stream_005b[] = {
+	0x84,
+	0x00, 0x11,
+	0x01,
+	0x01, 0x02, 0x03, 0x04, 0x05, 0x00,
+	0x00, 0x01,
+	0x00, 0x05, 0x04, 0x03, 0x02, 0x01,
+	0x00, 0x11
+};
+
+INT16U multi_ap_tlv_stream_len_005 = 20;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 006 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+struct APCapabilityTLV multi_ap_tlv_structure_006 = {
+	.tlv_type      = TLV_TYPE_AP_CAPABILITY,
+	.ap_capability = 0xE0
+};
+
+// CheckTrue (TLV --> packet)
+INT8U multi_ap_tlv_stream_006[] = {
+	0xA1,
+	0x00, 0x01,
+	0xE0
+};
+
+// CheckFalse (TLV <-- packet)
+INT8U multi_ap_tlv_stream_006b[] = {
+	0xA1,
+	0x00, 0x01,
+	0x00
+};
+
+INT16U multi_ap_tlv_stream_len_006 = 4;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 007 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+INT8U non_operable_channels_007[2] = { 0x97, 0xA1 };
+
+struct OperatingClass operating_007[1] = {
+	{ .operating_class          = 0x7C,
+	  .max_transmit_power       = 0xF0,
+	  .non_operable_channels_nr = 2,
+	  .non_operable_channels    = non_operable_channels_007 }
+};
+
+struct APRadioBasicCapabilitiesTLV multi_ap_tlv_structure_007 = {
+	.tlv_type             = TLV_TYPE_AP_RADIO_BASIC_CAPABILITIES,
+	.radio_unique_id      = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	.max_BSSs_nr          = 0x06,
+	.operating_classes_nr = 0x01,
+	.operating_classes    = operating_007
+};
+
+// CheckTrue (TLV --> packet)
+INT8U multi_ap_tlv_stream_007[] = {
+	0x85,
+	0x00, 0x0D,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x06,
+	0x01,
+	0x7C,
+	0xF0,
+	0x02,
+	0x97, 0xA1
+};
+
+// CheckFalse (TLV <-- packet)
+INT8U multi_ap_tlv_stream_007b[] = {
+	0x85,
+	0x00, 0x0D,
+	0x01, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x06,
+	0x01,
+	0x7C,
+	0xF0,
+	0x02,
+	0x97, 0xA1
+};
+
+INT16U multi_ap_tlv_stream_len_007 = 16;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 008 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+struct APHTCapabilitiesTLV multi_ap_tlv_structure_008 = {
+	.tlv_type        = TLV_TYPE_AP_HT_CAPABILITIES,
+	.radio_unique_id = { 0x01, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	.ht_capability   = 0xFE
+};
+
+// CheckTrue (TLV --> packet)
+INT8U multi_ap_tlv_stream_008[] = {
+	0x86,
+	0x00, 0x07,
+	0x01, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0xFE
+};
+
+// CheckFalse (TLV <-- packet)
+INT8U multi_ap_tlv_stream_008b[] = {
+	0x86,
+	0x00, 0x07,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0xFF
+};
+
+INT16U multi_ap_tlv_stream_len_008 = 10;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 009 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+struct APVHTCapabilitiesTLV multi_ap_tlv_structure_009 = {
+	.tlv_type         = TLV_TYPE_AP_VHT_CAPABILITIES,
+	.radio_unique_id  = { 0x01, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	.vht_tx_msc       = 0x0001,
+	.vht_rx_msc       = 0x0002,
+	.vht_capability_1 = 0x01,
+	.vht_capability_2 = 0x11
+};
+
+// CheckTrue (TLV --> packet)
+INT8U multi_ap_tlv_stream_009[] = {
+	0x87,
+	0x00, 0x0C,
+	0x01, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x00, 0x01,
+	0x00, 0x02,
+	0x01, 0x11
+};
+
+// CheckFalse (TLV <-- packet)
+INT8U multi_ap_tlv_stream_009b[] = {
+	0x87,
+	0x00, 0x0C,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x01, 0x01,
+	0x01, 0x02,
+	0x00, 0x11
+};
+
+INT16U multi_ap_tlv_stream_len_009 = 15;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 010 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+INT8U he_msc_010[1] = { 0x00 };
+
+struct APHECapabilitiesTLV multi_ap_tlv_structure_010 = {
+	.tlv_type        = TLV_TYPE_AP_HE_CAPABILITIES,
+	.radio_unique_id = { 0x01, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	.he_msc_len      = 0x01,
+	.he_msc          = he_msc_010,
+	.he_capability_1 = 0x01,
+	.he_capability_2 = 0x02
+};
+
+// CheckTrue (TLV --> packet)
+INT8U multi_ap_tlv_stream_010[] = {
+	0x88,
+	0x00, 0x0a,
+	0x01, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x01,
+	0x00,
+	0x01, 0x02
+};
+
+// CheckFalse (TLV <-- packet)
+INT8U multi_ap_tlv_stream_010b[] = {
+	0x88,
+	0x00, 0x0a,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x00,
+	0x01,
+	0x00, 0x02
+};
+
+INT16U multi_ap_tlv_stream_len_010 = 13;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 011 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+struct ClientInfoTLV multi_ap_tlv_structure_011 = {
+	.tlv_type    = TLV_TYPE_CLIENT_INFO,
+	.bssid       = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	.mac_address = { 0x05, 0x04, 0x03, 0x02, 0x01, 0x00 }
+};
+
+// CheckTrue (TLV --> packet)
+INT8U multi_ap_tlv_stream_011[] = {
+	0x90,
+	0x00, 0x0C,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x05, 0x04, 0x03, 0x02, 0x01, 0x00
+};
+
+// CheckFalse (TLV <-- packet)
+INT8U multi_ap_tlv_stream_011b[] = {
+	0x90,
+	0x00, 0x0C,
+	0x01, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x05, 0x04, 0x03, 0x02, 0x01, 0x01
+};
+
+INT16U multi_ap_tlv_stream_len_011 = 15;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 012 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+INT8U frame_body_012[3] = { 0x02, 0x01, 0x02 };
+
+struct ClientCapabilityReportTLV multi_ap_tlv_structure_012 = {
+	.tlv_type    = TLV_TYPE_CLIENT_CAPABLITY_REPORT,
+	.result_code = 0x00,
+	.frame_body_length = 0x03,
+	.frame_body  = frame_body_012,
+};
+
+// CheckTrue (TLV --> packet)
+INT8U multi_ap_tlv_stream_012[] = {
+	0x91,
+	0x00, 0x04,
+	0x00,
+	0x02, 0x01, 0x02
+};
+
+// CheckFalse (TLV <-- packet)
+INT8U multi_ap_tlv_stream_012b[] = {
+	0x91,
+	0x00, 0x04,
+	0x01,
+	0x00, 0x01, 0x02
+};
+
+INT16U multi_ap_tlv_stream_len_012 = 7;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 013 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+struct ClientAssociationEventTLV multi_ap_tlv_structure_013 = {
+	.tlv_type    = TLV_TYPE_CLIENT_ASSOCIATION_EVENT,
+	.mac_address = { 0x01, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	.bssid       = { 0x05, 0x04, 0x03, 0x02, 0x01, 0x01 },
+	.event       = 0x80
+};
+
+// CheckTrue (TLV --> packet)
+INT8U multi_ap_tlv_stream_013[] = {
+	0x92,
+	0x00, 0x0D,
+	0x01, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x05, 0x04, 0x03, 0x02, 0x01, 0x01,
+	0x80
+};
+
+// CheckFalse (TLV <-- packet)
+INT8U multi_ap_tlv_stream_013b[] = {
+	0x92,
+	0x00, 0x0D,
+	0x01, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x05, 0x04, 0x03, 0x02, 0x01, 0x01,
+	0x00
+};
+
+INT16U multi_ap_tlv_stream_len_013 = 16;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 014 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+struct STAMacAddressTypeTLV multi_ap_tlv_structure_014 = {
+	.tlv_type    = TLV_TYPE_STA_MAC_ADDRESS_TYPE,
+	.mac_address = { 0x01, 0x01, 0x02, 0x03, 0x04, 0x05 }
+};
+
+// CheckTrue (TLV --> packet)
+INT8U multi_ap_tlv_stream_014[] = {
+	0x95,
+	0x00, 0x06,
+	0x01, 0x01, 0x02, 0x03, 0x04, 0x05
+};
+
+// CheckFalse (TLV <-- packet)
+INT8U multi_ap_tlv_stream_014b[] = {
+	0x95,
+	0x00, 0x06,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05
+};
+
+INT16U multi_ap_tlv_stream_len_014 = 9;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 015 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+INT8U sta_mac_addr_015[1][6] = { { 0x05, 0x04, 0x03, 0x02, 0x01, 0x00 } };
+
+struct ClientAssociationControlRequestTLV multi_ap_tlv_structure_015 = {
+	.tlv_type            = TLV_TYPE_CLIENT_ASSOCIATION_CONTROL_REQUEST,
+	.bssid               = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	.association_control = 0x01,
+	.validity_period     = 0x00FF,
+	.sta_nr              = 0x01,
+	.sta_mac_address     = sta_mac_addr_015
+};
+
+// CheckTrue (TLV --> packet)
+INT8U multi_ap_tlv_stream_015[] = {
+	0x9D,
+	0x00, 0x10,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x01,
+	0x00, 0xFF,
+	0x01,
+	0x05, 0x04, 0x03, 0x02, 0x01, 0x00
+};
+
+// CheckFalse (TLV <-- packet)
+INT8U multi_ap_tlv_stream_015b[] = {
+	0x9D,
+	0x00, 0x0F,
+	0x01, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x00,
+	0x00, 0xFF,
+	0x01,
+	0x05, 0x04, 0x03, 0x02, 0x01, 0x01
+};
+
+INT16U multi_ap_tlv_stream_len_015 = 19;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 016 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+struct ErrorCodeTLV multi_ap_tlv_structure_016 = {
+	.tlv_type        = TLV_TYPE_ERROR_CODE,
+	.reason_code     = 0x01,
+	.sta_mac_address = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 },
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_016[] = {
+	0xA3,
+	0x00, 0x07,
+	0x01,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05
+};
+
+// CheckFalse (TLV <--> packet)
+
+INT8U multi_ap_tlv_stream_016b[] = {
+	0xA3,
+	0x00, 0x07,
+	0x00,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05
+};
+
+INT16U multi_ap_tlv_stream_len_016 = 10;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 017 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+struct SteeringPolicy multi_ap_tlv_structure_017_001[2] = {
+	{ .radio_unique_id         = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	  .policy                  = 0x80,
+	  .channel_util_threshold  = 0x05,
+	  .rcpi_steering_threshold = 0x01 },
+
+	{ .radio_unique_id         = { 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b },
+	  .policy                  = 0x80,
+	  .channel_util_threshold  = 0x05,
+	  .rcpi_steering_threshold = 0x02 }
+};
+INT8U                    sta_mac[2][6]              = { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 }, { 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b } };
+struct SteeringPolicyTLV multi_ap_tlv_structure_017 = {
+	.tlv_type                 = TLV_TYPE_STEERING_POLICY,
+	.local_disallowed_sta_nr  = 0x02,
+	.local_disallowed_sta_mac = sta_mac,
+	.btm_disallowed_sta_nr    = 0x02,
+	.btm_disallowed_sta_mac   = sta_mac,
+
+	.radios_nr = 0x02,
+	.policies  = multi_ap_tlv_structure_017_001
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_017[] = {
+	0x89,
+	0x00, 0x2D,
+
+	0x02,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
+
+	0x02,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
+
+	0x02,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x80,
+	0x05,
+	0x01,
+	0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
+	0x80,
+	0x05,
+	0x02
+};
+
+// CheckFalse (TLV <--> packet)
+
+INT8U multi_ap_tlv_stream_017b[] = {
+	0x89,
+	0x00, 0x2D,
+
+	0x02,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
+
+	0x02,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
+
+	0x02,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x80,
+	0x05,
+	0x01,
+	0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
+	0x80,
+	0x05,
+	0x09
+};
+
+INT16U multi_ap_tlv_stream_len_017 = 48;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 018 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+struct MetricReportingPolicy multi_ap_tlv_structure_018_001[2] = {
+	{ .radio_unique_id                     = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	  .sta_rcpi_threshold                  = 0x80,
+	  .sta_rcpi_hysteresis_margin_override = 0x05,
+	  .ap_channel_utilization_threshold     = 0x01,
+	  .policy                              = 0x03 },
+
+	{ .radio_unique_id                     = { 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b },
+	  .sta_rcpi_threshold                  = 0x80,
+	  .sta_rcpi_hysteresis_margin_override = 0x05,
+	  .ap_channel_utilization_threshold     = 0x01,
+	  .policy                              = 0x02 },
+};
+
+struct MetricReportingPolicyTLV multi_ap_tlv_structure_018 = {
+	.tlv_type = TLV_TYPE_METRIC_REPORT_POLICY,
+
+	.report_interval = 0x05,
+	.radios_nr       = 0x02,
+	.policies        = multi_ap_tlv_structure_018_001
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_018[] = {
+	0x8A,
+	0x00, 0x16,
+	0x05,
+	0x02,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x80,
+	0x05,
+	0x01,
+	0x03,
+	0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
+	0x80,
+	0x05,
+	0x01,
+	0x02
+};
+
+// CheckFalse (TLV <--> packet)
+
+INT8U multi_ap_tlv_stream_018b[] = {
+	0x8A,
+	0x00, 0x16,
+	0x05,
+	0x02,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x80,
+	0x05,
+	0x01,
+	0x03,
+	0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
+	0x80,
+	0x05,
+	0x01,
+	0x09
+};
+
+INT16U multi_ap_tlv_stream_len_018 = 25;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 019 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+INT8U                              channel_list_019[1]               = { 0x24 };
+struct ChannelPreferencePerOpClass multi_ap_tlv_structure_019_001[1] = { { .op_class               = 0x01,
+	                                                                       .channel_nr             = 0x01,
+	                                                                       .channel_list           = channel_list_019,
+	                                                                       .preference_reason_code = 0x00 } };
+
+struct ChannelPreferenceTLV multi_ap_tlv_structure_019 = {
+	.tlv_type            = TLV_TYPE_CHANNEL_PREFERENCE,
+	.radio_unique_id     = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	.op_class_nr         = 1,
+	.channel_preferences = multi_ap_tlv_structure_019_001
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_019[] = {
+	0x8B,
+	0x00, 0x0B,
+
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+
+	0x01,
+	0x01,
+	0x01,
+	0x24,
+	0x00
+};
+
+// CheckFalse (TLV <--> packet)
+
+INT8U multi_ap_tlv_stream_019b[] = {
+	0x8B,
+	0x00, 0x0B,
+
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+
+	0x01,
+	0x01,
+	0x01,
+	0x24,
+	0x01
+};
+
+INT16U multi_ap_tlv_stream_len_019 = 14;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 020 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+struct RadioOperationRestrictionPerChannel multi_ap_tlv_structure_020_002[1] = { {
+	.channel             = 0x24,
+	.min_freq_separation = 0x00,
+} };
+
+struct RadioOperationRestrictionPerOpClass multi_ap_tlv_structure_020_001[1] = { {
+	.op_class                      = 0x01,
+	.channel_nr                    = 0x01,
+	.channel_operation_restriction = multi_ap_tlv_structure_020_002,
+} };
+
+struct RadioOperationRestrictionTLV multi_ap_tlv_structure_020 = {
+	.tlv_type                    = TLV_TYPE_RADIO_OPERATION_RESTRICTION,
+	.radio_unique_id             = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	.op_class_nr                 = 1,
+	.radio_operation_restriction = multi_ap_tlv_structure_020_001
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_020[] = {
+	0x8C,
+	0x00, 0x0B,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x01,
+	0x01,
+	0x01,
+	0x24,
+	0x00
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_020b[] = {
+	0x8C,
+	0x00, 0x0B,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x01,
+	0x01,
+	0x01,
+	0x24,
+	0x01
+};
+
+INT16U multi_ap_tlv_stream_len_020 = 14;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 021 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+
+struct TransmitPowerLimitTLV multi_ap_tlv_structure_021 = {
+	.tlv_type             = TLV_TYPE_TRANSMIT_POWER_LIMIT,
+	.radio_unique_id      = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	.transmit_power_limit = 0xF0
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_021[] = {
+	0x8D,
+	0x00, 0x07,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0xF0
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_021b[] = {
+	0x8D,
+	0x00, 0x07,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0xFF
+};
+
+INT16U multi_ap_tlv_stream_len_021 = 10;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 022 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+
+struct ChannelSelectionResponseTLV multi_ap_tlv_structure_022 = {
+	.tlv_type        = TLV_TYPE_CHANNEL_SELECTION_RESPONSE,
+	.radio_unique_id = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	.response        = 0x00
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_022[] = {
+	0x8E,
+	0x00, 0x07,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x00
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_022b[] = {
+	0x8E,
+	0x00, 0x07,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x01
+};
+
+INT16U multi_ap_tlv_stream_len_022 = 10;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 023 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+struct OperatingChannelReportPerOpClass multi_ap_tlv_structure_023_001[1] = { {
+	.op_class    = 0x01,
+	.cur_channel = 0x24,
+} };
+
+struct OperatingChannelReportTLV multi_ap_tlv_structure_023 = {
+	.tlv_type           = TLV_TYPE_OPERATING_CHANNEL_REPORT,
+	.radio_unique_id    = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	.cur_op_class_nr    = 1,
+	.operating_channels = multi_ap_tlv_structure_023_001,
+	.cur_transmit_power = 0xEB
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_023[] = {
+	0x8F,
+	0x00, 0x0A,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x01,
+	0x01,
+	0x24,
+	0xEB
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_023b[] = {
+	0x8F,
+	0x00, 0x0A,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x01,
+	0x01,
+	0x23,
+	0xEB
+};
+
+INT16U multi_ap_tlv_stream_len_023 = 13;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 024 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+INT8U multi_ap_tlv_structure_024_001[1][6] = { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } };
+
+struct APMetricQueryTLV multi_ap_tlv_structure_024 = {
+	.tlv_type = TLV_TYPE_AP_METRIC_QUERY,
+	.bssid_nr = 1,
+	.bssid    = multi_ap_tlv_structure_024_001
+
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_024[] = {
+	0x93,
+	0x00, 0x07,
+	0x01,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_024b[] = {
+	0x93,
+	0x00, 0x07,
+	0x01,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x00
+};
+
+INT16U multi_ap_tlv_stream_len_024 = 10;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 025 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+
+struct APMetricsTLV multi_ap_tlv_structure_025 = {
+	.tlv_type = TLV_TYPE_AP_METRICS,
+	.bssid    = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	.ch_util  = 0x01,
+	.sta_nr   = 2,
+	.esp_ie   = 0x80,
+	.esp_acbe = { 0x00, 0x01, 0x02 },
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_025[] = {
+	0x94,
+	0x00, 0x0D,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x01,
+	0x00, 0x02,
+	0x80,
+	0x00, 0x01, 0x02
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_025b[] = {
+	0x94,
+	0x00, 0x0D,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x01,
+	0x00, 0x02,
+	0x80,
+	0x00, 0x01, 0x01
+};
+
+INT16U multi_ap_tlv_stream_len_025 = 16;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 026 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+struct AssocSTALinkMetrics multi_ap_tlv_structure_026_001[1] = { { .bssid             = { 0x05, 0x04, 0x03, 0x02, 0x01, 0x00 },
+	                                                               .time_delta        = 1000,
+	                                                               .dataRate_downlink = 2400,
+	                                                               .dataRate_uplink   = 800,
+	                                                               .uplink_rcpi       = 0x28 } };
+
+struct AssociatedSTALinkMetricsTLV multi_ap_tlv_structure_026 = {
+	.tlv_type               = TLV_TYPE_ASSOCIATED_STA_LINK_METRICS,
+	.mac_address            = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	.bssid_nr               = 1,
+	.assoc_sta_link_metrics = multi_ap_tlv_structure_026_001
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_026[] = {
+	0x96,
+	0x00, 0x1A,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x01,
+	0x05, 0x04, 0x03, 0x02, 0x01, 0x00,
+	0x00, 0x00, 0x03, 0xE8,
+	0x00, 0x00, 0x09, 0x60,
+	0x00, 0x00, 0x03, 0x20,
+	0x28
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_026b[] = {
+	0x96,
+	0x00, 0x1A,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x01,
+	0x05, 0x04, 0x03, 0x02, 0x01, 0x00,
+	0x00, 0x00, 0x03, 0xE8,
+	0x00, 0x00, 0x09, 0x60,
+	0x00, 0x00, 0x03, 0x20,
+	0x27
+};
+
+INT16U multi_ap_tlv_stream_len_026 = 29;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 027 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+INT8U                  multi_ap_tlv_structure_027_001_001[1][6] = { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } };
+struct ChannelListInfo multi_ap_tlv_structure_027_001[1]        = { { .channel_nr      = 0x01,
+                                                               .sta_nr          = 0x01,
+                                                               .sta_mac_address = multi_ap_tlv_structure_027_001_001 } };
+
+struct UnassociatedSTALinkMetricsQueryTLV multi_ap_tlv_structure_027 = {
+	.tlv_type           = TLV_TYPE_UNASSOCIATED_STA_LINK_METRICS_QUERY,
+	.op_class           = 0x01,
+	.channel_list_nr    = 0x01,
+	.channel_list_entry = multi_ap_tlv_structure_027_001
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_027[] = {
+	0x97,
+	0x00, 0x0A,
+	0x01,
+	0x01,
+	0x01,
+	0x01,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_027b[] = {
+	0x97,
+	0x00, 0x0A,
+	0x01,
+	0x01,
+	0x01,
+	0x01,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x00
+};
+
+INT16U multi_ap_tlv_stream_len_027 = 13;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 028 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+struct UnassocSTALinkMetrics multi_ap_tlv_structure_028_001[1] = { { .sta_mac_address = { 0x05, 0x04, 0x03, 0x02, 0x01, 0x00 },
+	                                                                 .channel_number  = 0x24,
+	                                                                 .time_delta      = 1000,
+	                                                                 .uplink_rcpi     = 0x28
+
+} };
+
+struct UnassociatedSTALinkMetricsResponseTLV multi_ap_tlv_structure_028 = {
+	.tlv_type                 = TLV_TYPE_UNASSOCIATED_STA_LINK_METRICS_RESPONSE,
+	.op_class                 = 0x01,
+	.sta_nr                   = 1,
+	.unassoc_sta_link_metrics = multi_ap_tlv_structure_028_001
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_028[] = {
+	0x98,
+	0x00, 0x0E,
+	0x01,
+	0x01,
+	0x05, 0x04, 0x03, 0x02, 0x01, 0x00,
+	0x24,
+	0x00, 0x00, 0x03, 0xE8,
+	0x28
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_028b[] = {
+	0x98,
+	0x00, 0x0E,
+	0x01,
+	0x01,
+	0x05, 0x04, 0x03, 0x02, 0x01, 0x00,
+	0x24,
+	0x00, 0x00, 0x03, 0xE8,
+	0x27
+};
+
+INT16U multi_ap_tlv_stream_len_028 = 17;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 029 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+INT8U ssid_029[5] = { 0x97, 0x97, 0x97, 0x97, 0x97 };
+
+INT8U element_list_029[1] = { 0x01 };
+
+INT8U channel_list_029[1] = { 0x24 };
+
+struct ApChannelReport channel_report_029[1] = { { .len          = 2,
+	                                               .op_class     = 0x01,
+	                                               .channel_list = channel_list_029 } };
+
+struct BeaconMetricsQueryTLV multi_ap_tlv_structure_029 = {
+	.tlv_type             = TLV_TYPE_BEACON_METRICS_QUERY,
+	.mac_address          = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	.op_class             = 0x01,
+	.channel_number       = 0x24,
+	.bssid                = { 0x05, 0x04, 0x03, 0x02, 0x01, 0x00 },
+	.report_detail        = 0x01,
+	.ssid_len             = 5,
+	.ssid                 = ssid_029,
+	.ap_channel_report_nr = 1,
+	.ap_channel_report    = channel_report_029,
+	.elementID_nr         = 1,
+	.element_list         = element_list_029
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_029[] = {
+	0x99,
+	0x00, 0x1B,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x01,
+	0x24,
+	0x05, 0x04, 0x03, 0x02, 0x01, 0x00,
+	0x01,
+	0x05,
+	0x97, 0x97, 0x97, 0x97, 0x97,
+	0x01,
+	0x02,
+	0x01,
+	0x24,
+	0x01,
+	0x01
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_029b[] = { 0x99,
+	                                 0x00, 0x1B,
+	                                 0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	                                 0x01,
+	                                 0x24,
+	                                 0x05, 0x04, 0x03, 0x02, 0x01, 0x00,
+	                                 0x01,
+	                                 0x05,
+	                                 0x97, 0x97, 0x97, 0x97, 0x97,
+	                                 0x01,
+	                                 0x02,
+	                                 0x01,
+	                                 0x24,
+	                                 0x01,
+	                                 0x02 };
+
+INT16U multi_ap_tlv_stream_len_029 = 30;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 030 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+INT8U subelements_030[1] = { 0x01 };
+
+// static struct BeaconMeasurementReportInfo report_info_030 = {
+// 	.op_class         = 0x01,
+// 	.channel          = 0x24,
+// 	.measure_time_hi  = 1000,
+// 	.measure_time_lo  = 200,
+// 	.measure_duration = 0x0100,
+// 	.frame_info       = 0x01,
+// 	.RCPI             = 0x10,
+// 	.RSNI             = 0x01,
+// 	.bssid            = { 0x05, 0x04, 0x03, 0x02, 0x01, 0x00 },
+// 	.antenna_id       = 0x01,
+// 	.parent_tsf       = 100
+
+// };
+
+struct BeaconMeasurementReportIE measure_report_030[1] = { { .elementId             = 0x01,
+	                                                         .len                   = 0x20,
+	                                                         .measurementToken      = 0x01,
+	                                                         .measurementReportMode = 0x00,
+	                                                         .measurementType       = 0x01,
+	                                                         .info                  = {
+																						.op_class         = 0x01,
+																						.channel          = 0x24,
+																						.measure_time_hi  = 1000,
+																						.measure_time_lo  = 200,
+																						.measure_duration = 0x0100,
+																						.frame_info       = 0x01,
+																						.RCPI             = 0x10,
+																						.RSNI             = 0x01,
+																						.bssid            = { 0x05, 0x04, 0x03, 0x02, 0x01, 0x00 },
+																						.antenna_id       = 0x01,
+																						.parent_tsf       = 100
+
+																					},
+	                                                         .subelement_id         = 0x01,
+	                                                         .subelements_len       = 0x01,
+	                                                         .subelements           = subelements_030 } };
+
+struct BeaconMetricsResponseTLV multi_ap_tlv_structure_030 = {
+	.tlv_type              = TLV_TYPE_BEACON_METRICS_RESPONSE,
+	.mac_address           = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	.reserved_field        = 0x00,
+	.measurement_report_nr = 0x01,
+	.measurement_reports   = measure_report_030
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_030[] = {
+	0x9A,
+	0x00, 0x2A,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x00, 0x01,
+	0x01, 0x20, 0x01, 0x00, 0x01,
+	0x01, 0x24,
+	0x00, 0x00, 0x03, 0xE8,
+	0x00, 0x00, 0x00, 0xC8,
+	0x01, 0x00,
+	0x01, 0x10, 0x01,
+	0x05, 0x04, 0x03, 0x02, 0x01, 0x00,
+	0x01,
+	0x00, 0x00, 0x00, 0x64,
+	0x01, 0x01, 0x01
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_030b[] = {
+	0x9A,
+	0x00, 0x2A,
+	0x01, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x00, 0x01,
+	0x01, 0x20, 0x01, 0x00, 0x01,
+	0x01, 0x24,
+	0x00, 0x00, 0x03, 0xE8,
+	0x00, 0x00, 0x01, 0x2C,
+	0x01, 0x00,
+	0x01, 0x10, 0x01,
+	0x05, 0x04, 0x03, 0x02, 0x01, 0x00,
+	0x01,
+	0x00, 0x00, 0x00, 0x65,
+	0x01, 0x01, 0x01
+};
+
+INT16U multi_ap_tlv_stream_len_030 = 45;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 031 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+INT8U            sta_mac_031[1][6] = { { 0x01, 0x01, 0x02, 0x03, 0x04, 0x05 } };
+struct TargetBSS target_bss_031[1] = { { .bssid   = { 0x05, 0x04, 0x03, 0x02, 0x01, 0x00 },
+	                                     .opclass = 0x01,
+	                                     .channel = 0x24 } };
+
+struct SteeringRequestTLV multi_ap_tlv_structure_031 = {
+	.tlv_type             = TLV_TYPE_STEERING_REQUEST,
+	.bssid                = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	.mode                 = 0x80,
+	.window               = 0x0005,
+	.disassociation_timer = 0x0010,
+	.sta_nr               = 0x01,
+	.sta_mac_address      = sta_mac_031,
+	.target_bss_nr        = 0x01,
+	.target_bss           = target_bss_031
+
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_031[] = {
+	0x9B,
+	0x00, 0x1B,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x80,
+	0x00, 0x05,
+	0x00, 0x10,
+	0x01,
+	0x01, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x01,
+	0x05, 0x04, 0x03, 0x02, 0x01, 0x00,
+	0x01,
+	0x24
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_031b[] = {
+	0x9B,
+	0x00, 0x1B,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x80,
+	0x00, 0x05,
+	0x00, 0x10,
+	0x01,
+	0x01, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x01,
+	0x05, 0x04, 0x03, 0x02, 0x01, 0x00,
+	0x01,
+	0x25
+};
+
+INT16U multi_ap_tlv_stream_len_031 = 30;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 032 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+
+struct SteeringBTMReportTLV multi_ap_tlv_structure_032 = {
+	.tlv_type        = TLV_TYPE_STEERING_BTM_REPORT,
+	.bssid           = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	.sta_mac_address = { 0x06, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	.status_code     = 0x00,
+	.target_bssid    = { 0x10, 0x01, 0x02, 0x03, 0x04, 0x05 }
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_032[] = {
+	0x9C,
+	0x00, 0x13,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x06, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x00,
+	0x10, 0x01, 0x02, 0x03, 0x04, 0x05
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_032b[] = {
+	0x9C,
+	0x00, 0x13,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x06, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x00,
+	0x10, 0x01, 0x02, 0x03, 0x04, 0x06
+};
+
+INT16U multi_ap_tlv_stream_len_032 = 22;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 033 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+
+struct SteeringBTMReportTLV multi_ap_tlv_structure_033 = {
+	.tlv_type        = TLV_TYPE_STEERING_BTM_REPORT,
+	.bssid           = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	.sta_mac_address = { 0x06, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	.status_code     = 0x00
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_033[] = {
+	0x9C,
+	0x00, 0x13,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x06, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_033b[] = {
+	0x9C,
+	0x00, 0x0D,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x06, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x01,
+	0x06, 0x01, 0x02, 0x03, 0x04, 0x05
+};
+
+INT16U multi_ap_tlv_stream_len_033 = 22;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 034 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+
+struct BackhaulSteeringRequestTLV multi_ap_tlv_structure_034 = {
+	.tlv_type       = TLV_TYPE_BACKHAUL_STEERING_REQUEST,
+	.backhaul_mac   = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	.target_bssid   = { 0x05, 0x04, 0x03, 0x02, 0x01, 0x00 },
+	.op_class       = 0x01,
+	.channel_number = 0x24
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_034[] = {
+	0x9E,
+	0x00, 0x0E,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x05, 0x04, 0x03, 0x02, 0x01, 0x00,
+	0x01,
+	0x24
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_034b[] = {
+	0x9E,
+	0x00, 0x0E,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x05, 0x04, 0x03, 0x02, 0x01, 0x00,
+	0x02,
+	0x24
+};
+
+INT16U multi_ap_tlv_stream_len_034 = 17;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 035 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+
+struct BackhaulSteeringResponseTLV multi_ap_tlv_structure_035 = {
+	.tlv_type     = TLV_TYPE_BACKHAUL_STEERING_RESPONSE,
+	.backhaul_mac = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	.target_bssid = { 0x05, 0x04, 0x03, 0x02, 0x01, 0x00 },
+	.result_code  = 0x00
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_035[] = {
+	0x9F,
+	0x00, 0x0D,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x05, 0x04, 0x03, 0x02, 0x01, 0x00,
+	0x00
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_035b[] = {
+	0x9F,
+	0x00, 0x0D,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x05, 0x04, 0x03, 0x02, 0x01, 0x00,
+	0x01
+};
+
+INT16U multi_ap_tlv_stream_len_035 = 16;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 036 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+struct HigherLayerDataTLV multi_ap_tlv_structure_036 = {
+	.tlv_type = TLV_TYPE_HIGHER_LAYER_DATA,
+	.protocol = 0x00
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_036[] = {
+	0xA0,
+	0x00, 0x01,
+	0x00
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_036b[] = {
+	0xA0,
+	0x00, 0x01,
+	0x01
+};
+
+INT16U multi_ap_tlv_stream_len_036 = 4;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 037 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+
+struct AssociatedSTATrafficStatsTLV multi_ap_tlv_structure_037 = {
+	.tlv_type             = TLV_TYPE_ASSOCIATED_STA_TRAFFIC_STATS,
+	.sta_mac_address      = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	.bytes_sent           = 1000,
+	.bytes_received       = 2000,
+	.packets_sent         = 100,
+	.packets_received     = 200,
+	.tx_packets_errors    = 10,
+	.rx_packets_errors    = 20,
+	.retransmission_count = 1
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_037[] = {
+	0xA2,
+	0x00, 0x22,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x00, 0x00, 0x03, 0xE8,
+	0x00, 0x00, 0x07, 0xD0,
+	0x00, 0x00, 0x00, 0x64,
+	0x00, 0x00, 0x00, 0xC8,
+	0x00, 0x00, 0x00, 0x0A,
+	0x00, 0x00, 0x00, 0x14,
+	0x00, 0x00, 0x00, 0x01
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_037b[] = {
+	0xA2,
+	0x00, 0x22,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x00, 0x00, 0x03, 0xE8,
+	0x00, 0x00, 0x07, 0xD0,
+	0x00, 0x00, 0x00, 0x64,
+	0x00, 0x00, 0x00, 0xC8,
+	0x00, 0x00, 0x00, 0x0A,
+	0x00, 0x00, 0x00, 0x14,
+	0x00, 0x00, 0x00, 0x02
+};
+
+INT16U multi_ap_tlv_stream_len_037 = 37;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 038 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+
+INT8U                    sta_mac_038[2][6]              = { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 }, { 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b } };
+struct Profile2APCapabilityTLV multi_ap_tlv_structure_038     = {
+    .tlv_type                                  = TLV_TYPE_PROFILE_2_CAPABILITY,
+    .max_total_nr_service_prioritization_rules = 0x01,
+    .reserved                                  = 0x02,
+    .units                                     = 0x03,
+    .max_total_nr_VIDs                         = 0x04
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_038[] = {
+	0xB4,
+	0x00, 0x04,
+	0x01,
+	0x02,
+	0x03,
+	0x04,
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_038b[] = {
+	0xB4,
+	0x00, 0x04,
+	0x03,
+	0xE8,
+	0xA4,
+	0x04,
+};
+
+INT16U multi_ap_tlv_stream_len_038 = 7;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 039 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+
+struct ServicePrioritizationRuleTLV multi_ap_tlv_structure_039 = {
+	.tlv_type                                       = TLV_TYPE_SERVICE_PRIORITIZATION_RULE,
+	.service_prioritization_rule_id                 = 10000,
+	.add_remove_rule                                = 0x00,
+	.rule_precedence                                = 0x01,
+	.rule_output                                    = 0x02,
+	.always_match                                   = 0x03
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_039[] = {
+	0xB9,
+	0x00, 0x08,
+	0x00, 0x00, 0x27, 0x10,
+	0x00,
+	0x01,
+	0x02,
+	0x03,
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_039b[] = {
+	0xB9,
+	0x00, 0x08,
+	0x00, 0x00, 0x27, 0x10,
+	0x00,
+	0x01,
+	0x02,
+	0x04,
+};
+
+INT16U multi_ap_tlv_stream_len_039 = 11;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 040 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+
+struct DSCPMappingTableTLV multi_ap_tlv_structure_040 = {
+	.tlv_type                 = TLV_TYPE_DSCP_MAPPING_TABLE,
+	.dscp_to_pcp              = { 0x00, 0x00, 0x27, 0x10, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x00, 0x64, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x07, 0x01, 0x01, 0x02, 0x03, 0x04, 0x05, 0x02, 0x01, 0x02, 0x03, 0x04, 0x05, 0x08, 0x01, 0x02, 0x03, 0x04, 0x09, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x02, 0x02, 0x03, 0x04, 0x0b, 0x20, 0x21, 0x22, 0x23 }
+
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_040[] = {
+	0xBA,
+	0x00, 0x40,
+	0x00, 0x00, 0x27, 0x10, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x00, 0x64, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x07, 0x01, 0x01, 0x02, 0x03, 0x04, 0x05, 0x02, 0x01, 0x02, 0x03, 0x04, 0x05, 0x08, 0x01, 0x02, 0x03, 0x04, 0x09, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x02, 0x02, 0x03, 0x04, 0x0b, 0x20, 0x21, 0x22, 0x23,
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_040b[] = {
+	0xBA,
+	0x00, 0x40,
+	0x00, 0x00, 0x27, 0x10, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x0B, 0x00, 0x64, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x07, 0x01, 0x01, 0x02, 0x03, 0x04, 0x05, 0x02, 0x01, 0x02, 0x03, 0x04, 0x05, 0x08, 0x01, 0x02, 0x03, 0x04, 0x09, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x02, 0x02, 0x03, 0x04, 0x0b, 0x20, 0x21, 0x22, 0x23,
+};
+
+INT16U multi_ap_tlv_stream_len_040 = 67;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 042 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+
+struct Profile2ErrorCodeTLV multi_ap_tlv_structure_042 = {
+	.tlv_type                                = TLV_TYPE_PROFILE_2_ERROR_CODE,
+	.reason_code                             = 15,
+	.service_prioritization_rule_id          = 100000
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_042[] = {
+	0xBC,
+	0x00, 0x05,
+	0x0f,
+	0x00, 0x01, 0x86, 0xA0,
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_042b[] = {
+	0xBC,
+	0x00, 0x05,
+	0x02,
+	0x00, 0x01, 0x86, 0x00,
+};
+
+INT16U multi_ap_tlv_stream_len_042 = 8;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 043 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+
+struct APRadioAdvancedCapabilitiesTLV multi_ap_tlv_structure_043 = {
+	.tlv_type                                                = TLV_TYPE_AP_RADIO_ADVANCED_CAPABILITIES,
+	.radio_id                                                = { 0x03, 0x04, 0x05 , 0x06, 0x07, 0x08 },
+	.backhaul_bss_traffic_separation_mix_no_support          = 56
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_043[] = {
+	0xBE,
+	0x00, 0x07,
+	0x03, 0x04, 0x05 , 0x06, 0x07, 0x08,
+	0x38,
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_043b[] = {
+	0xBE,
+	0x00, 0x07,
+	0x03, 0x04, 0xA5 , 0x06, 0x07, 0x08,
+	0x38,
+};
+
+INT16U multi_ap_tlv_stream_len_043 = 10;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 044 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+
+struct UnsuccessfulAssociationPolicyTLV multi_ap_tlv_structure_044 = {
+	.tlv_type                                                = TLV_TYPE_UNSUCCESSFUL_ASSOCIATION_POILCY,
+	.report_unsuccessful_associations                        = 88,
+	.maximum_reporting_rate                                  = 500000
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_044[] = {
+	0xC4,
+	0x00, 0x05,
+	0x58,
+	0x00, 0x07, 0xA1, 0x20,
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_044b[] = {
+	0xC4,
+	0x00, 0x05,
+	0x58,
+	0x00, 0xB7, 0xA1, 0x20
+};
+
+INT16U multi_ap_tlv_stream_len_044 = 8;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 045 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+
+struct MetricCollectionIntervalTLV multi_ap_tlv_structure_045 = {
+	.tlv_type                                                = TLV_TYPE_METRIC_COLLECTION_INTERVAL,
+	.collection_interval                                     = 500001
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_045[] = {
+	0xC5,
+	0x00, 0x04,
+	0x00, 0x07, 0xA1, 0x21,
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_045b[] = {
+	0xC5,
+	0x00, 0x04,
+	0x00, 0xB7, 0xA1, 0x21,
+};
+
+INT16U multi_ap_tlv_stream_len_045 = 7;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 046 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+
+struct RadioMetricsTLV multi_ap_tlv_structure_046 = {
+	.tlv_type                                                = TLV_TYPE_RADIO_METRICS,
+	.radio_unique_identifier                                 = { 0x03, 0x04, 0x05 , 0x06, 0x07, 0x08 },
+	.noise                                                   = 34,
+	.transmit                                                = 35,
+	.receiveself                                             = 36,
+	.receiveother                                            = 37
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_046[] = {
+	0xC6,
+	0x00, 0x0A,
+	0x03, 0x04, 0x05 , 0x06, 0x07, 0x08,
+	0x22,
+	0x23,
+	0x24,
+	0x25,
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_046b[] = {
+	0xC6,
+	0x00, 0x0A,
+	0x03, 0x04, 0x05 , 0xA6, 0x07, 0x08,
+	0x22,
+	0x23,
+	0x24,
+	0x25,
+};
+
+INT16U multi_ap_tlv_stream_len_046 = 13;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 047 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+
+struct APExtendedMetricsTLV multi_ap_tlv_structure_047 = {
+	.tlv_type                                                = TLV_TYPE_AP_EXTENDED_METRICS,
+	.radio_unique_identifier                                 = { 0xA3, 0x04, 0x05 , 0x06, 0x07, 0x08 },
+	.unicast_byte_sent                                       = 40001,
+	.unicast_byte_received                                   = 50002,
+	.multicast_byte_sent                                     = 40002,
+	.multicast_byte_received                                 = 50003,
+	.broadcast_byte_sent                                     = 40003,
+	.broadcast_byte_received                                 = 50004
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_047[] = {
+	0xC7,
+	0x00, 0x1E,
+	0xA3, 0x04, 0x05, 0x06, 0x07, 0x08,
+	0x00, 0x00, 0x9C, 0x41,
+	0x00, 0x00, 0xC3, 0x52,
+	0x00, 0x00, 0x9C, 0x42,
+	0x00, 0x00, 0xC3, 0x53,
+	0x00, 0x00, 0x9C, 0x43,
+	0x00, 0x00, 0xC3, 0x54,
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_047b[] = {
+	0xC7,
+	0x00, 0x1E,
+	0x03, 0x04, 0x05, 0xA6, 0x07, 0x08,
+	0x00, 0x00, 0x9C, 0x41,
+	0x00, 0x00, 0xC3, 0x52,
+	0x00, 0x00, 0x9C, 0x42,
+	0x00, 0x00, 0xC3, 0x53,
+	0x00, 0x00, 0x9C, 0x43,
+	0x00, 0x00, 0xC3, 0x54,
+};
+
+INT16U multi_ap_tlv_stream_len_047 = 33;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 048 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+
+struct ReportedBSSInfo reported_bss_01[2] = {
+	{ .bssid                                                 = { 0xB0, 0x01, 0x02, 0x03, 0x04, 0x05 },
+      .last_data_downlink_rate                               = 50001,
+	  .last_data_uplink_rate                                 = 50002,
+	  .utilization_receive                                   = 50003,
+	  .utilization_transmit                                  = 50004 },
+	{ .bssid                                                 = { 0xA0, 0x01, 0x02, 0x03, 0x04, 0x05 },
+      .last_data_downlink_rate                               = 50011,
+	  .last_data_uplink_rate                                 = 50012,
+	  .utilization_receive                                   = 50013,
+	  .utilization_transmit                                  = 50014 }
+};
+struct AssociatedSTAExtendedLinkMericsTLV multi_ap_tlv_structure_048 = {
+	.tlv_type                                                = TLV_TYPE_ASSOCIATED_STA_EXTENDED_LINK_METRICS,
+	.sta_mac_address                                         = { 0xA3, 0xB4, 0x05 , 0x06, 0x07, 0x08 },
+	.bssid_nr                                                = 2,
+	.reported_bss                                            = reported_bss_01
+};
+
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_048[] = {
+	0xC8,
+	0x00, 0x33,
+	0xA3, 0xB4, 0x05 , 0x06, 0x07, 0x08,
+	0x02,
+	0xB0, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x00, 0x00, 0xC3, 0x51,
+	0x00, 0x00, 0xC3, 0x52,
+	0x00, 0x00, 0xC3, 0x53,
+	0x00, 0x00, 0xC3, 0x54,
+	0xA0, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x00, 0x00, 0xC3, 0x5B,
+	0x00, 0x00, 0xC3, 0x5C,
+	0x00, 0x00, 0xC3, 0x5D,
+	0x00, 0x00, 0xC3, 0x5E,
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_048b[] = {
+	0xC8,
+	0x00, 0x33,
+	0x03, 0xB4, 0x05 , 0xA6, 0x07, 0x08,
+	0x02,
+	0xB0, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x00, 0x00, 0xC3, 0x51,
+	0x00, 0x00, 0xC3, 0x52,
+	0x00, 0x00, 0xC3, 0x53,
+	0x00, 0x00, 0xC3, 0x54,
+	0xA0, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x00, 0x00, 0xC3, 0x5B,
+	0x00, 0x00, 0xC3, 0x5C,
+	0x00, 0x00, 0xC3, 0x5D,
+	0x00, 0x00, 0xC3, 0x5E,
+};
+
+INT16U multi_ap_tlv_stream_len_048 = 54;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 049 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+
+struct StatusCodeTLV multi_ap_tlv_structure_049 = {
+	.tlv_type                                                = TLV_TYPE_STATUS_CODE,
+	.status_code                                             = 5001
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_049[] = {
+	0xC9,
+	0x00, 0x02,
+	0x13, 0x89,
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_049b[] = {
+	0xC9,
+	0x00, 0x02,
+	0x13, 0xB9,
+};
+
+INT16U multi_ap_tlv_stream_len_049 = 5;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 050 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+
+struct ReasonCodeTLV multi_ap_tlv_structure_050 = {
+	.tlv_type                                                = TLV_TYPE_REASON_CODE,
+	.reason_code                                             = 5002
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_050[] = {
+	0xCA,
+	0x00, 0x02,
+	0x13, 0x8A,
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_050b[] = {
+	0xCA,
+	0x00, 0x02,
+	0x13, 0xBA,
+};
+
+INT16U multi_ap_tlv_stream_len_050 = 5;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 051 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+
+struct BackhaulSTARadioCapabilitiesTLV multi_ap_tlv_structure_051 = {
+	.tlv_type                                                = TLV_TYPE_BACKHAUL_STA_RADIO_CAPABILITIES,
+	.radio_unique_identifier                                 = { 0xA3, 0xB4, 0xC5, 0x06, 0x07, 0x08 },
+	.included_mac                                            = 51,
+	.sta_mac_address                                         = { 0xA3, 0xB4, 0xC5, 0xD6, 0x07, 0x08 }
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_051[] = {
+	0xCB,
+	0x00, 0x0D,
+	0xA3, 0xB4, 0xC5 , 0x06, 0x07, 0x08,
+	0x33,
+	0xA3, 0xB4, 0xC5 , 0xD6, 0x07, 0x08,
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_051b[] = {
+	0xCB,
+	0x00, 0x0D,
+	0xA3, 0xB4, 0x05, 0x06, 0x07, 0x08,
+	0x33,
+	0xA3, 0xB4, 0xC5, 0xD6, 0x07, 0x08,
+};
+
+INT16U multi_ap_tlv_stream_len_051 = 16;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 052 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+struct AKMSuiteSelector akm_suite_selector_fronthaul_bss_01[1] = {
+	{ .oui            = { 0xA6, 0x07, 0xC8 },
+	  .akm_suite_type = 32 }
+};
+struct AKMSuiteSelector akm_suite_selector_backhaul_bss_01[2] = {
+	{ .oui            = { 0xA6, 0x07, 0x08 },
+	  .akm_suite_type = 02 },
+	{ .oui            = { 0xA6, 0xB7, 0x08 },
+	  .akm_suite_type = 12 }
+};
+struct AKMSuiteCapabilitiesTLV multi_ap_tlv_structure_052 = {
+	.tlv_type                             = TLV_TYPE_AKM_SUITE_CAPABILITIES,
+	.backhaul_bss_akm_suite_selectors_nr  = 2,
+	.backhaul_bss_akm_suite_selectors     = akm_suite_selector_backhaul_bss_01,
+	.fronthaul_bss_akm_suite_selectors_nr = 1,
+	.fronthaul_bss_akm_suite_selectors    = akm_suite_selector_fronthaul_bss_01
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_052[] = {
+	0xCC,
+	0x00, 0x0e,
+	0x02,
+	0xA6, 0x07, 0x08,
+	0x02,
+	0xA6, 0xB7, 0x08,
+	0x0C,
+	0x01,
+	0xA6, 0x07, 0xC8,
+	0x20,
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_052b[] = {
+	0xCC,
+	0x00, 0x13,
+	0x02,
+	0xA6, 0x07, 0x08,
+	0x02,
+	0xA6, 0xB7, 0x08,
+	0xDC,
+	0x01,
+	0xA6, 0x07, 0xC8,
+	0x20,
+};
+
+INT16U multi_ap_tlv_stream_len_052 = 17;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 053 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+INT8U                  encapsulated_frame_01[6] = { 0xA6, 0xB7, 0x08, 0xA6, 0xB7, 0x08 };
+struct Encap1905DPPTLV multi_ap_tlv_structure_053 = {
+	.tlv_type                                                = TLV_TYPE_1905_ENCAP_DPP,
+	.enrollee_mac_address_present                            = 4,
+	.dest_sta_mac_address                                         = { 0xA6, 0x07, 0x08, 0xA6, 0xB7, 0x08 },
+	.frame_type                                              = 255,
+	.encapsulated_frame_len                                  = 6,
+	.encapsulated_frame                                      = encapsulated_frame_01
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_053[] = {
+	0xCD,
+	0x00, 0x10,
+	0x04,
+	0xA6, 0x07, 0x08, 0xA6, 0xB7, 0x08,
+	0xFF,
+	0x00, 0x06,
+	0xA6, 0xB7, 0x08, 0xA6, 0xB7, 0x08,
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_053b[] = {
+	0xCD,
+	0x00, 0x12,
+	0x04,
+	0x06, 0x07, 0x08, 0xA6, 0xB7, 0x08,
+	0x01,
+	0x02,
+	0xA6, 0xB7, 0x08, 0xA6, 0xB7, 0x09,
+};
+
+INT16U multi_ap_tlv_stream_len_053 = 19;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 054 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+INT8U                  eapol_frame_payload_01[8] = { 0xA6, 0xB7, 0x08, 0xA6, 0xB7, 0x08, 0x08, 0xA6 };
+struct Encap1905EAPOLTLV multi_ap_tlv_structure_054 = {
+	.tlv_type                                                = TLV_TYPE_1905_ENCAP_EAPOL,
+	.eapol_frame_payload_len                                 = 8,
+	.eapol_frame_payload                                     = eapol_frame_payload_01,
+
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_054[] = {
+	0xCE,
+	0x00, 0x08,
+	0xA6, 0xB7, 0x08, 0xA6, 0xB7, 0x08, 0x08, 0xA6
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_054b[] = {
+	0xCE,
+	0x00, 0x08,
+	0xA6, 0xB7, 0xC8, 0xA6, 0xB7, 0x08, 0x08, 0xA6
+};
+
+INT16U multi_ap_tlv_stream_len_054 = 11;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 055 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+INT8U                   dpp_bootstrapping_uri_01[5] = { 0xB7, 0x08, 0xA6, 0xB7, 0x08 } ;
+struct DPPBootstrappingURINotificationTLV multi_ap_tlv_structure_055 = {
+	.tlv_type                                                = TLV_TYPE_DPP_BOOTSTRAPPING_URI_NOTIFICATION,
+	.radio_unique_identifier                                 = { 0x16, 0x07, 0x08, 0xA6, 0xB7, 0x08 },
+	.local_interface_mac_address                             = { 0x16, 0x27, 0x08, 0xA6, 0xB7, 0x08 },
+	.sta_mac_address                                         = { 0x16, 0x27, 0x38, 0xA6, 0xB7, 0x08 },
+	.dpp_bootstrapping_uri_len                               = 5,
+	.dpp_bootstrapping_uri                                   = dpp_bootstrapping_uri_01,
+
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_055[] = {
+	0xCF,
+	0x00, 0x17,
+	0x16, 0x07, 0x08, 0xA6, 0xB7, 0x08,
+	0x16, 0x27, 0x08, 0xA6, 0xB7, 0x08,
+	0x16, 0x27, 0x38, 0xA6, 0xB7, 0x08,
+	0xB7, 0x08, 0xA6, 0xB7, 0x08
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_055b[] = {
+	0xCF,
+	0x00, 0x17,
+	0x16, 0xB7, 0x08, 0xA6, 0xB7, 0x08,
+	0x16, 0x27, 0x08, 0xA6, 0xB7, 0x08,
+	0x16, 0x27, 0x38, 0xA6, 0xB7, 0x08,
+	0xB7, 0x08, 0xA6, 0xB7, 0x08
+};
+
+INT16U multi_ap_tlv_stream_len_055 = 26;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 056 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+struct BackhaulBSSConfigurationTLV multi_ap_tlv_structure_056 = {
+	.tlv_type                                                = TLV_TYPE_BACKHAUL_BSS_CONFIGURATION,
+	.bssid                                                   = { 0x16, 0x07, 0x08, 0xA6, 0xB7, 0x08 },
+	.association_disallowed                                  = 55,
+
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_056[] = {
+	0xD0,
+	0x00, 0x07,
+	0x16, 0x07, 0x08, 0xA6, 0xB7, 0x08,
+	0x37
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_056b[] = {
+	0xD0,
+	0x00, 0x07,
+	0x16, 0x07, 0x08, 0xA6, 0xB7, 0x08,
+	0x38
+};
+
+INT16U multi_ap_tlv_stream_len_056 = 10;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 057 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+INT8U hash_value_057[] = {
+	0x54, 0x31, 0x2e, 0xb7, 0xd6, 0xb8, 0x53, 0x0c,
+	0x00, 0x44, 0x07, 0x1c, 0x27, 0x44, 0x24, 0xd6,
+	0x72, 0x87, 0x3a, 0x6e, 0xea, 0xca, 0xa9, 0xf3,
+	0x4b, 0x9c, 0x7c, 0x8a, 0x1e, 0x2e, 0xda, 0x51
+};
+
+struct DPPChirpValueTLV multi_ap_tlv_structure_057 = {
+	.tlv_type        = TLV_TYPE_DPP_CHIRP_VALUE,
+	.hash_validity   = DPP_CHIRP_ENROLLEE_ADDR_PRESENT | DPP_CHIRP_HASH_VALIDITY,
+	.sta_mac_address = { 0x16, 0x07, 0x08, 0xA6, 0xB7, 0x08 },
+	.hash_len        = 32,
+	.hash_value      = hash_value_057
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_057[] = {
+	0xD3,
+	0x00, 0x28,
+	0xC0,
+	0x16, 0x07, 0x08, 0xA6, 0xB7, 0x08,
+	0x20,
+	0x54, 0x31, 0x2e, 0xb7, 0xd6, 0xb8, 0x53, 0x0c,
+	0x00, 0x44, 0x07, 0x1c, 0x27, 0x44, 0x24, 0xd6,
+	0x72, 0x87, 0x3a, 0x6e, 0xea, 0xca, 0xa9, 0xf3,
+	0x4b, 0x9c, 0x7c, 0x8a, 0x1e, 0x2e, 0xda, 0x51
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_057b[] = {
+	0xD3,
+	0x00, 0x28,
+	0xC0,
+	0x16, 0x07, 0x08, 0xA6, 0xB7, 0x08,
+	0x20,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+};
+
+INT16U multi_ap_tlv_stream_len_057 = 43;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 058 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+char config_req_object_058[] = "{\"name\":\"Realtek\",\
+\"wi-fi_tech\":\"map\",\"netRole\":\"mapAgent\",\
+\"bSTAList\":[{\"netRole\":\"mapBackhaulSta\",\"akm\":\"psk+sae\",\"channelList\":\"81/1, 115/36\"}]}";
+
+struct BSSConfigRequestTLV multi_ap_tlv_structure_058 = {
+	.tlv_type                      = TLV_TYPE_BSS_CONFIG_REQUEST,
+	.dpp_config_request_object_len = 145,
+	.dpp_config_request_object     = (INT8U *)config_req_object_058
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_058[] = {
+	0xBB,
+	0x00, 0x91,
+	0x7b, 0x22, 0x6e, 0x61, 0x6d, 0x65, 0x22, 0x3a,
+	0x22, 0x52, 0x65, 0x61, 0x6c, 0x74, 0x65, 0x6b,
+	0x22, 0x2c, 0x22, 0x77, 0x69, 0x2d, 0x66, 0x69,
+	0x5f, 0x74, 0x65, 0x63, 0x68, 0x22, 0x3a, 0x22,
+	0x6d, 0x61, 0x70, 0x22, 0x2c, 0x22, 0x6e, 0x65,
+	0x74, 0x52, 0x6f, 0x6c, 0x65, 0x22, 0x3a, 0x22,
+	0x6d, 0x61, 0x70, 0x41, 0x67, 0x65, 0x6e, 0x74,
+	0x22, 0x2c, 0x22, 0x62, 0x53, 0x54, 0x41, 0x4c,
+	0x69, 0x73, 0x74, 0x22, 0x3a, 0x5b, 0x7b, 0x22,
+	0x6e, 0x65, 0x74, 0x52, 0x6f, 0x6c, 0x65, 0x22,
+	0x3a, 0x22, 0x6d, 0x61, 0x70, 0x42, 0x61, 0x63,
+	0x6b, 0x68, 0x61, 0x75, 0x6c, 0x53, 0x74, 0x61,
+	0x22, 0x2c, 0x22, 0x61, 0x6b, 0x6d, 0x22, 0x3a,
+	0x22, 0x70, 0x73, 0x6b, 0x2b, 0x73, 0x61, 0x65,
+	0x22, 0x2c, 0x22, 0x63, 0x68, 0x61, 0x6e, 0x6e,
+	0x65, 0x6c, 0x4c, 0x69, 0x73, 0x74, 0x22, 0x3a,
+	0x22, 0x38, 0x31, 0x2f, 0x31, 0x2c, 0x20, 0x31,
+	0x31, 0x35, 0x2f, 0x33, 0x36, 0x22, 0x7d, 0x5d,
+	0x7d
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_058b[] = {
+	0xBB,
+	0x00, 0x91,
+	0x7b, 0x22, 0x6e, 0x61, 0x6d, 0x65, 0x22, 0x3f,
+	0x22, 0x52, 0x65, 0x61, 0x6c, 0x74, 0x65, 0x6f,
+	0x22, 0x2c, 0x22, 0x77, 0x69, 0x2d, 0x66, 0x6f,
+	0x5f, 0x74, 0x65, 0x63, 0x68, 0x22, 0x3a, 0x2f,
+	0x6d, 0x61, 0x70, 0x22, 0x2c, 0x22, 0x6e, 0x6f,
+	0x74, 0x52, 0x6f, 0x6c, 0x65, 0x22, 0x3a, 0x2f,
+	0x6d, 0x61, 0x70, 0x41, 0x67, 0x65, 0x6e, 0x7f,
+	0x22, 0x2c, 0x22, 0x62, 0x53, 0x54, 0x41, 0x4f,
+	0x69, 0x73, 0x74, 0x22, 0x3a, 0x5b, 0x7b, 0x2f,
+	0x6e, 0x65, 0x74, 0x52, 0x6f, 0x6c, 0x65, 0x2f,
+	0x3a, 0x22, 0x6d, 0x61, 0x70, 0x42, 0x61, 0x6f,
+	0x6b, 0x68, 0x61, 0x75, 0x6c, 0x53, 0x74, 0x6f,
+	0x22, 0x2c, 0x22, 0x61, 0x6b, 0x6d, 0x22, 0x3f,
+	0x22, 0x70, 0x73, 0x6b, 0x2b, 0x73, 0x61, 0x6f,
+	0x22, 0x2c, 0x22, 0x63, 0x68, 0x61, 0x6e, 0x6f,
+	0x65, 0x6c, 0x4c, 0x69, 0x73, 0x74, 0x22, 0x3f,
+	0x22, 0x38, 0x31, 0x2f, 0x31, 0x2c, 0x20, 0x3f,
+	0x31, 0x35, 0x2f, 0x33, 0x36, 0x22, 0x7d, 0x5f,
+	0x7d
+};
+
+INT16U multi_ap_tlv_stream_len_058 = 148;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 059 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+char config_req_object_059[] = "{\"wi-fi_tech\":\"map\",\"dfCounterThreshold\":10,\
+\"discovery\":{\"ssid\":\"Multi-AP\"},\"cred\":{\"akm\":\"sae\",\"pass\":\"maprocks2\"}}";
+
+struct BSSConfigResponseTLV multi_ap_tlv_structure_059 = {
+	.tlv_type              = TLV_TYPE_BSS_CONFIG_RESPONSE,
+	.dpp_config_object_len = 116,
+	.dpp_config_object     = (INT8U *)config_req_object_059
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_059[] = {
+	0xBD,
+	0x00, 0x74,
+	0x7b, 0x22, 0x77, 0x69, 0x2d, 0x66, 0x69, 0x5f,
+	0x74, 0x65, 0x63, 0x68, 0x22, 0x3a, 0x22, 0x6d,
+	0x61, 0x70, 0x22, 0x2c, 0x22, 0x64, 0x66, 0x43,
+	0x6f, 0x75, 0x6e, 0x74, 0x65, 0x72, 0x54, 0x68,
+	0x72, 0x65, 0x73, 0x68, 0x6f, 0x6c, 0x64, 0x22,
+	0x3a, 0x31, 0x30, 0x2c, 0x22, 0x64, 0x69, 0x73,
+	0x63, 0x6f, 0x76, 0x65, 0x72, 0x79, 0x22, 0x3a,
+	0x7b, 0x22, 0x73, 0x73, 0x69, 0x64, 0x22, 0x3a,
+	0x22, 0x4d, 0x75, 0x6c, 0x74, 0x69, 0x2d, 0x41,
+	0x50, 0x22, 0x7d, 0x2c, 0x22, 0x63, 0x72, 0x65,
+	0x64, 0x22, 0x3a, 0x7b, 0x22, 0x61, 0x6b, 0x6d,
+	0x22, 0x3a, 0x22, 0x73, 0x61, 0x65, 0x22, 0x2c,
+	0x22, 0x70, 0x61, 0x73, 0x73, 0x22, 0x3a, 0x22,
+	0x6d, 0x61, 0x70, 0x72, 0x6f, 0x63, 0x6b, 0x73,
+	0x32, 0x22, 0x7d, 0x7d
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_059b[] = {
+	0xBD,
+	0x00, 0x74,
+	0x7b, 0x22, 0x77, 0x69, 0x2d, 0x66, 0x69, 0x5f,
+	0x74, 0x65, 0x63, 0x68, 0x22, 0x3a, 0x22, 0x6f,
+	0x61, 0x70, 0x22, 0x2c, 0x22, 0x64, 0x66, 0x4f,
+	0x6f, 0x75, 0x6e, 0x74, 0x65, 0x72, 0x54, 0x6f,
+	0x72, 0x65, 0x73, 0x68, 0x6f, 0x6c, 0x64, 0x2f,
+	0x3a, 0x31, 0x30, 0x2c, 0x22, 0x64, 0x69, 0x7f,
+	0x63, 0x6f, 0x76, 0x65, 0x72, 0x79, 0x22, 0x3f,
+	0x7b, 0x22, 0x73, 0x73, 0x69, 0x64, 0x22, 0x3f,
+	0x22, 0x4d, 0x75, 0x6c, 0x74, 0x69, 0x2d, 0x4f,
+	0x50, 0x22, 0x7d, 0x2c, 0x22, 0x63, 0x72, 0x6f,
+	0x64, 0x22, 0x3a, 0x7b, 0x22, 0x61, 0x6b, 0x6f,
+	0x22, 0x3a, 0x22, 0x73, 0x61, 0x65, 0x22, 0x2f,
+	0x22, 0x70, 0x61, 0x73, 0x73, 0x22, 0x3a, 0x2f,
+	0x6d, 0x61, 0x70, 0x72, 0x6f, 0x63, 0x6b, 0x7f,
+	0x32, 0x22, 0x7d, 0x7d
+};
+
+INT16U multi_ap_tlv_stream_len_059 = 119;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector 060 (TLV <--> packet)
+////////////////////////////////////////////////////////////////////////////////
+struct BSSConfigBSSReport config_bss_report_060[1] = {
+	{ .bssid       = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 },
+	  .status_flag = 0x00,
+	  .reserved    = 0x00,
+	  .ssid_length = 8,
+	  .ssid        = "Multi-AP" }
+};
+
+struct BSSConfigRadioReport config_radio_report_060[1] = {
+	{ .radio_unique_identifier = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 },
+	  .bss_report_nr           = 1,
+	  .bss_reports             = config_bss_report_060 }
+};
+
+struct BSSConfigReportTLV multi_ap_tlv_structure_060 = {
+	.tlv_type        = TLV_TYPE_BSS_CONFIG_REPORT,
+	.radio_report_nr = 1,
+	.radio_reports   = config_radio_report_060
+};
+
+// CheckTrue (TLV <--> packet)
+INT8U multi_ap_tlv_stream_060[] = {
+	0xB7,
+	0x00, 0x19,
+	0x01,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+	0x01,
+	0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+	0x00,
+	0x00,
+	0x08,
+	0x4d, 0x75, 0x6c, 0x74, 0x69, 0x2d, 0x41, 0x50
+};
+
+// CheckFalse (TLV <--> packet)
+INT8U multi_ap_tlv_stream_060b[] = {
+	0xB7,
+	0x00, 0x19,
+	0x01,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x0f,
+	0x01,
+	0x01, 0x02, 0x03, 0x04, 0x05, 0x0f,
+	0x00,
+	0x00,
+	0x08,
+	0x4d, 0x75, 0x6c, 0x74, 0x69, 0x2d, 0x41, 0x5f
+};
+
+INT16U multi_ap_tlv_stream_len_060 = 28;
+
+////////////////////////////////////////////////////////////////////////////////
+// Test vector of Profile 4 TLV
+////////////////////////////////////////////////////////////////////////////////
+INT8U            channel_list_061[1] = { 0x00 };
+struct OperatingChannelClass operate_class_061[1] = {{
+	.operating_class = 0x05,
+	.channel_list_nr   = 0x01,
+	.channel_list   = channel_list_061,
+	.reserved       = {0x00, 0x00, 0x05, 0x00}
+}};
+
+struct AnticipatedChannelPerferenceTLV multi_ap_tlv_structure_061 = {
+	.tlv_type       = TLV_TYPE_ANTICIPATED_CHANNEL_PERFERENCE,
+	.operating_class_nr   = 0x01,
+	.operate_class   = operate_class_061
+};
+
+INT8U multi_ap_tlv_stream_061[] = {
+	0xd6, 0x00, 0x08, 0x01, 0x05, 0x01, 0x00, 0x00, 0x00, 0x05, 0x00
+};
+
+INT8U multi_ap_tlv_stream_061b[] = {
+	0xd6, 0x00, 0x08, 0x06, 0x05, 0x06, 0x00, 0x00, 0x00, 0x05, 0x00
+};
+
+INT16U multi_ap_tlv_stream_len_061 = 11;
+
+INT8U            RU_bitmask_062[1] = { 0x04 } ;
+struct UsageEntryClass usage_entry_062[1] = {{
+	.burst_start_time = 0x05050200,
+	.burst_length   = 0x04040502,
+	.repititions    = 0x02010100,
+	.burst_interval = 0x01010203,
+	.RU_bitmask_length   = 0x01,
+	.RU_bitmask     = RU_bitmask_062,
+	.transmitter_identifier = {0x04, 0x04, 0x04, 0x05, 0x05, 0x00},
+	.power_level    = 0x05,
+	.channel_usage_reason = 0x05,
+	.reserved       = {0x03, 0x02, 0x03, 0x03}
+}};
+
+struct AnticipatedChannelUsageTLV multi_ap_tlv_structure_062 = {
+	.tlv_type       = TLV_TYPE_ANTICIPATED_CHANNEL_USAGE,
+	.operating_class = 0x05,
+	.channel_number = 0x02,
+	.reference_bssid = {0x03, 0x05, 0x05, 0x04, 0x04, 0x04},
+	.usage_entry_nr   = 0x01,
+	.usage_entry   = usage_entry_062
+};
+
+INT8U multi_ap_tlv_stream_062[] = {
+	0xd7, 0x00, 0x27, 0x05, 0x02, 0x03, 0x05, 0x05, 0x04, 0x04, 0x04, 0x01, 0x05, 0x05, 0x02, 0x00, 0x04, 0x04, 0x05, 0x02, 0x02, 0x01, 0x01, 0x00, 0x01, 0x01, 0x02, 0x03, 0x01, 0x04, 0x04, 0x04, 0x04, 0x05, 0x05, 0x00, 0x05, 0x05, 0x03, 0x02, 0x03, 0x03
+};
+
+INT8U multi_ap_tlv_stream_062b[] = {
+	0xd7, 0x00, 0x27, 0x06, 0x02, 0x03, 0x06, 0x06, 0x04, 0x04, 0x04, 0x01, 0x06, 0x06, 0x02, 0x00, 0x04, 0x04, 0x06, 0x02, 0x02, 0x01, 0x01, 0x00, 0x01, 0x01, 0x02, 0x03, 0x01, 0x04, 0x04, 0x04, 0x04, 0x06, 0x06, 0x00, 0x06, 0x06, 0x03, 0x02, 0x03, 0x03
+};
+
+INT16U multi_ap_tlv_stream_len_062 = 42;
+
+struct SpatialReuseRequestTLV multi_ap_tlv_structure_063 = {
+	.tlv_type       = TLV_TYPE_SPATIAL_REUSE_REQUEST,
+	.ruid           = {0x01, 0x04, 0x01, 0x00, 0x05, 0x03},
+	.bss_color      = 0x00,
+	.valid_field    = 0x04,
+	.non_srg_obsspd_max_offset = 0x01,
+	.srg_obsspd_min_offset = 0x00,
+	.srg_obsspd_max_offset = 0x01,
+	.srg_bss_color_bitmap = {0x03, 0x01, 0x00, 0x01, 0x04, 0x03, 0x00, 0x00},
+	.srg_partial_bssid_bitmap = {0x03, 0x04, 0x04, 0x04, 0x02, 0x02, 0x05, 0x01},
+	.reserved       = {0x03, 0x00}
+};
+
+INT8U multi_ap_tlv_stream_063[] = {
+	0xd8, 0x00, 0x1d, 0x01, 0x04, 0x01, 0x00, 0x05, 0x03, 0x00, 0x04, 0x01, 0x00, 0x01, 0x03, 0x01, 0x00, 0x01, 0x04, 0x03, 0x00, 0x00, 0x03, 0x04, 0x04, 0x04, 0x02, 0x02, 0x05, 0x01, 0x03, 0x00
+};
+
+INT8U multi_ap_tlv_stream_063b[] = {
+	0xd8, 0x00, 0x1d, 0x06, 0x04, 0x06, 0x00, 0x05, 0x03, 0x00, 0x04, 0x06, 0x00, 0x06, 0x03, 0x06, 0x00, 0x06, 0x04, 0x03, 0x00, 0x00, 0x03, 0x04, 0x04, 0x04, 0x02, 0x02, 0x05, 0x06, 0x03, 0x00
+};
+
+INT16U multi_ap_tlv_stream_len_063 = 32;
+
+struct SpatialReuseReportTLV multi_ap_tlv_structure_064 = {
+	.tlv_type       = TLV_TYPE_SPATIAL_REUSE_REPORT,
+	.ruid           = {0x00, 0x00, 0x04, 0x02, 0x04, 0x04},
+	.bss_color      = 0x03,
+	.valid_field    = 0x04,
+	.non_srg_obsspd_max_offset = 0x01,
+	.srg_obsspd_min_offset = 0x00,
+	.srg_obsspd_max_offset = 0x00,
+	.srg_bss_color_bitmap = {0x04, 0x01, 0x00, 0x02, 0x03, 0x04, 0x03, 0x03},
+	.srg_partial_bssid_bitmap = {0x03, 0x03, 0x00, 0x00, 0x05, 0x05, 0x01, 0x00},
+	.neighbor_bss_color_inuse_bitmap = {0x00, 0x05, 0x05, 0x02, 0x03, 0x05, 0x03, 0x03},
+	.reserved       = {0x03, 0x04}
+};
+
+INT8U multi_ap_tlv_stream_064[] = {
+	0xd9, 0x00, 0x25, 0x00, 0x00, 0x04, 0x02, 0x04, 0x04, 0x03, 0x04, 0x01, 0x00, 0x00, 0x04, 0x01, 0x00, 0x02, 0x03, 0x04, 0x03, 0x03, 0x03, 0x03, 0x00, 0x00, 0x05, 0x05, 0x01, 0x00, 0x00, 0x05, 0x05, 0x02, 0x03, 0x05, 0x03, 0x03, 0x03, 0x04
+};
+
+INT8U multi_ap_tlv_stream_064b[] = {
+	0xd9, 0x00, 0x25, 0x06, 0x06, 0x04, 0x02, 0x04, 0x04, 0x03, 0x04, 0x01, 0x06, 0x06, 0x04, 0x01, 0x06, 0x02, 0x03, 0x04, 0x03, 0x03, 0x03, 0x03, 0x06, 0x06, 0x05, 0x05, 0x01, 0x06, 0x06, 0x05, 0x05, 0x02, 0x03, 0x05, 0x03, 0x03, 0x03, 0x04
+};
+
+INT16U multi_ap_tlv_stream_len_064 = 40;
+
+struct SpatialReuseConfigResponseTLV multi_ap_tlv_structure_065 = {
+	.tlv_type       = TLV_TYPE_SPATIAL_REUSE_CONFIG_RESPONSE,
+	.ruid           = {0x02, 0x04, 0x00, 0x05, 0x00, 0x02},
+	.response_code  = 0x00
+};
+
+INT8U multi_ap_tlv_stream_065[] = {
+	0xda, 0x00, 0x07, 0x02, 0x04, 0x00, 0x05, 0x00, 0x02, 0x00
+};
+
+INT8U multi_ap_tlv_stream_065b[] = {
+	0xda, 0x00, 0x07, 0x06, 0x04, 0x00, 0x05, 0x00, 0x06, 0x00
+};
+
+INT16U multi_ap_tlv_stream_len_065 = 10;
+
+INT8U            scsd_disallowed_sta_mac_address_066[1][6] = { { 0x00, 0x05, 0x01, 0x00, 0x04, 0x02 } };
+INT8U            mscsd_disallowed_sta_mac_address_066[1][6] = { { 0x04, 0x01, 0x02, 0x05, 0x05, 0x00 } };
+
+struct QoSManagementPolicyTLV multi_ap_tlv_structure_066 = {
+	.tlv_type       = TLV_TYPE_QOS_MANAGEMENT_POLICY,
+	.mscsd_disallowed_sta_nr   = 0x01,
+	.mscsd_disallowed_sta_mac_address = mscsd_disallowed_sta_mac_address_066,
+	.scsd_disallowed_sta_nr   = 0x01,
+	.scsd_disallowed_sta_mac_address = scsd_disallowed_sta_mac_address_066,
+	.reserved       = {0x05, 0x01, 0x03, 0x04, 0x05, 0x00, 0x03, 0x01, 0x01, 0x02, 0x05, 0x02, 0x05, 0x04, 0x04, 0x05, 0x00, 0x03, 0x03, 0x01}
+};
+
+INT8U multi_ap_tlv_stream_066[] = {
+	0xdb, 0x00, 0x22, 0x01, 0x04, 0x01, 0x02, 0x05, 0x05, 0x00, 0x01, 0x00, 0x05, 0x01, 0x00, 0x04, 0x02, 0x05, 0x01, 0x03, 0x04, 0x05, 0x00, 0x03, 0x01, 0x01, 0x02, 0x05, 0x02, 0x05, 0x04, 0x04, 0x05, 0x00, 0x03, 0x03, 0x01
+};
+
+INT8U multi_ap_tlv_stream_066b[] = {
+	0xdb, 0x00, 0x22, 0x06, 0x04, 0x06, 0x02, 0x05, 0x05, 0x00, 0x06, 0x00, 0x05, 0x06, 0x00, 0x04, 0x02, 0x05, 0x06, 0x03, 0x04, 0x05, 0x00, 0x03, 0x06, 0x06, 0x02, 0x05, 0x02, 0x05, 0x04, 0x04, 0x05, 0x00, 0x03, 0x03, 0x06
+};
+
+INT16U multi_ap_tlv_stream_len_066 = 37;
+
+INT8U descriptor_element_1_067[] = {0x12, 0x03, 0x01, 0x02, 0x03};
+INT8U descriptor_element_2_067[] = {0x12, 0x05, 0x01, 0x02, 0x03, 0x02, 0x03};
+
+struct QoSManagementDescriptorTLV multi_ap_tlv_structure_067 = {
+	.tlv_type       = TLV_TYPE_QOS_MANAGEMENT_DESCRIPTOR,
+	.qmid           = 0x0200,
+	.bssid          = {0x01, 0x02, 0x04, 0x05, 0x01, 0x00},
+	.client_mac     = {0x02, 0x01, 0x02, 0x02, 0x03, 0x00},
+	.descriptor_element_len_1 = 5,
+	.descriptor_element_1 = (INT8U *)descriptor_element_1_067,
+	.descriptor_element_len_2 = 7,
+	.descriptor_element_2 = (INT8U *)descriptor_element_2_067
+};
+
+INT8U multi_ap_tlv_stream_067[] = {
+	0xdc, 0x00, 0x1a, 0x02, 0x00, 0x01, 0x02, 0x04, 0x05, 0x01, 0x00, 0x02, 0x01, 0x02, 0x02, 0x03, 0x00, 0x12, 0x03, 0x01, 0x02, 0x03, 0x12, 0x05, 0x01, 0x02, 0x03, 0x02, 0x03
+};
+
+INT8U multi_ap_tlv_stream_067b[] = {
+	0xdc, 0x00, 0x1a, 0x02, 0x00, 0x01, 0x06, 0x04, 0x05, 0x01, 0x00, 0x06, 0x01, 0x06, 0x06, 0x03, 0x00, 0x12, 0x03, 0x01, 0x02, 0x03, 0x12, 0x05, 0x01, 0x02, 0x03, 0x02, 0x03
+};
+
+INT16U multi_ap_tlv_stream_len_067 = 29;
+
+struct ControllerCapabilityTLV multi_ap_tlv_structure_068 = {
+	.tlv_type       = TLV_TYPE_CONTROLLER_CAPABILITY,
+	.KiBMiB_counter = 0x05
+};
+
+INT8U multi_ap_tlv_stream_068[] = {
+	0xdd, 0x00, 0x01, 0x05
+};
+
+INT8U multi_ap_tlv_stream_068b[] = {
+	0xdd, 0x00, 0x01, 0x06
+};
+
+INT16U multi_ap_tlv_stream_len_068 = 4;

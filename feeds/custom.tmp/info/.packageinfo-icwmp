@@ -1,0 +1,67 @@
+Source-Makefile: feeds/custom/icwmp/Makefile
+
+Package: icwmp-openssl
+Submenu: TRx69
+Version: 8.5.9-5553a890ae29692d8e3c7e1b1734adb0722b020a
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libuci +libubox +libblobmsg-json +libubus +libjson-c +libcurl +mxml +@LIBCURL_CRYPTO_AUTH +PACKAGE_icwmp-openssl:libopenssl
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Build-Variant: openssl
+Section: utils
+Category: Utilities
+Repository: base
+Title: TR069 CWMP client (openssl)
+Maintainer: 
+Source: icwmp-8.5.9-5553a890ae29692d8e3c7e1b1734adb0722b020a.tar.gz
+License: GPLv2
+LicenseFiles: LICENSE
+Type: ipkg
+Description: TR069 CWMP client (openssl)
+
+@@
+
+Package: icwmp-wolfssl
+Submenu: TRx69
+Version: 8.5.9-5553a890ae29692d8e3c7e1b1734adb0722b020a
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libuci +libubox +libblobmsg-json +libubus +libjson-c +libcurl +mxml +@LIBCURL_CRYPTO_AUTH +PACKAGE_icwmp-wolfssl:libwolfssl
+Conflicts: icwmp-openssl
+Menu-Depends: 
+Provides: 
+Build-Variant: wolfssl
+Section: utils
+Category: Utilities
+Repository: base
+Title: TR069 CWMP client (wolfssl)
+Maintainer: 
+Source: icwmp-8.5.9-5553a890ae29692d8e3c7e1b1734adb0722b020a.tar.gz
+License: GPLv2
+LicenseFiles: LICENSE
+Type: ipkg
+Description: TR069 CWMP client (wolfssl)
+
+@@
+
+Package: icwmp-mbedtls
+Submenu: TRx69
+Version: 8.5.9-5553a890ae29692d8e3c7e1b1734adb0722b020a
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libuci +libubox +libblobmsg-json +libubus +libjson-c +libcurl +mxml +@LIBCURL_CRYPTO_AUTH +PACKAGE_icwmp-mbedtls:libmbedtls
+Conflicts: icwmp-openssl icwmp-wolfssl
+Menu-Depends: 
+Provides: 
+Build-Variant: mbedtls
+Default-Variant: mbedtls
+Section: utils
+Category: Utilities
+Repository: base
+Title: TR069 CWMP client (mbedtls)
+Maintainer: 
+Source: icwmp-8.5.9-5553a890ae29692d8e3c7e1b1734adb0722b020a.tar.gz
+License: GPLv2
+LicenseFiles: LICENSE
+Type: ipkg
+Description: TR069 CWMP client (mbedtls)
+
+@@
+
+

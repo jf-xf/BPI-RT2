@@ -1,0 +1,33 @@
+From a474d68092952b6f4029ed6ca2a5738e1bfbef2c Mon Sep 17 00:00:00 2001
+From: Qubot <1445788683@qq.com>
+Date: Tue, 23 Dec 2025 16:09:50 +0800
+Subject: [PATCH 04/12] disable mcproxy(veip0 error)
+
+---
+ .../feeds/mcproxy/rtk_files/AP_generic/etc/config/mcproxy     | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/rtk_openwrt/feeds/mcproxy/rtk_files/AP_generic/etc/config/mcproxy b/rtk_openwrt/feeds/mcproxy/rtk_files/AP_generic/etc/config/mcproxy
+index 1f7cc494..b007836e 100644
+--- a/rtk_openwrt/feeds/mcproxy/rtk_files/AP_generic/etc/config/mcproxy
++++ b/rtk_openwrt/feeds/mcproxy/rtk_files/AP_generic/etc/config/mcproxy
+@@ -1,6 +1,6 @@
+ # Use OpenWrt UCI config
+ config mcproxy 'mcproxy'
+-        option disabled '0'
++        option disabled '1'
+         option respawn '1'
+         option protocol 'MLDv2'
+         option qi '125'
+@@ -10,7 +10,7 @@ config mcproxy 'mcproxy'
+ 
+ 
+ config instance
+-        option disabled '0'
++        option disabled '1'
+         option name 'proxy0'
+         option downstream 'br-lan'
+         list upstream 'veip0'
+-- 
+2.34.1
+

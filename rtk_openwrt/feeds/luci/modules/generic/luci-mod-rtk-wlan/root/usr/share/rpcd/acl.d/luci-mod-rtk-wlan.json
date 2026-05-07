@@ -1,0 +1,27 @@
+{
+	"luci-mod-rtk-network-config-wlan": {
+		"description": "Grant access to WLAN network configuration",
+		"read": {
+			"ubus": {
+				"file": [ "exec" ],
+				"iwinfo": [ "assoclist", "countrylist", "freqlist", "txpowerlist" ]
+			},
+			"uci": [ "firewall", "network", "wireless" ]
+		},
+		"write": {
+			"file": {
+				"/sbin/ifup": [ "exec" ],
+				"/sbin/ifdown": [ "exec" ],
+				"/sbin/wifi": [ "exec" ],
+				"/usr/sbin/hostapd_cli -i wlan0 wps_pbc": [ "exec" ],
+				"/usr/sbin/hostapd_cli -i wlan1 wps_pbc": [ "exec" ]
+			},
+			"ubus": {
+				"file": [ "exec" ],
+				"hostapd.*": [ "del_client" ],
+				"iwinfo": [ "scan" ]
+			},
+			"uci": [ "firewall", "network", "wireless", "rtkmap" ]
+		}
+	}
+}

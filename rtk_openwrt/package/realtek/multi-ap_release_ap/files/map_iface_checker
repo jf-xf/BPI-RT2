@@ -1,0 +1,124 @@
+#!/bin/sh /etc/rc.common
+
+BACKHAUL_BSS=64
+BACKHAUL_STA=128
+
+reset_tracked_ifaces()
+{
+  uci del rtkmap.tracked_ifaces.active_ifaces
+  uci del rtkmap.tracked_ifaces.default_radios
+}
+
+save_hostap_iface()
+{
+  local radio="$1"
+  local disabled="$(uci get "wireless.$radio.disabled")"
+  local ifname="$(uci get "wireless.$radio.ifname")"
+  uci set rtkmap.tracked_ifaces=utility
+  if ! [[ $disabled == "1" ]] ; then
+    uci add_list rtkmap.tracked_ifaces.active_ifaces=$ifname
+    uci add_list rtkmap.tracked_ifaces.default_radios=$radio
+  fi
+  uci commit rtkmap
+}
+
+hostap_ready()
+{
+  local iface=$1
+  hostapd_cli -i $iface stat &>/dev/null || ubus call hostapd.$iface get_status &> /dev/null \
+  ||wpa_cli -i $iface stat &>/dev/null || ubus call wpa_supplicant.$iface get_features &> /dev/null
+}
+
+wlan_ready()
+{
+  for iface in "$@"; do
+    if ! hostap_ready "$iface"; then
+      return 1
+    fi
+  done
+}
+
+driver_ready()
+{
+  local channel=0
+  for iface in "$@"; do
+    channel="$(iwpriv $iface get_mib channel)"
+    if [[ -z "$channel" ]]; then
+      return 1
+    fi
+  done
+}
+
+map_bss_type_set()
+{
+  local map_bss_type=0
+  for radio in "$@"; do
+    local ifname="$(uci get "wireless.$radio.ifname")"
+    map_bss_type="$(uci get "wireless.$radio.map_bss_type")"
+    if [[ -z "$map_bss_type" ]]; then
+      continue
+    fi
+    iwpriv $ifname set_mib multiap_bss_type=$map_bss_type
+    if [[ "$map_bss_type" -ge $BACKHAUL_BSS ]] && [[ "$map_bss_type" -le $BACKHAUL_STA ]]; then
+      iwpriv $ifname set_mib a4_enable=1
+    else
+      iwpriv $ifname set_mib a4_enable=0
+    fi
+  done
+}
+
+map_func_off_reset()
+{
+  for radio in "$@"; do
+    local ifname="$(uci get "wireless.$radio.ifname")"
+    iwpriv $ifname set_mib func_off=0
+  done
+}
+
+wlan_ready_poll()
+{
+  local delay=${1:-5}
+  local timeout=20
+  reset_tracked_ifaces
+
+  config_load wireless
+  config_foreach save_hostap_iface wifi-iface
+
+  config_load rtkmap
+  ifaces="$(uci get "rtkmap.tracked_ifaces.active_ifaces")"
+  radios="$(uci get "rtkmap.tracked_ifaces.default_radios")"
+
+  start_time="$(date -u +%s)"
+  while true ; do
+    if wlan_ready $ifaces && driver_ready $ifaces; then
+      break
+    fi
+
+    end_time="$(date -u +%s)"
+    elapsed="$(($end_time-$start_time))"
+    if [ "$elapsed" -gt "$timeout" ]; then
+      return 1
+    fi
+
+    sleep $delay
+  done
+
+  map_bss_type_set $radios
+  map_func_off_reset $radios
+}
+
+checker() {
+  wlan_ready_poll || {
+    echo "[RTK_EasyMesh] Timeout waiting for INTERFACES ready..."
+    exit 1
+  }
+  echo "[RTK_EasyMesh] INTERFACES are ready now!"
+}
+
+start() {
+  checker
+}
+
+disable() {
+  checker
+}

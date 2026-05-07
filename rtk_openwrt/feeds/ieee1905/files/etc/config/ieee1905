@@ -1,0 +1,26 @@
+config ieee1905 'ieee1905'
+	option enabled '1'
+	option extension '1'
+	list extmodule 'map'
+	option registrar '2 5'
+#	option macaddress '0a:1b:2c:3d:4e:50'
+
+config al-iface
+	option enabled '1'
+	option ifname 'br-lan'
+	option type 'bridge'
+
+# ap sections are auto-generated/overwritten during onboarding
+#
+config ap
+	option band '2'
+	option ssid 'IOWRT-2.4GHz'
+	option encryption 'sae-mixed'
+	option key '1234567890'
+
+config ap
+	option band '5'
+	option ssid 'IOWRT-5GHz'
+	option encryption 'sae-mixed'
+	option key '1234567890'
+

@@ -1,0 +1,65 @@
+{
+	"realtek/wlan/easymesh": {
+		"title": "EasyMesh",
+		"order": 20,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		},
+		"depends": {
+			"uci": { "rtkmap": { "@rtk_map": true } },
+			"fs": [
+				{ "/bin/map_controller": "executable" },
+				{ "/bin/map_agent": "executable" }
+			]
+		}
+	},
+
+	"realtek/wlan/easymesh/interface": {
+		"title": "General Settings",
+		"order": 20,
+		"action": {
+			"type": "view",
+			"path": "rtk/easymesh/interface"
+		},
+		"depends": {
+			"acl": [ "luci-mod-rtk-network-config-easymesh" ]
+		}
+	},
+
+	"realtek/wlan/easymesh/topology": {
+		"title": "Topology",
+		"order": 30,
+		"action": {
+			"type": "view",
+			"path": "rtk/easymesh/topology"
+		},
+		"depends": {
+			"acl": [ "luci-mod-rtk-network-config-easymesh" ]
+		}
+	},
+
+	"realtek/wlan/easymesh/channel": {
+		"title": "Channel Scan",
+		"order": 40,
+		"action": {
+			"type": "view",
+			"path": "rtk/easymesh/channel"
+		},
+		"depends": {
+			"acl": [ "luci-mod-rtk-network-config-easymesh" ]
+		}
+	},
+
+	"realtek/wlan/easymesh/vlan": {
+		"title": "Vlan",
+		"order": 50,
+		"action": {
+			"type": "view",
+			"path": "rtk/easymesh/vlan"
+		},
+		"depends": {
+			"acl": [ "luci-mod-rtk-network-config-easymesh" ]
+		}
+	}
+}

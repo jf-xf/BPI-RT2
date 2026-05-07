@@ -1,0 +1,75 @@
+From 5b7bc4dff0395bb9eda6aaa70382ed6efdf7089f Mon Sep 17 00:00:00 2001
+From: "ryan.kuo" <ryan.kuo@realtek.com>
+Date: Fri, 10 Feb 2023 18:50:39 +0800
+Subject: [PATCH] [wpa_supplicant-2.10] Add functions to write PMK PTK from
+ wpa_sm to a file
+
+To provide the 802.11 PTK and PMK for the UCC to decrypt packets in
+EasyMesh logo DPP testcases
+---
+ src/rsn_supp/wpa.c | 46 ++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 46 insertions(+)
+ mode change 100644 => 100755 src/rsn_supp/wpa.c
+
+diff --git a/src/rsn_supp/wpa.c b/src/rsn_supp/wpa.c
+old mode 100644
+new mode 100755
+index 5e2adec..08e5b26
+--- a/src/rsn_supp/wpa.c
++++ b/src/rsn_supp/wpa.c
+@@ -1649,6 +1649,52 @@ int wpa_supplicant_send_4_of_4(struct wpa_sm *sm, const unsigned char *dst,
+ 	WPA_PUT_BE16(key_mic + mic_len, 0);
+ 
+ 	wpa_dbg(sm->ctx->msg_ctx, MSG_DEBUG, "WPA: Sending EAPOL-Key 4/4");
++	
++#ifdef CONFIG_USER_RTK_MULTI_AP_WFA
++	// Construct PTK and PMK, write to text files in tmp folder
++	u8 *temp_ptk;
++	int ptk_len;
++	const u8 *pmk;
++	int pmk_len;
++	int buflen = 256;
++	char buf[256];
++	FILE *fp;
++	char c;
++	
++	pmk_len = sm->pmk_len;
++	pmk = sm->pmk;
++	wpa_snprintf_hex(buf, buflen, pmk, pmk_len);
++	
++	fp = fopen("/tmp/pmk","a+");
++	c=fgetc(fp);
++	if (c != EOF)
++		fprintf(fp, "%s", "\n");
++	fprintf(fp, MACSTR, MAC2STR(sm->own_addr));
++	fprintf(fp, "%s", "_");
++	fprintf(fp, "%s", buf);
++	fclose(fp);
++	
++	ptk_len = ptk->kck_len + ptk->kek_len + ptk->tk_len;
++	temp_ptk = malloc(ptk->kck_len + ptk->kek_len + ptk->tk_len);
++	os_memcpy(temp_ptk, ptk->kck, ptk->kck_len);
++	os_memcpy(temp_ptk + ptk->kck_len, ptk->kek, ptk->kek_len);
++	os_memcpy(temp_ptk + ptk->kck_len + ptk->kek_len, ptk->tk, ptk->tk_len);
++	
++	wpa_snprintf_hex(buf, buflen, temp_ptk, ptk_len);
++	wpa_printf(MSG_DEBUG,"PTK Length: %d", ptk_len);
++	wpa_printf(MSG_DEBUG,"PTK : %s", buf);
++	
++	fp = fopen("/tmp/ptk","a+");
++	c=fgetc(fp);
++	if (c != EOF)
++		fprintf(fp, "%s", "\n");
++	fprintf(fp, MACSTR, MAC2STR(sm->own_addr));
++	fprintf(fp, "%s", "_");
++	fprintf(fp, "%s", buf);
++	fclose(fp);
++	free(temp_ptk);
++#endif
++
+ 	return wpa_eapol_key_send(sm, ptk, ver, dst, ETH_P_EAPOL, rbuf, rlen,
+ 				  key_mic);
+ }
+-- 
+2.17.1
+

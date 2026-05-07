@@ -1,0 +1,12 @@
+
+config stunc 'stunc'
+	option enabled '0'
+	option username 'stun'
+	option password 'stun'
+	option server_address 'stun.l.google.com'
+	option server_port '19302'
+	option min_keepalive '30'
+	option max_keepalive '3600'
+#	option client_port 7547
+	option log_level '1'
+

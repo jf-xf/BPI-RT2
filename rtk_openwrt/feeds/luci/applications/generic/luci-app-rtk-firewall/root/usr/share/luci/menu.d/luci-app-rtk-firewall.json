@@ -1,0 +1,87 @@
+{
+	"realtek/services/firewall": {
+		"title": "Firewall",
+		"order": 60,
+		"action": {
+			"type": "alias",
+			"path": "rtk/services/firewall/zones"
+		},
+		"depends": {
+			"acl": [ "luci-app-rtk-firewall" ],
+			"fs": { "/sbin/fw3": "executable" },
+			"uci": { "firewall": true }
+		}
+	},
+
+	"realtek/services/firewall/zones": {
+		"title": "General Settings",
+		"order": 10,
+		"action": {
+			"type": "view",
+			"path": "rtk/services/firewall/zones"
+		}
+	},
+
+	"realtek/services/firewall/rules": {
+		"title": "IP/Port Filtering",
+		"order": 20,
+		"action": {
+			"type": "view",
+			"path": "rtk/services/firewall/rules"
+		}
+	},
+
+	"realtek/services/firewall/macfilter": {
+		"title": "MAC Filtering",
+		"order": 30,
+		"action": {
+			"type": "view",
+			"path": "rtk/services/firewall/macfilter"
+		}
+	},
+
+	"realtek/services/firewall/forwards": {
+		"title": "Port Forwards",
+		"order": 40,
+		"action": {
+			"type": "view",
+			"path": "rtk/services/firewall/forwards"
+		}
+	},
+
+	"realtek/services/firewall/url": {
+		"title": "URL Blocking",
+		"order": 50,
+		"action": {
+			"type": "view",
+			"path": "rtk/services/firewall/urlblk"
+		}
+	},
+
+	"realtek/services/firewall/domain": {
+		"title": "Domain Blocking",
+		"order": 60,
+		"action": {
+			"type": "view",
+			"path": "rtk/services/firewall/domainblk"
+		}
+	},
+
+	"realtek/services/firewall/dmz": {
+		"title": "DMZ",
+		"order": 70,
+		"action": {
+			"type": "view",
+			"path": "rtk/services/firewall/dmz"
+		}
+	},
+
+	"realtek/services/firewall/acl": {
+		"title": "ACL",
+		"order": 80,
+		"action": {
+			"type": "view",
+			"path": "rtk/services/firewall/acl"
+		}
+	}
+}

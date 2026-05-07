@@ -1,0 +1,12 @@
+mainmenu  "RTK VoIP Module Configuration"
+
+config RTK_VOIP_HAVE_DOT_CONFIG
+	bool
+	default y
+
+config RTK_VOIP_YOCTO_BUILD
+        bool
+        default y
+
+source kernel/Kconfig
+source aipc_char/Kconfig

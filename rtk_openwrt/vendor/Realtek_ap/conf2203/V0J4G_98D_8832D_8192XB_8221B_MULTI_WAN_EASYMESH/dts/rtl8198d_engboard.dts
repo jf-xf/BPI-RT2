@@ -1,0 +1,143 @@
+/*
+ * Realtek Semiconductor Corp.
+ *
+ * Device Tree Structure
+ *
+ * Tony Wu (tonywu@realtek.com)
+ */
+
+/dts-v1/;
+
+#include "rtl8198d_soc.dtsi"
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
+
+/ {
+	compatible = "BPI-RT2";
+	#address-cells = <1>;
+	#size-cells = <1>;
+	
+	leds {
+		compatible = "gpio-leds";
+		led_pwr_r {
+			label = "LED_PWR_R";
+			gpios = <&gpio0 10 GPIO_ACTIVE_LOW>;  //gpio10
+			default-state = "on";
+		};
+		led_fun_g {
+			label = "LED_FUN_G";
+			gpios = <&gpio0 7 GPIO_ACTIVE_LOW>;  //gpio7
+			default-state = "off";
+		};
+		led_sys_b {
+			label = "LED_SYS_B";
+			gpios = <&gpio0 6 GPIO_ACTIVE_LOW>;  //gpio6
+			default-state = "off";
+		};
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+                autorepeat;
+
+		btn_reset {
+			label = "btn,reset";
+			linux,code = <KEY_RESTART>;
+			gpios = <&gpio1 28 GPIO_ACTIVE_LOW>;  //gpio60
+		};
+		
+		btn_wps {
+			label = "btn,wps";
+			linux,code = <KEY_WPS_BUTTON>;
+			gpios = <&gpio1 2 GPIO_ACTIVE_LOW>;  //gpio34
+		};
+	};
+	
+	board_setting {
+		pci0_gpio_rst = <&gpio1 8 GPIO_ACTIVE_HIGH>;
+		pci1_gpio_rst = <&gpio1 7 GPIO_ACTIVE_HIGH>;
+	};
+	
+	i2c_gpio_0: i2c-gpio-0 {
+		compatible = "i2c-gpio";
+		sda-gpios = <&gpio0 1 GPIO_ACTIVE_HIGH>;
+		scl-gpios = <&gpio0 0 GPIO_ACTIVE_HIGH>;
+		i2c-gpio,delay-us = <2>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+
+	i2c_gpio_1: i2c-gpio-1 {
+   		compatible = "i2c-gpio";
+   		sda-gpios = <&gpio0 8 GPIO_ACTIVE_HIGH>;
+   		scl-gpios = <&gpio0 9 GPIO_ACTIVE_HIGH>;
+   		i2c-gpio,delay-us = <5>;
+    	#address-cells = <1>;
+    	#size-cells = <0>;
+
+  		status = "okay";
+    	eeprom@57 {
+        	compatible = "atmel,24c02";
+        	reg = <0x57>;
+        	pagesize = <8>;
+    	};
+	};
+	
+};
+
+&gpio1 {
+    eeprom_wp_disable {
+    	gpio-hog;
+    	gpios = <30 GPIO_ACTIVE_HIGH>;
+    	output-low;
+    	line-name = "eeprom-wp";
+	};
+};
+
+&gic {
+	timer {
+		compatible = "mti,gic-timer";
+		interrupts = <GIC_LOCAL 1 IRQ_TYPE_NONE>;
+		clocks = <&apro_soc_clk 0>;
+		clock-frequency = <900000000>;
+	};
+};
+
+&uart0 {
+	interrupt-parent = <&gic>;
+	interrupts = <GIC_SHARED GIC_EXT_UART0 IRQ_TYPE_LEVEL_HIGH>;
+};
+
+/*
+&uart1 {
+	interrupt-parent = <&gic>;
+	interrupts = <GIC_SHARED GIC_EXT_UART1 IRQ_TYPE_LEVEL_HIGH>;
+};
+
+&uart2 {
+	interrupt-parent = <&gic>;
+	interrupts = <GIC_SHARED GIC_EXT_UART2 IRQ_TYPE_LEVEL_HIGH>;
+};
+*/
+
+/* FIXME Disable for early development
+&eth0 {
+	interrupt-parent = <&gic>;
+	interrupts = <GIC_SHARED 9 IRQ_TYPE_LEVEL_HIGH>;
+};
+
+&gmac {
+	interrupt-parent = <&gic>;
+	interrupts = <GIC_SHARED 9 IRQ_TYPE_LEVEL_HIGH>;
+};
+
+&usb {
+	interrupt-parent = <&gic>;
+	interrupts = <GIC_SHARED 8 IRQ_TYPE_LEVEL_HIGH>;
+};
+
+&hdmi0 {
+	interrupt-parent = <&gic>;
+	interrupts = <GIC_SHARED 13 IRQ_TYPE_LEVEL_HIGH>;
+};
+*/

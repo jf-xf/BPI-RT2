@@ -1,0 +1,17 @@
+MULTIAP_DIR= $(shell echo $(CONFIG_RSDK_DIR) | awk -F/ '{print $$NF}' | awk -F- '{print "multi-ap-"$$3"-"$$6}')
+
+all:
+	if [ -d $(MULTIAP_DIR) ]; then \
+		rm -rf multi-ap; \
+		ln -s $(MULTIAP_DIR) multi-ap; \
+	fi
+
+	make all -C multi-ap
+
+clean:
+	make clean -C multi-ap
+
+romfs:
+	make romfs -C multi-ap
+
+.PHONY: clean

@@ -1,0 +1,380 @@
+//
+// Copyright (C) 2012 Realtek Semiconductor Corp.
+// All Rights Reserved.
+//
+// This program is the proprietary software of Realtek Semiconductor
+// Corporation and/or its licensors, and only be used, duplicated,
+// modified or distributed under the authorized license from Realtek.
+//
+// ANY USE OF THE SOFTWARE OTHER THAN AS AUTHORIZED UNDER
+// THIS LICENSE OR COPYRIGHT LAW IS PROHIBITED.
+//
+// $Revision: 68395 $
+// $Date: 2016-05-27 16:38:35 +0800 (Fri, 27 May 2016) $
+//
+// Purpose : Define diag shell commands for rate extension.
+//
+// Feature : The file have include the following module and sub-modules
+//           1) AQM cos commands.
+//           2) AQM pie commands.
+//
+
+
+//rt_qos configuration
+//set configuration
+//aqm configuration
+//disable
+rt_qos set aqm disable
+
+//rt_qos configuration
+//set configuration
+//aqm configuration
+//enable
+//action_type configuration
+//action_type, 0:PIE drop 1:Modify COS
+rt_qos set aqm enable action_type <UINT:action_type>
+
+//rt_qos configuration
+//get configuration
+//aqm configuration
+rt_qos get aqm
+
+
+//rt_qos configuration
+//set configuration
+//aqm configuration
+//cos configuration
+//flow_type_mask configuration
+//flow_type_mask, bit 2/1/0: big/middle/small, e.g., 0x5 means big and small flow type are enabled
+//big_cos configuration
+//big_cos, 0~7
+//middle_cos configuration
+//middle_cos, 0~7
+//small_cos configuration
+//small_cos, 0~7
+rt_qos set aqm cos flow_type_mask <UINT:flow_type_mask> big_cos <UINT:big_cos> middle_cos <UINT:middle_cos> small_cos <UINT:small_cos>
+
+//rt_qos configuration
+//get configuration
+//aqm configuration
+//cos configuration
+rt_qos get aqm cos
+
+
+//rt_qos configuration
+//set configuration
+//aqm configuration
+//big
+//protocol_mask configuration
+//protocol_mask, bit 2/1/0: other/udp/tcp protocol
+//pktSize_threshold configuration
+//pktSize_threshold, unit: 128 bytes
+//byteCnt_threshold_on configuration
+//byteCnt_threshold_on, unit: 128 bytes
+//byteCnt_threshold_off configuration
+//byteCnt_threshold_off, unit: 128 bytes
+rt_qos set aqm big protocol_mask <UINT:protocol_mask> pktSize_threshold <UINT:pktSize_threshold> byteCnt_threshold_on <UINT:byteCnt_threshold_on> byteCnt_threshold_off <UINT:byteCnt_threshold_off>
+
+//rt_qos configuration
+//get configuration
+//aqm configuration
+//big configuration
+rt_qos get aqm big
+
+
+//rt_qos configuration
+//set configuration
+//aqm configuration
+//middle
+//protocol_mask configuration
+//protocol_mask, bit 2/1/0: other/udp/tcp protocol
+//pktSize_threshold configuration
+//pktSize_threshold, unit: 128 bytes
+//byteCnt_threshold_on configuration
+//byteCnt_threshold_on, unit: 128 bytes
+//byteCnt_threshold_off configuration
+//byteCnt_threshold_off, unit: 128 bytes
+rt_qos set aqm middle protocol_mask <UINT:protocol_mask> pktSize_threshold <UINT:pktSize_threshold> byteCnt_threshold_on <UINT:byteCnt_threshold_on> byteCnt_threshold_off <UINT:byteCnt_threshold_off>
+
+//rt_qos configuration
+//get configuration
+//aqm configuration
+//middle configuration
+rt_qos get aqm middle
+
+
+//rt_qos configuration
+//set configuration
+//aqm configuration
+//timer
+//timer_interval configuration
+//timer_interval, 1~51000 (unit: ms), default: 8ms
+//pktSize_window_shift configuration
+//pktSize_window_shift, 0~16
+//byteCnt_weight_shift configuration
+//byteCnt_weight_shift, 0~15
+rt_qos set aqm timer timer_interval <UINT:timer_interval> pktSize_window_shift <UINT:pktSize_window_shift> byteCnt_weight_shift <UINT:byteCnt_weight_shift>
+
+//rt_qos configuration
+//get configuration
+//aqm configuration
+//timer configuration
+rt_qos get aqm timer
+
+//rt_qos configuration
+//get configuration
+//aqm configuration
+//flow_statistic configuration
+//flow_idx, <0-65535>
+rt_qos get aqm flow_statistic <UINT:flow_idx>
+
+
+//PIE
+
+//rt_qos configuration
+//set configuration
+//aqm configuration
+//pie configuration
+//enable configuration
+//enable, 0:disable, 1:enable
+//deepq configuration
+//deepq, 0:non deepq, 1:deepq
+//ldpid configuration
+//ldpid
+rt_qos set aqm pie enable <UINT:enable> deepq <UINT:deepq> ldpid <UINT:ldpid>
+
+//rt_qos configuration
+//get configuration
+//aqm configuration
+//pie configuration
+//enable configuration
+//deepq configuration
+//deepq, 0:non deepq, 1:deepq
+//ldpid configuration
+//ldpid
+rt_qos get aqm pie enable deepq <UINT:deepq> ldpid <UINT:ldpid>
+
+//rt_qos configuration
+//set configuration
+//aqm configuration
+//pie configuration
+//match configuration
+//match, 0:unmatch, 1:match
+//profile configuration
+//profile, profile index
+//ldpid configuration
+//ldpid
+//ldpid_msk configuration
+//ldpid_msk
+//cos configuration
+//cos
+//cos_msk configuration
+//cos_msk
+rt_qos set aqm pie match <UINT:match> profile <UINT:profile> ldpid <UINT:ldpid> ldpid_msk <UINT:ldpid_msk> cos <UINT:cos> cos_msk <UINT:cos_msk>
+
+//rt_qos configuration
+//get configuration
+//aqm configuration
+//pie configuration
+//match configuration
+//profile configuration
+//profile, profile index
+rt_qos get aqm pie match profile <UINT:profile>
+
+//rt_qos configuration
+//set configuration
+//aqm configuration
+//pie configuration
+//mapping configuration
+//mapping, 0:unmapping, 1:mapping
+//ldpid configuration
+//ldpid
+//cos configuration
+//cos
+//pie_voq configuration
+//pie_voq, pie voq index
+rt_qos set aqm pie mapping <UINT:mapping> ldpid <UINT:ldpid> cos <UINT:cos> pie_voq <UINT:pie_voq>
+
+//rt_qos configuration
+//get configuration
+//aqm configuration
+//pie configuration
+//mapping configuration
+//ldpid configuration
+//ldpid
+//cos configuration
+//cos
+rt_qos get aqm pie mapping ldpid <UINT:ldpid> cos <UINT:cos>
+
+//rt_qos configuration
+//set configuration
+//aqm configuration
+//pie configuration
+//threshold configuration
+//flow_type configuration
+//flow_type, 0:small, 1:middle, 2:big
+//trigger configuration
+//trigger, buffer threshold to trigger pie(bytes)
+//full configuration
+//full, buffer threshold to always drop(bytes)
+//mean configuration
+//mean, buffer threshold to always enqueue, 2^mean bytes
+rt_qos set aqm pie threshold flow_type <UINT:flow_type> trigger <UINT:trigger> full <UINT:full> mean <UINT:mean>
+
+//rt_qos configuration
+//get configuration
+//aqm configuration
+//pie configuration
+//threshold configuration
+//flow_type configuration
+//flow_type, 0:small, 1:middle, 2:big
+rt_qos get aqm pie threshold flow_type <UINT:flow_type>
+
+//rt_qos configuration
+//set configuration
+//aqm configuration
+//pie configuration
+//dp configuration
+//flow_type configuration
+//flow_type, 0:small, 1:middle, 2:big
+//scaling configuration
+//alpha, scaling parameter
+//beta configuration
+//beta, scaling parameter
+rt_qos set aqm pie dp flow_type <UINT:flow_type> scaling <UINT:alpha> beta <UINT:beta>
+
+//rt_qos configuration
+//get configuration
+//aqm configuration
+//pie configuration
+//dp configuration
+//flow_type configuration
+//flow_type, 0:small, 1:middle, 2:big
+//scaling configuration
+rt_qos get aqm pie dp flow_type <UINT:flow_type> scaling
+
+//rt_qos configuration
+//set configuration
+//aqm configuration
+//pie configuration
+//dp configuration
+//flow_type configuration
+//flow_type, 0:small, 1:middle, 2:big
+//threshold configuration
+//curr_ceiling, max value of current dp
+//accu_ceiling configuration
+//accu_ceiling, if accu_dp over this will always drop
+//accu_floor configuration
+//accu_floor, uf accu_dp under this will always enqueue
+rt_qos set aqm pie dp flow_type <UINT:flow_type> threshold <UINT:curr_ceiling> accu_ceiling <UINT:accu_ceiling> accu_floor <UINT:accu_floor>
+
+//rt_qos configuration
+//get configuration
+//aqm configuration
+//pie configuration
+//dp configuration
+//flow_type configuration
+//flow_type, 0:small, 1:middle, 2:big
+//threshold configuration
+rt_qos get aqm pie dp flow_type <UINT:flow_type> threshold
+
+//rt_qos configuration
+//set configuration
+//aqm configuration
+//pie configuration
+//dp configuration
+//flow_type configuration
+//flow_type, 0:small, 1:middle, 2:big
+//burst configuration
+//allowance, if drop:set this to curr_burst_allowance(us)
+//decrement configuration
+//decrement, the value for the burst counter to decrease on each interval(us)
+rt_qos set aqm pie dp flow_type <UINT:flow_type> burst <UINT:allowance> decrement <UINT:decrement>
+
+//rt_qos configuration
+//get configuration
+//aqm configuration
+//pie configuration
+//dp configuration
+//flow_type configuration
+//flow_type, 0:small, 1:middle, 2:big
+//burst configuration
+rt_qos get aqm pie dp flow_type <UINT:flow_type> burst
+
+//rt_qos configuration
+//set configuration
+//aqm configuration
+//pie configuration
+//qdelay configuration
+//flow_type configuration
+//flow_type, 0:small, 1:middle, 2:big
+//pie_voq configuration
+//pie_voq, pie voq index
+//burst_reset configuration
+//burst_reset, burst reset timeout value(us)
+//high_latency configuration
+//high_latency, latency treshold high setting(us)
+//low_latency configuration
+//low_latency, latency treshold low setting
+//minimum_target configuration
+//minimum_target, latency target to meet to active random drops(us)
+rt_qos set aqm pie qdelay flow_type <UINT:flow_type> pie_voq <UINT:pie_voq> burst_reset <UINT:burst_reset> high_latency <UINT:high_latency> low_latency <UINT:low_latency> minimum_target <UINT:minimum_target>
+
+//rt_qos configuration
+//get configuration
+//aqm configuration
+//pie configuration
+//qdelay configuration
+//flow_type configuration
+//flow_type, 0:small, 1:middle, 2:big
+//pie_voq configuration
+//pie_voq, pie voq index
+rt_qos get aqm pie qdelay flow_type <UINT:flow_type> pie_voq <UINT:pie_voq>
+
+//rt_qos configuration
+//set configuration
+//aqm configuration
+//pie configuration
+//rate configuration
+//pie_voq configuration
+//pie_voq, pie voq index
+//msr configuration
+//msr, max service rate(bytes)
+//peak configuration
+//peak, peak rate(bytes)
+rt_qos set aqm pie rate pie_voq <UINT:pie_voq> msr <UINT:msr> peak <UINT:peak>
+
+//rt_qos configuration
+//get configuration
+//aqm configuration
+//pie configuration
+//rate configuration
+//pie_voq configuration
+//pie_voq, pie voq index
+rt_qos get aqm pie rate pie_voq <UINT:pie_voq>
+
+//rt_qos configuration
+//set configuration
+//aqm configuration
+//pie configuration
+//cfg configuration
+//mode configuration
+//mode, TBC mode
+//timer_interval configuration
+//timer_interval, rate=interval*(prescalar+1)/333.333MHz
+//timer_prescalar configuration
+//timer_prescalar, rate=interval*(prescalar+1)/333.333MHz
+//dp_scale configuration
+//dp_scale, 0:disabled, 1:curr_dp*=(pkt_size/mean)
+//random configuration
+//random, 0:random, 1:compare curr_dp by fix_LFSR value
+//fix_LFSR configuration
+//fix_LFSR, drop probability threshold when random disabled
+rt_qos set aqm pie cfg mode <UINT:mode> timer_interval <UINT:timer_interval> timer_prescalar <UINT:timer_prescalar> dp_scale <UINT:dp_scale> random <UINT:random> fix_LFSR <UINT:fix_LFSR>
+
+//rt_qos configuration
+//get configuration
+//aqm configuration
+//pie configuration
+//cfg configuration
+rt_qos get aqm pie cfg

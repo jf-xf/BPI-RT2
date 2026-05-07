@@ -1,0 +1,59 @@
+#!/bin/sh
+# xl2tpd integration for firewall3
+
+IPTABLES=/usr/sbin/iptables
+IP6TABLES=/usr/sbin/ip6tables
+XL2TPD_CHAIN=xl2tpd
+XL2TPD_ENABLE=
+
+. /lib/functions.sh	# for load UCI configuration
+
+# helper to insert in chain as penultimate
+iptables_prepend_rule() {
+        local iptables="$1"
+        local table="$2"
+        local chain="$3"
+        local target="$4"
+
+        config_load xl2tpd
+        config_get XL2TPD_ENABLE xl2tpd enabled
+        [ -n "$XL2TPD_ENABLE" ] || XL2TPD_ENABLE=0
+        if [ $XL2TPD_ENABLE -eq 1 ]; then
+                echo "$(basename $iptables): insert xl2tpd chain to zone_wan_input"
+                $iptables -t "$table" -I "$chain" $($iptables -t "$table" --line-numbers -nL "$chain" | \
+                        sed -ne '$s/[^0-9].*//p') -j "$target"
+        else
+                echo "$(basename $iptables): remove xl2tpd chain form zone_wan_input"
+                $iptables -t "$table" -D "$chain" -j "$target"
+        fi
+}
+
+ADDED=0
+
+update_extzone_rules() {
+    local ext_zone="$1"
+
+    [ -z "$ext_zone" ] && return
+
+    # IPv4 - we need to accept xl2tp negotiate packets in filter table. Such as xl2tp(1723), ppp lcp.
+    # need to insert as penultimate rule for filter since final rule might be a fw3 REJECT
+    iptables_prepend_rule "$IPTABLES" filter "zone_${ext_zone}_input" $XL2TPD_CHAIN
+
+    # IPv6 if available - filter only
+    [ -x $IP6TABLES ] && {
+        iptables_prepend_rule "$IP6TABLES" filter "zone_${ext_zone}_input" $XL2TPD_CHAIN
+    }
+    ADDED=$(($ADDED + 1))
+}
+
+$IPTABLES -F $XL2TPD_CHAIN 2>/dev/null
+$IPTABLES -X $XL2TPD_CHAIN 2>/dev/null
+$IPTABLES -N $XL2TPD_CHAIN 2>/dev/null
+$IPTABLES -A $XL2TPD_CHAIN -p udp --dport 1701 -j ACCEPT -m comment --comment "Allow-L2TP" 2>/dev/null
+
+$IP6TABLES -F $XL2TPD_CHAIN 2>/dev/null
+$IP6TABLES -X $XL2TPD_CHAIN 2>/dev/null
+$IP6TABLES -N $XL2TPD_CHAIN 2>/dev/null
+$IP6TABLES -A $XL2TPD_CHAIN -p udp --dport 1701 -j ACCEPT -m comment --comment "Allow-L2TP" 2>/dev/null
+
+update_extzone_rules wan

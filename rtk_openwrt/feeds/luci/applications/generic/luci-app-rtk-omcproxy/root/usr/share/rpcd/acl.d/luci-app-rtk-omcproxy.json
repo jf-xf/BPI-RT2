@@ -1,0 +1,11 @@
+{
+	"luci-app-rtk-omcproxy": {
+		"description": "Grant UCI access for luci-app-rtk-omcproxy",
+		"read": {
+			"uci": [ "omcproxy" ]
+		},
+		"write": {
+			"uci": [ "omcproxy" ]
+		}
+	}
+}

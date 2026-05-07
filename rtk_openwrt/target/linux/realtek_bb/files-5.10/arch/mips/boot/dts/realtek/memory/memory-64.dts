@@ -1,0 +1,12 @@
+/*
+ * Memory region is shown as follows:
+ *
+ * 0x00000000 - 0x14000000 - 0x20000000 => ....
+ *      dram (320MB)      mmio        highmem
+ */
+/ {
+	memory@0 {
+		device_type = "memory";
+		reg = <0x0 0x4000000>;
+	};
+};

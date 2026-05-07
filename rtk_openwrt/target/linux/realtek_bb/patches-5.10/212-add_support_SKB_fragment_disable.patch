@@ -1,0 +1,28 @@
+Index: linux-5.10.125/net/Kconfig
+===================================================================
+--- linux-5.10.125.orig/net/Kconfig
++++ linux-5.10.125/net/Kconfig
+@@ -329,6 +329,10 @@ config BPF_STREAM_PARSER
+ 	  It can be used to enforce socket policy, implement socket redirects,
+ 	  etc.
+ 
++config SKB_FRAG_DISABLED
++	bool "Disable Linux Kernel SKB frag"
++	default n
++	
+ config NET_FLOW_LIMIT
+ 	bool
+ 	depends on RPS
+Index: linux-5.10.125/net/core/skbuff.c
+===================================================================
+--- linux-5.10.125.orig/net/core/skbuff.c
++++ linux-5.10.125/net/core/skbuff.c
+@@ -441,7 +441,7 @@ struct sk_buff *__netdev_alloc_skb(struc
+ 	/* If requested length is either too small or too big,
+ 	 * we use kmalloc() for skb->head allocation.
+ 	 */
+-	if (len <= SKB_WITH_OVERHEAD(1024) ||
++	if (IS_ENABLED(CONFIG_SKB_FRAG_DISABLED) || len <= SKB_WITH_OVERHEAD(1024) ||
+ 	    len > SKB_WITH_OVERHEAD(PAGE_SIZE) ||
+ 	    (gfp_mask & (__GFP_DIRECT_RECLAIM | GFP_DMA))) {
+ 		skb = __alloc_skb(len, gfp_mask, SKB_ALLOC_RX, NUMA_NO_NODE);

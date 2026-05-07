@@ -1,0 +1,87 @@
+#
+# Makefile for easymesh preconfiguration
+#
+
+ifeq ($(CONFIG_OPENWRT), y)
+PLATFORM_FLAVOUR := openwrt
+else ifeq ($(CONFIG_LUNA), y)
+PLATFORM_FLAVOUR := luna
+else
+PLATFORM_FLAVOUR := jungle
+endif
+
+ifeq ($(CONFIG_OPENWRT), y)
+DRIVER_PATH := $(DRIVER_INC_PATH)
+else ifneq ($(findstring y, $(CPTCFG_RTL8832BR)$(CPTCFG_RTL8852CE)),)
+DRIVER_PATH := $(BACKPORT_DIR)/drivers/net/wireless/realtek/
+else ifneq ($(findstring y, $(CONFIG_RTL8832BR)$(CONFIG_RTL8852CE)$(CONFIG_RTL8852DE)),)
+DRIVER_PATH := $(CONFIG_LINUXDIR)/drivers/net/wireless/realtek
+endif
+
+define get_config_file
+	$(shell sed -n 'p' .config.example > .config)
+endef
+
+define set_config
+	$(shell sed -i -E 's|^(# )?${1}.*$$|${1}=$(${2})|g' .config)
+endef
+
+define del_config
+	$(shell sed -i -E '/^(# )?${1}=.*$$/d' .config)
+endef
+
+define add_config
+	$(shell sed -i -e '$$a\\n${1}=${2}\n' .config)
+endef
+
+.PHONY: all
+
+all:
+	$(call get_config_file)
+# flavour:
+	$(call set_config,FLAVOUR,PLATFORM_FLAVOUR)
+# backports:
+ifeq ($(CONFIG_RTL8852AE_BACKPORTS), y)
+	$(call set_config,USE_BACKPORTS,CONFIG_RTL8852AE_BACKPORTS)
+	$(call set_config,CONFIG_RTL8852AE_BACKPORTS,CONFIG_RTL8852AE_BACKPORTS)
+endif
+# WFA:
+ifeq ($(CONFIG_RTK_MULTI_AP_WFA), y)
+	$(call set_config,USE_RTK_MULTI_AP_WFA,CONFIG_RTK_MULTI_AP_WFA)
+endif
+# MAP profile:
+ifeq ($(CONFIG_RTK_MULTI_AP_R4), y)
+	$(call set_config,USE_MULTI_AP_R4,CONFIG_RTK_MULTI_AP_R4)
+else ifeq ($(CONFIG_RTK_MULTI_AP_R3), y)
+	$(call set_config,USE_MULTI_AP_R3,CONFIG_RTK_MULTI_AP_R3)
+	$(call del_config,USE_MULTI_AP_R4)
+else ifeq ($(CONFIG_RTK_MULTI_AP_R2), y)
+	$(call set_config,USE_MULTI_AP_R2,CONFIG_RTK_MULTI_AP_R2)
+	$(call del_config,USE_MULTI_AP_R4)
+endif
+# endianness:
+ifeq ($(CONFIG_CPU_LITTLE_ENDIAN), y)
+	$(call set_config,HOST_IS_LITTLE_ENDIAN,CONFIG_CPU_LITTLE_ENDIAN)
+	$(call del_config,HOST_IS_BIG_ENDIAN)
+else ifeq ($(CONFIG_CPU_BIG_ENDIAN), y)
+	$(call set_config,HOST_IS_BIG_ENDIAN,CONFIG_CPU_BIG_ENDIAN)
+	$(call del_config,HOST_IS_LITTLE_ENDIAN)
+endif
+# toolchain:
+ifeq ($(CONFIG_OPENWRT), y)
+	$(call set_config,RSDK_TOOLCHAIN_DIR,RSDK_TOOLCHAIN_DIR)
+	$(call add_config,TOOLCHAIN_DIR,$(shell basename $(RSDK_TOOLCHAIN_DIR)))
+else ifeq ($(CONFIG_LUNA), y)
+	$(call set_config,RSDK_TOOLCHAIN_DIR,CONFIG_RSDK_DIR)
+	$(call add_config,TOOLCHAIN_DIR,$(shell basename $(CONFIG_RSDK_DIR)))
+else
+	$(call set_config,RSDK_TOOLCHAIN_DIR,CONFIG_RSDKDIR)
+	$(call add_config,TOOLCHAIN_DIR,$(shell basename $(CONFIG_RSDKDIR)))
+endif
+# driver path:
+	$(call set_config,DRIVER_INC_PATH,DRIVER_PATH)
+# CONFIG_RTK_DEV_AP
+ifeq ($(CONFIG_RTK_DEV_AP), y)
+	$(call set_config,CONFIG_RTK_DEV_AP,CONFIG_RTK_DEV_AP)
+endif
+

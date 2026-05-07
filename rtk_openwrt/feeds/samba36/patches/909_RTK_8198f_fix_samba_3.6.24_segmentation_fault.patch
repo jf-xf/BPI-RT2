@@ -1,0 +1,55 @@
+commit d71812fde428b13be13875e987baec741adacc74
+Author: Po Sheng Huang <pshuang@realtek.com>
+Date:   Thu Jul 11 13:43:16 2019 +0800
+
+    [8198f] fix samba 3.6.24 segmentation fault
+    
+    talloc: Tune talloc_vasprintf
+    
+    vsnprintf is significantly more expensive than memcpy. For the
+    common case where the string we print is less than a kilobyte, avoid
+    the second vsnprintf.
+    
+    source: https://github.com/samba-team/samba/commit/4419cad8952ce90febb2fdffd5bc1f74623475c6
+    
+    this patch is applied on samba 4.0.26
+    
+    Change-Id: Ia3eb976067c8775e0deedbbf336ba080d11394ab
+    Signed-off-by: Po Sheng Huang <pshuang@realtek.com>
+    (cherry picked from commit c5f923b500783186df36d75b9a37023d2c866b44)
+
+diff --git a/lib/talloc/talloc.c b/lib/talloc/talloc.c
+index 19e6a37f..a96e9b54 100755
+--- a/lib/talloc/talloc.c
++++ b/lib/talloc/talloc.c
+@@ -2068,11 +2068,11 @@ _PUBLIC_ char *talloc_vasprintf(const void *t, const char *fmt, va_list ap)
+ 	int len;
+ 	char *ret;
+ 	va_list ap2;
+-	char c;
++	char buf[1024];
+ 
+ 	/* this call looks strange, but it makes it work on older solaris boxes */
+ 	va_copy(ap2, ap);
+-	len = vsnprintf(&c, 1, fmt, ap2);
++	len = vsnprintf(buf, sizeof(buf), fmt, ap2);
+ 	va_end(ap2);
+ 	if (unlikely(len < 0)) {
+ 		return NULL;
+@@ -2081,9 +2081,13 @@ _PUBLIC_ char *talloc_vasprintf(const void *t, const char *fmt, va_list ap)
+ 	ret = (char *)__talloc(t, len+1);
+ 	if (unlikely(!ret)) return NULL;
+ 
+-	va_copy(ap2, ap);
+-	vsnprintf(ret, len+1, fmt, ap2);
+-	va_end(ap2);
++	if (len < sizeof(buf)) {
++		memcpy(ret, buf, len+1);
++	} else {
++		va_copy(ap2, ap);
++		vsnprintf(ret, len+1, fmt, ap2);
++		va_end(ap2);
++	}
+ 
+ 	_talloc_set_name_const(ret, ret);
+ 	return ret;

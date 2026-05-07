@@ -1,0 +1,85 @@
+Index: linux-5.10.138/arch/arm64/Kconfig
+===================================================================
+--- linux-5.10.138.orig/arch/arm64/Kconfig
++++ linux-5.10.138/arch/arm64/Kconfig
+@@ -35,7 +35,7 @@ config ARM64
+ 	select ARCH_HAS_SYNC_DMA_FOR_DEVICE
+ 	select ARCH_HAS_SYNC_DMA_FOR_CPU
+ 	select ARCH_HAS_SYSCALL_WRAPPER
+-	select ARCH_HAS_TEARDOWN_DMA_OPS if IOMMU_SUPPORT
++	select ARCH_HAS_TEARDOWN_DMA_OPS if IOMMU_SUPPORT && !CORTINA_ATU
+ 	select ARCH_HAS_TICK_BROADCAST if GENERIC_CLOCKEVENTS_BROADCAST
+ 	select ARCH_HAVE_ELF_PROT
+ 	select ARCH_HAVE_NMI_SAFE_CMPXCHG
+@@ -85,11 +85,12 @@ config ARM64
+ 	select ARCH_HAS_UBSAN_SANITIZE_ALL
+ 	select ARM_AMBA
+ 	select ARM_ARCH_TIMER
+-	select ARM_GIC
++	select ARM_GIC if !ARCH_CORTINA_VENUS && !ARCH_REALTEK_TAURUS
+ 	select AUDIT_ARCH_COMPAT_GENERIC
+-	select ARM_GIC_V2M if PCI
+-	select ARM_GIC_V3
+-	select ARM_GIC_V3_ITS if PCI
++	select ARM_GIC_V2M if PCI && !ARCH_CORTINA_VENUS && !ARCH_REALTEK_TAURUS
++	select ARM_GIC_V3_SECURED if ARCH_CORTINA_VENUS && !CORTINA_BOARD_FPGA
++	select ARM_GIC_V3 if !ARCH_CORTINA_VENUS || (CORTINA_BOARD_FPGA && ARCH_CORTINA_VENUS)
++	select ARM_GIC_V3_ITS if PCI && !ARCH_CORTINA_VENUS && !ARCH_REALTEK_TAURUS
+ 	select ARM_PSCI_FW
+ 	select BUILDTIME_TABLE_SORT
+ 	select CLONE_BACKWARDS
+@@ -183,7 +184,7 @@ config ARM64
+ 	select HAVE_KPROBES
+ 	select HAVE_KRETPROBES
+ 	select HAVE_GENERIC_VDSO
+-	select IOMMU_DMA if IOMMU_SUPPORT
++	select IOMMU_DMA if IOMMU_SUPPORT && !CORTINA_ATU
+ 	select IRQ_DOMAIN
+ 	select IRQ_FORCED_THREADING
+ 	select MODULES_USE_ELF_RELA
+@@ -1764,7 +1765,8 @@ config ARM64_MODULE_PLTS
+ 
+ config ARM64_PSEUDO_NMI
+ 	bool "Support for NMI-like interrupts"
+-	select ARM_GIC_V3
++	select ARM_GIC_V3 if !ARCH_CORTINA_VENUS
++	select ARM_GIC_V3_SECURED if ARCH_CORTINA_VENUS
+ 	help
+ 	  Adds support for mimicking Non-Maskable Interrupts through the use of
+ 	  GIC interrupt priority. This support requires version 3 or later of
+Index: linux-5.10.138/drivers/irqchip/Kconfig
+===================================================================
+--- linux-5.10.138.orig/drivers/irqchip/Kconfig
++++ linux-5.10.138/drivers/irqchip/Kconfig
+@@ -38,6 +38,13 @@ config ARM_GIC_V3
+ 	select PARTITION_PERCPU
+ 	select GENERIC_IRQ_EFFECTIVE_AFF_MASK
+ 
++config ARM_GIC_V3_SECURED
++	bool
++	select GENERIC_IRQ_MULTI_HANDLER
++	select IRQ_DOMAIN_HIERARCHY
++	select PARTITION_PERCPU
++	select GENERIC_IRQ_EFFECTIVE_AFF_MASK
++
+ config ARM_GIC_V3_ITS
+ 	bool
+ 	select GENERIC_MSI_IRQ_DOMAIN
+Index: linux-5.10.138/drivers/irqchip/Makefile
+===================================================================
+--- linux-5.10.138.orig/drivers/irqchip/Makefile
++++ linux-5.10.138/drivers/irqchip/Makefile
+@@ -31,6 +31,7 @@ obj-$(CONFIG_ARM_GIC_PM)		+= irq-gic-pm.
+ obj-$(CONFIG_ARCH_REALVIEW)		+= irq-gic-realview.o
+ obj-$(CONFIG_ARM_GIC_V2M)		+= irq-gic-v2m.o
+ obj-$(CONFIG_ARM_GIC_V3)		+= irq-gic-v3.o irq-gic-v3-mbi.o irq-gic-common.o
++obj-$(CONFIG_ARM_GIC_V3_SECURED)		+= irq-gic-v3_ca.o irq-gic-v3-mbi_ca.o irq-gic-common_ca.o
+ obj-$(CONFIG_ARM_GIC_V3_ITS)		+= irq-gic-v3-its.o irq-gic-v3-its-platform-msi.o irq-gic-v4.o
+ obj-$(CONFIG_ARM_GIC_V3_ITS_PCI)	+= irq-gic-v3-its-pci-msi.o
+ obj-$(CONFIG_ARM_GIC_V3_ITS_FSL_MC)	+= irq-gic-v3-its-fsl-mc-msi.o
+@@ -114,3 +115,5 @@ obj-$(CONFIG_LOONGSON_PCH_PIC)		+= irq-l
+ obj-$(CONFIG_LOONGSON_PCH_MSI)		+= irq-loongson-pch-msi.o
+ obj-$(CONFIG_MST_IRQ)			+= irq-mst-intc.o
+ obj-$(CONFIG_SL28CPLD_INTC)		+= irq-sl28cpld.o
++obj-$(CONFIG_ARCH_CORTINA)              += irq-ca-peri-ictl.o
++obj-$(CONFIG_ARCH_REALTEK_9607F)        += irq-rtk-elnath-peri-ictl.o

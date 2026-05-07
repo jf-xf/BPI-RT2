@@ -1,0 +1,58 @@
+{
+	"realtek/status/status": {
+		"title": "Status",
+		"order": 10,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		}
+	},
+
+	"realtek/status/status/overview": {
+		"title": "Device",
+		"order": 10,
+		"action": {
+			"type": "template",
+			"path": "rtk/status/status/index"
+		},
+		"depends": {
+			"acl": [ "luci-mod-rtk-status-index" ]
+		}
+	},
+
+	"realtek/status/status/arp": {
+		"title": "ARP/Route Table",
+		"order": 41,
+		"action": {
+			"type": "view",
+			"path": "rtk/status/status/arp"
+		},
+		"depends": {
+			"acl": [ "luci-mod-rtk-status-arp" ]
+		}
+	},
+
+	"realtek/status/status/dmesg": {
+		"title": "Kernel Log",
+		"order": 49,
+		"action": {
+			"type": "view",
+			"path": "rtk/status/status/dmesg"
+		},
+		"depends": {
+			"acl": [ "luci-mod-rtk-status-logs" ]
+		}
+	},
+
+	"realtek/status/status/syslog": {
+		"title": "System Log",
+		"order": 50,
+		"action": {
+			"type": "view",
+			"path": "rtk/status/status/syslog"
+		},
+		"depends": {
+			"acl": [ "luci-mod-rtk-status-logs" ]
+		}
+	}
+}

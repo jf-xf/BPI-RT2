@@ -1,0 +1,16 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2006-2011 OpenWrt.org
+
+START=55
+
+USE_PROCD=1
+BIN=/usr/sbin/vsftpd
+RUN_CONFIG="/etc/vsftpd.conf"
+
+start_service() {
+	procd_open_instance
+	procd_set_param command $BIN $RUN_CONFIG
+	procd_set_param respawn
+	procd_close_instance
+}
+

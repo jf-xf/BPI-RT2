@@ -1,0 +1,22 @@
+#!/bin/sh
+
+
+BMAC=$(db -q get hw.board.basemac)
+BMAC=${BMAC//:/}
+BMAC=${BMAC// /}
+BMAC=$(printf "%12.12X" $((0x$BMAC)))
+
+[ "$BMAC" == "" ] && exit 1
+
+LMAC=$((0x$BMAC & 0xfeffffffffff))
+LMAC=$(($LMAC | 0x020000000000))
+LMAC=$(printf "%12.12X" $LMAC)
+LMAC=$(echo $LMAC | sed -e 's/[0-9A-F]\{2\}/&:/g' -e 's/:$//')
+
+mac=$(uci -q get ieee1905.ieee1905.macaddress)
+
+[ "$mac" != "" ] && exit 0
+
+uci set ieee1905.ieee1905.macaddress="$LMAC"
+uci commit ieee1905
+

@@ -1,0 +1,22 @@
+#!/bin/sh
+#
+# Copyright (C) 2013-2015 OpenWrt.org
+#
+
+. /lib/functions/uci-defaults.sh
+if [ -f /lib/functions/interface_config.sh ]; then
+	. /lib/functions/interface_config.sh
+fi
+
+board_config_update
+
+case "$(board_name)" in
+
+esac
+												  
+ucidef_set_led_usbport "usb0" "USB0" "LED_USB0" "usb1-port1" "usb2-port1"
+ucidef_set_led_usbport "usb1" "USB1" "LED_USB1" "usb3-port1" "usb4-port1"
+
+board_config_flush
+
+exit 0

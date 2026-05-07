@@ -1,0 +1,102 @@
+diff -urN a/drivers/net/ppp/ppp_generic.c b/drivers/net/ppp/ppp_generic.c
+--- a/drivers/net/ppp/ppp_generic.c	2023-05-31 17:28:37.594418373 +0800
++++ b/drivers/net/ppp/ppp_generic.c	2023-06-01 17:35:48.226645734 +0800
+@@ -57,7 +57,13 @@
+ #endif
+ 
+ #define PPP_VERSION	"2.4.2"
++#if IS_ENABLED(CONFIG_PPPOE)
++int (*is_pppoe_channel)(struct ppp_channel* chan);
++int (*sync_ppp_dev_feature)(struct net_device*ppp_dev, struct ppp_channel* chan);
+ 
++EXPORT_SYMBOL(is_pppoe_channel);
++EXPORT_SYMBOL(sync_ppp_dev_feature);
++#endif
+ /*
+  * Network protocols we support.
+  */
+@@ -1536,18 +1542,6 @@
+ 
+ 	dev->features |= NETIF_F_LLTX;
+ 
+-	dev->features |= NETIF_F_CSUM_MASK | NETIF_F_SG |
+-						NETIF_F_HW_CSUM | NETIF_F_RXCSUM |
+-						NETIF_F_FRAGLIST | NETIF_F_ALL_TSO |
+-						NETIF_F_HIGHDMA | NETIF_F_SCTP_CRC |
+-						NETIF_F_ALL_FCOE | NETIF_F_TSO | NETIF_F_TSO6;
+-
+-	dev->hw_features |= NETIF_F_CSUM_MASK | NETIF_F_SG |
+-						NETIF_F_HW_CSUM | NETIF_F_RXCSUM |
+-						NETIF_F_FRAGLIST | NETIF_F_ALL_TSO |
+-						NETIF_F_HIGHDMA | NETIF_F_SCTP_CRC |
+-						NETIF_F_ALL_FCOE | NETIF_F_TSO | NETIF_F_TSO6;
+-
+ 	dev->hard_header_len = PPP_HDRLEN;
+ 	dev->mtu = PPP_MRU;
+ 	dev->addr_len = 0;
+@@ -3361,6 +3355,14 @@
+ 		ret = -ENOTCONN;
+ 		goto outl;
+ 	}
++#if IS_ENABLED(CONFIG_PPPOE)
++	if (is_pppoe_channel && sync_ppp_dev_feature) {
++		if(is_pppoe_channel(pch->chan))
++		{
++			sync_ppp_dev_feature(ppp->dev, pch->chan);
++		}
++	}
++#endif
+ 	spin_unlock_bh(&pch->downl);
+ 	if (pch->file.hdrlen > ppp->file.hdrlen)
+ 		ppp->file.hdrlen = pch->file.hdrlen;
+diff -urN a/drivers/net/ppp/pppoe.c b/drivers/net/ppp/pppoe.c
+--- a/drivers/net/ppp/pppoe.c	2023-05-31 17:15:22.178130301 +0800
++++ b/drivers/net/ppp/pppoe.c	2023-06-01 17:36:16.583467988 +0800
+@@ -84,6 +84,9 @@
+ #define PPPOE_HASH_SIZE (1 << PPPOE_HASH_BITS)
+ #define PPPOE_HASH_MASK	(PPPOE_HASH_SIZE - 1)
+ 
++extern int (*is_pppoe_channel)(struct ppp_channel* chan);
++extern int (*sync_ppp_dev_feature)(struct net_device*ppp_dev, struct ppp_channel* chan);
++
+ static int __pppoe_xmit(struct sock *sk, struct sk_buff *skb);
+ 
+ static const struct proto_ops pppoe_ops;
+@@ -717,6 +720,27 @@
+ 	goto end;
+ }
+ 
++int _is_pppoe_channel(struct ppp_channel* chan)
++{
++	if(chan->ops ==  &pppoe_chan_ops)
++		return 1;
++	return 0;
++}
++
++int _sync_ppp_dev_feature(struct net_device*ppp_dev, struct ppp_channel* chan)
++{
++	struct pppox_sock *po = pppox_sk(chan->private);
++	struct net_device *pppoeDev = po->pppoe_dev;
++
++	ppp_dev->features |= (pppoeDev->features & (NETIF_F_HW_CSUM | NETIF_F_GRO | NETIF_F_SG | NETIF_F_GSO | NETIF_F_TSO | NETIF_F_TSO6));
++	if(ppp_dev->features & NETIF_F_GSO)
++	{
++		netif_set_gso_max_size(ppp_dev, pppoeDev->gso_max_size);
++	}
++	ppp_dev->hw_features |=  pppoeDev->hw_features;
++	return 0;
++}
++
+ static int pppoe_getname(struct socket *sock, struct sockaddr *uaddr,
+ 		  int peer)
+ {
+@@ -1198,6 +1222,9 @@
+ 	dev_add_pack(&pppoed_ptype);
+ 	register_netdevice_notifier(&pppoe_notifier);
+ 
++	is_pppoe_channel = _is_pppoe_channel;
++	sync_ppp_dev_feature = _sync_ppp_dev_feature;
++
+ 	return 0;
+ 
+ out_unregister_pppoe_proto:

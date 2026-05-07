@@ -1,0 +1,43 @@
+#!/bin/sh
+case "$reason" in
+multi_ap_reload)
+  if [ "$#" -eq 1 ]; then
+    sysconf $reason $1
+  else
+    echo "wrong script parameter."
+  fi
+;;
+multi_ap_configure)
+  if [ "$#" -eq 2 ]; then
+    sysconf $reason $1 $2
+  else
+    echo "wrong script parameter."
+  fi
+;;
+multi_ap_set_configured_band)
+  if [ "$#" -eq 1 ]; then
+    sysconf $reason $1
+  else
+    echo "wrong script parameter."
+  fi
+;;
+multi_ap_set_band)
+  if [ "$#" -eq 2 ]; then
+    sysconf $reason $1 $2
+  else
+    echo "wrong script parameter."
+  fi
+;;
+multi_ap_wlan_reinit)
+    sysconf $reason
+;;
+multi_ap_dhcp_renew)
+    sysconf $reason
+;;
+multi_ap_reset)
+    sysconf $reason $1
+;;
+multi_ap_agent_restart)
+    sysconf $reason
+;;
+esac

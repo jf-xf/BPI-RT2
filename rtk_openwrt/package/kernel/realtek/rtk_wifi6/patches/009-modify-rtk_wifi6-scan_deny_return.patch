@@ -1,0 +1,13 @@
+diff --git a/os_dep/linux/ioctl_cfg80211.c b/os_dep/linux/ioctl_cfg80211.c
+index 3f5bc7f87..0b2889c34 100755
+--- a/os_dep/linux/ioctl_cfg80211.c
++++ b/os_dep/linux/ioctl_cfg80211.c
+@@ -91,7 +91,7 @@
+  * If customer need, defining this flag will make driver
+  * always return -EBUSY at the condition of scan deny.
+  */
+-/* #define CONFIG_NOTIFY_SCAN_ABORT_WITH_BUSY */
++#define CONFIG_NOTIFY_SCAN_ABORT_WITH_BUSY
+
+ static const u32 rtw_cipher_suites[] = {
+ 	WLAN_CIPHER_SUITE_WEP40,

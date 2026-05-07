@@ -1,0 +1,12 @@
+/* For CONFIG_LUNA_MEMORY_AUTO_DETECTION
+ * Memory region is shown as follows:
+ * DRAM
+ * 0x00000000 - 0x01000000 : 16MB for dts arch.
+ * LUNA_MEMORY_AUTO_DETECTION: Use memblock_add to add other mem blocks by Physical DRAM Size 
+ */
+/ {
+	memory@0 {
+		device_type = "memory";
+		reg = <0x0 0x1000000>;
+	};
+};

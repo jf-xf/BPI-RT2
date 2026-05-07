@@ -1,0 +1,75 @@
+Index: ppp-2.4.9.git-2021-01-04/pppd/main.c
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/main.c
++++ ppp-2.4.9.git-2021-01-04/pppd/main.c
+@@ -312,6 +312,8 @@ main(int argc, char *argv[])
+     }
+     hostname[MAXNAMELEN-1] = 0;
+ 
++    path_pidfile[0] = 0;
++
+     /* make sure we don't create world or group writable files. */
+     umask(umask(0777) | 022);
+ 
+@@ -822,11 +824,21 @@ create_linkpidfile(int pid)
+ {
+     FILE *pidfile;
+ 
+-    if (linkname[0] == 0)
+-	return;
+-    script_setenv("LINKNAME", linkname, 1);
+-    slprintf(linkpidfile, sizeof(linkpidfile), "%sppp-%s.pid",
+-	     _PATH_VARRUN, linkname);
++    if(path_pidfile[0] != 0)
++    {
++	slprintf(linkpidfile, sizeof(linkpidfile), "%s", path_pidfile);
++	if (linkname[0] != 0)
++	    script_setenv("LINKNAME", linkname, 1);
++    }
++    else
++    {
++	if (linkname[0] == 0)
++	    return;
++	script_setenv("LINKNAME", linkname, 1);
++	slprintf(linkpidfile, sizeof(linkpidfile), "%sppp-%s.pid",
++		_PATH_VARRUN, linkname);
++    }
++
+     if ((pidfile = fopen(linkpidfile, "w")) != NULL) {
+ 	fprintf(pidfile, "%d\n", pid);
+ 	if (ifname[0])
+Index: ppp-2.4.9.git-2021-01-04/pppd/options.c
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/options.c
++++ ppp-2.4.9.git-2021-01-04/pppd/options.c
+@@ -136,6 +136,7 @@ int maxoctets_dir = 0;       /* default
+ int maxoctets_timeout = 1;   /* default 1 second */ 
+ #endif
+ 
++char path_pidfile[MAXPATHLEN]; /* pathname of PID fil	e */
+ 
+ extern option_t auth_options[];
+ extern struct stat devstat;
+@@ -390,6 +391,10 @@ option_t general_options[] = {
+       "Check for traffic limit every N seconds", OPT_PRIO | OPT_LLIMIT | 1 },
+ #endif
+ 
++    { "pid-path", o_string, path_pidfile,
++	"Set pathname of PID file",
++	OPT_PRIV|OPT_STATIC, NULL, MAXPATHLEN },
++
+     { NULL }
+ };
+ 
+Index: ppp-2.4.9.git-2021-01-04/pppd/pppd.h
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/pppd.h
++++ ppp-2.4.9.git-2021-01-04/pppd/pppd.h
+@@ -350,6 +350,7 @@ extern int       maxoctets_dir;      /*
+ 				      2 - out
+ 				      3 - max(in,out) */
+ extern int       maxoctets_timeout;  /* Timeout for check of octets limit */
++extern char path_pidfile[MAXPATHLEN]; /* pathname of PID file */
+ #define PPP_OCTETS_DIRECTION_SUM        0
+ #define PPP_OCTETS_DIRECTION_IN         1
+ #define PPP_OCTETS_DIRECTION_OUT        2

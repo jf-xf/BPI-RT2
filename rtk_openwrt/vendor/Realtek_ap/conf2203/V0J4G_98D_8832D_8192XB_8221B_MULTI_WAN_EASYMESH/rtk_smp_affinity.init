@@ -1,0 +1,13 @@
+#!/bin/sh /etc/rc.common
+START=99
+IFNAME="wlan 0"
+IFNAME1="wlan 1"
+
+start()
+{
+	echo ${IFNAME} mode 1 cpu 2 > /proc/fc/ctrl/smp_dispatch_wifi_rx
+	echo ${IFNAME} mode 1 cpu 3 > /proc/fc/ctrl/smp_dispatch_wifi_tx
+	echo ${IFNAME1} mode 1 cpu 0 > /proc/fc/ctrl/smp_dispatch_wifi_tx
+	echo 4 > /proc/irq/63/smp_affinity
+	echo 8 > /proc/irq/73/smp_affinity
+}

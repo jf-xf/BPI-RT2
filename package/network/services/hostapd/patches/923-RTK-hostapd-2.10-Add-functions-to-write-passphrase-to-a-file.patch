@@ -1,0 +1,54 @@
+From 27f59cfc55baea9b9d7b86da88b0f23096ee9330 Mon Sep 17 00:00:00 2001
+From: "ryan.kuo" <ryan.kuo@realtek.com>
+Date: Fri, 10 Feb 2023 15:19:36 +0800
+Subject: [PATCH] [hostapd-2.10] Add functions to write passphrase to a file
+
+To provide passphrase for the UCC to decrypt packets in EasyMesh logo
+DPP testcases
+---
+ src/ap/sta_info.c | 26 ++++++++++++++++++++++++++
+ 1 file changed, 26 insertions(+)
+ mode change 100644 => 100755 src/ap/sta_info.c
+
+diff --git a/src/ap/sta_info.c b/src/ap/sta_info.c
+old mode 100644
+new mode 100755
+index 0425376..cc65429
+--- a/src/ap/sta_info.c
++++ b/src/ap/sta_info.c
+@@ -1324,6 +1324,32 @@ void ap_sta_set_authorized(struct hostapd_data *hapd, struct sta_info *sta,
+ 		wpa_msg(hapd->msg_ctx, MSG_INFO, AP_STA_CONNECTED "%s%s%s",
+ 			buf, ip_addr, keyid_buf);
+ 
++#ifdef CONFIG_USER_RTK_MULTI_AP_WFA
++		// Write passphrase of bhBSS in tmp folder
++		char *passphrase;
++		int passphrase_len;
++		FILE *fp;
++		char c;
++		
++		if (hapd->conf->wpa_key_mgmt & WPA_KEY_MGMT_SAE)
++			passphrase = hapd->conf->sae_passwords->password;
++		else
++			passphrase = hapd->conf->ssid.wpa_passphrase;
++		
++		if (passphrase)
++		{
++			passphrase_len = strlen(passphrase);
++			fp = fopen("/tmp/passphrase", "a+");
++			c = fgetc(fp);
++			if (c != EOF)
++				fprintf(fp, "%s", "\n");
++			fprintf(fp, MACSTR, MAC2STR(sta->addr));
++			fprintf(fp, "%s", "_");
++			fprintf(fp, "%s", passphrase);
++			fclose(fp);
++		}
++#endif
++
+ 		if (hapd->msg_ctx_parent &&
+ 		    hapd->msg_ctx_parent != hapd->msg_ctx)
+ 			wpa_msg_no_global(hapd->msg_ctx_parent, MSG_INFO,
+-- 
+2.17.1
+

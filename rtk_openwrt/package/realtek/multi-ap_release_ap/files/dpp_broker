@@ -1,0 +1,15 @@
+#!/bin/sh /etc/rc.common
+START=98
+
+USE_PROCD=1
+
+DPP_BROKER="/bin/dpp_broker"
+
+start_service() {
+  if [ -x $DPP_BROKER ]; then
+    procd_open_instance dpp_broker
+    procd_set_param command "$DPP_BROKER"
+    procd_set_param respawn ${respawn_threshold:-3600} ${respawn_timeout:-5} ${respawn_retry:-5}
+		procd_close_instance
+  fi
+}

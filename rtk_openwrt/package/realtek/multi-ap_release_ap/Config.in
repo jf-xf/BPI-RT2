@@ -1,0 +1,3 @@
+config MULTI_AP_STP_SWITCH
+	depends on PACKAGE_multi-ap_release_ap
+	bool "STP monitor enable"

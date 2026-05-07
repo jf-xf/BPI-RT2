@@ -1,0 +1,26 @@
+Index: linux-5.10.125/net/netfilter/xt_string.c
+===================================================================
+--- linux-5.10.125.orig/net/netfilter/xt_string.c
++++ linux-5.10.125/net/netfilter/xt_string.c
+@@ -394,6 +394,10 @@ string_mt(const struct sk_buff *skb, str
+ 				}
+ 			}
+ 			break;
++      		 default:
++               		return (skb_find_text((struct sk_buff *)skb, conf->from_offset,
++                             conf->to_offset, conf->config)
++                             != UINT_MAX) ^ invert;
+ 	}
+ 	return false;
+ }
+@@ -416,10 +420,6 @@ static int string_mt_check(const struct
+ 	if (conf->u.v1.flags &
+ 	    ~(XT_STRING_FLAG_IGNORECASE | XT_STRING_FLAG_INVERT))
+ 		return -EINVAL;
+-	if ((conf->str_flag<XT_STRING_FLAG_STRING) || \
+-		(conf->str_flag>XT_STRING_FLAG_URLALW) || \
+-		(conf->str_flag==XT_STRING_FLAG_HEX_STRING))
+-			return -EINVAL;
+ 	if (conf->u.v1.flags & XT_STRING_FLAG_IGNORECASE)
+ 		flags |= TS_IGNORECASE;
+ 	ts_conf = textsearch_prepare(conf->algo, conf->pattern, conf->patlen,

@@ -1,0 +1,13 @@
+Index: icwmp-8.5.9/src/cwmp.c
+===================================================================
+--- icwmp-8.5.9.orig/src/cwmp.c
++++ icwmp-8.5.9/src/cwmp.c
+@@ -443,7 +443,7 @@ static void cwmp_schedule_session(struct
+ 		ilist = (&(cwmp->head_session_queue))->next;
+ 		while ((ilist == &(cwmp->head_session_queue)) || retry) {
+ 			t = cwmp_get_retry_interval(cwmp, 0);
+-			time_to_wait.tv_sec = time(NULL) + t;
++			time_to_wait.tv_sec = (t == MAX_INT32) ? MAX_INT32 : time(NULL) + t;
+ 			CWMP_LOG(INFO, "Waiting the next session");
+ 
+ 			if (thread_end) {

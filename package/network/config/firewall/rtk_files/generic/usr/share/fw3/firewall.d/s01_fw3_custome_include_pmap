@@ -1,0 +1,14 @@
+#!/bin/sh
+
+SETUP_SCRIPT="/var/firewall/fw3_pmap_setup"
+CLEAR_SCRIPT="/var/firewall/fw3_pmap_clear"
+
+ACTION="reload"
+[ $# == 1 ] && ACTION=$1
+
+[ -x $CLEAR_SCRIPT ] && sh $CLEAR_SCRIPT
+
+if [ $ACTION != "clear" ]; then
+        [ -x $SETUP_SCRIPT ] && sh $SETUP_SCRIPT
+fi
+

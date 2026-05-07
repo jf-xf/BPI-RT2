@@ -1,0 +1,162 @@
+//
+// Copyright (C) 2012 Realtek Semiconductor Corp.
+// All Rights Reserved.
+//
+// This program is the proprietary software of Realtek Semiconductor
+// Corporation and/or its licensors, and only be used, duplicated,
+// modified or distributed under the authorized license from Realtek.
+//
+// ANY USE OF THE SOFTWARE OTHER THAN AS AUTHORIZED UNDER
+// THIS LICENSE OR COPYRIGHT LAW IS PROHIBITED.
+//
+// $Revision: 14393 $
+// $Date: 2018-11-22 11:32:16 +0800 (Thu, 22 Nov 2018) $
+//
+// Purpose : Define diag shell commands for igmp extension.
+//
+// Feature : The file have include the following module and sub-modules
+//           1) igmp for multicast mode and multicast group commands.
+//
+
+//rt_igmp configuration
+//set configuration
+//multicast
+//learning-mode configuration
+//mode, 0:kernel, 1:user
+rt_igmp set multicast learning-mode <UINT:mode>
+
+
+//rt_igmp configuration
+//set configuration
+//multicast
+//unknown MC configuration
+//ipVersion configuration
+//0:IPv4, 1:IPv6
+//action configuration
+//0:Drop, 1:Trap
+rt_igmp set multicast unknowMc ipVersion <UINT:ipVersion> action <UINT:action>
+
+//rt_igmp configuration
+//set configuration
+//multicast
+//group configuration
+//ipv4
+//ip_address configuration
+//ipv4 group ip address
+//port_mask configuration
+//portmask, <0x000-0xfff>
+//wlan_mbssid_mask0 configuration
+//wlandMbssidMask0, <0x0-0xffffffff>
+//wlan_mbssid_mask1 configuration
+//wlandMbssidMask1, <0x0-0xffffffff>
+//wlan_mbssid_mask2 configuration
+//wlandMbssidMask2, <0x0-0xffffffff>
+//action_ctag configuration
+//tagDecision configuration
+//tagDecision, 0:untag, 1:ctag
+//cvid configuration
+//cvid, 0~4095
+//cpri configuration
+//cpri, 0~7
+rt_igmp set multicast group ipv4 ip_address <IPV4ADDR:mc_gip_v4> port_mask <HEX:portmask> wlan_mbssid_mask0 <HEX:wlanMbssidMask0> wlan_mbssid_mask1 <HEX:wlanMbssidMask1> wlan_mbssid_mask2 <HEX:wlanMbssidMask2> action_ctag tagDecision <UINT:tagDecision> cvid <UINT:cvid> cpri <UINT:cpri>
+
+//rt_igmp configuration
+//set configuration
+//multicast
+//group configuration
+//ipv6
+//ip_address configuration
+//ipv6 group ip address
+//port_mask configuration
+//portmask, <0x000-0xfff>
+//wlan_mbssid_mask0 configuration
+//wlandMbssidMask0, <0x0-0xffffffff>
+//wlan_mbssid_mask1 configuration
+//wlandMbssidMask1, <0x0-0xffffffff>
+//wlan_mbssid_mask2 configuration
+//wlandMbssidMask2, <0x0-0xffffffff>
+//action_ctag configuration
+//tagDecision configuration
+//tagDecision, 0:untag, 1:ctag
+//cvid configuration
+//cvid, 0~4095
+//cpri configuration
+//cpri, 0~7
+rt_igmp set multicast group ipv6 ip_address <IPV6ADDR:mc_gip_v6> port_mask <HEX:portmask> wlan_mbssid_mask0 <HEX:wlanMbssidMask0> wlan_mbssid_mask1 <HEX:wlanMbssidMask1> wlan_mbssid_mask2 <HEX:wlanMbssidMask2> action_ctag tagDecision <UINT:tagDecision> cvid <UINT:cvid> cpri <UINT:cpri>
+
+//rt_igmp configuration
+//set configuration
+//multicast
+//group configuration
+//ipv4
+//ip_address configuration
+//ipv4 group ip address
+//physical_port_mask configuration
+//portmask, <0x000-0xfff>
+//wlan_mbssid_mask0 configuration
+//wlandMbssidMask0, <0x0-0xffffffff>
+//wlan_mbssid_mask1 configuration
+//wlandMbssidMask1, <0x0-0xffffffff>
+//wlan_mbssid_mask2 configuration
+//wlandMbssidMask2, <0x0-0xffffffff>
+//second physical_port_mask configuration [optional]
+//portmask, <0x000-0xfff>
+//second sec_wlan_dev_mask0 configuration
+//secWlandevmask0, <0x0-0xffffffff>
+//second sec_wlan_dev_mask1 configuration
+//secWlandevmask1, <0x0-0xffffffff>
+//second sec_wlan_dev_mask2 configuration
+//secWlandevmask2, <0x0-0xffffffff>
+//action_ctag configuration
+//first tagDecision configuration
+//tagDecision, 0:untag, 1:ctag
+//first cvid configuration
+//cvid, 0~4095
+//first cpri configuration
+//cpri, 0~7
+//second tagDecision configuration
+//tagDecision, 0:untag, 1:ctag
+//second cvid configuration
+//cvid, 0~4095
+//second cpri configuration
+//cpri, 0~7
+rt_igmp set multicast group ipv4 ip_address <IPV4ADDR:mc_gip_v4> port_mask <HEX:portmask> wlan_mbssid_mask0 <HEX:wlanMbssidMask0> wlan_mbssid_mask1 <HEX:wlanMbssidMask1> wlan_mbssid_mask2 <HEX:wlanMbssidMask2> port_mask2 <HEX:portmask2> sec_wlan_dev_mask0 <HEX:secWlandevmask0> sec_wlan_dev_mask1 <HEX:secWlandevmask1> sec_wlan_dev_mask2 <HEX:secWlandevmask2> action_ctag tagDecision <UINT:tagDecision> cvid <UINT:cvid> cpri <UINT:cpri> tagDecision2 <UINT:tagDecision2> cvid2 <UINT:cvid2> cpri2 <UINT:cpri2>
+
+//rt_igmp configuration
+//set configuration
+//multicast
+//group configuration
+//ipv6
+//ip_address configuration
+//ipv6 group ip address
+//port_mask configuration
+//portmask, <0x000-0xfff>
+//wlan_mbssid_mask0 configuration
+//wlandMbssidMask0, <0x0-0xffffffff>
+//wlan_mbssid_mask1 configuration
+//wlandMbssidMask1, <0x0-0xffffffff>
+//wlan_mbssid_mask2 configuration
+//wlandMbssidMask2, <0x0-0xffffffff>
+//second port_mask configuration [optional]
+//portmask, <0x000-0xfff>
+//second sec_wlan_dev_mask0 configuration
+//secwlandevmask0, <0x0-0xffffffff>
+//second sec_wlan_dev_mask1 configuration
+//secwlandevmask1, <0x0-0xffffffff>
+//second sec_wlan_dev_mask2 configuration
+//secwlandevmask2, <0x0-0xffffffff>
+//action_ctag configuration
+//first tagDecision configuration
+//tagDecision, 0:untag, 1:ctag
+//first cvid configuration
+//cvid, 0~4095
+//first cpri configuration
+//cpri, 0~7
+//second tagDecision configuration
+//tagDecision, 0:untag, 1:ctag
+//second cvid configuration
+//cvid, 0~4095
+//second cpri configuration
+//cpri, 0~7
+rt_igmp set multicast group ipv6 ip_address <IPV6ADDR:mc_gip_v6> port_mask <HEX:portmask> wlan_mbssid_mask0 <HEX:wlanMbssidMask0> wlan_mbssid_mask1 <HEX:wlanMbssidMask1> wlan_mbssid_mask2 <HEX:wlanMbssidMask2> port_mask2 <HEX:portmask2> sec_wlan_dev_mask0 <HEX:secWlandevmask0> sec_wlan_dev_mask1 <HEX:secWlandevmask1> sec_wlan_dev_mask2 <HEX:secWlandevmask2> action_ctag tagDecision <UINT:tagDecision> cvid <UINT:cvid> cpri <UINT:cpri> tagDecision2 <UINT:tagDecision2> cvid2 <UINT:cvid2> cpri2 <UINT:cpri2>
+

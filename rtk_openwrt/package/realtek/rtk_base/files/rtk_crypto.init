@@ -1,0 +1,26 @@
+#!/bin/sh /etc/rc.common
+
+START=41
+
+PNAME=IPSEC
+DEBUG=1
+
+W_LOG()
+{
+	if [ $DEBUG -eq 1 ]; then
+		echo "[${PNAME}] $@" > /dev/console
+	fi
+}
+
+W_ERR()
+{
+	if [ $DEBUG -eq 1 ]; then
+		echo "[${PNAME}][ERR] $@" > /dev/console
+	fi
+}
+
+start()
+{
+	W_LOG "starting ipsec service ..."
+	/etc/scripts/crypto_init.sh
+}

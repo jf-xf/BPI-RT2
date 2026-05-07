@@ -1,0 +1,15 @@
+# Use OpenWrt UCI config
+config mcproxy 'mcproxy'
+	option disabled '0'
+	option respawn '1'
+	option protocol 'MLDv2'
+
+###########################################
+
+# Simple configuration examples
+
+config instance
+	option disabled '0'
+	option name 'proxy0'
+	list downstream 'br-lan'
+

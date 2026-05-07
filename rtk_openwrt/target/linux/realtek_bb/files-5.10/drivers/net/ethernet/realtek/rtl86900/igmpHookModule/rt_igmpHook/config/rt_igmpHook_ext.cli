@@ -1,0 +1,63 @@
+// Copyright (C) 2012 Realtek Semiconductor Corp.
+// All Rights Reserved.
+//
+// This program is the proprietary software of Realtek Semiconductor
+// Corporation and/or its licensors, and only be used, duplicated,
+// modified or distributed under the authorized license from Realtek.
+//
+// ANY USE OF THE SOFTWARE OTHER THAN AS AUTHORIZED UNDER
+// THIS LICENSE OR COPYRIGHT LAW IS PROHIBITED.
+//
+// $Revision: 14393 $
+// $Date: 2019-11-22 11:32:16 +0800 (Thu, 22 Nov 2018) $
+//
+// Purpose : Define diag shell commands for igmpHook extension.
+//
+// Feature : The file have include the following module and sub-modules
+//           1) igmpHook
+//
+
+//rt_igmp configuration
+//set configuration
+//igmpHookModule 
+//devCfg
+//devive name configuration[ex.eth0.2]
+//isIPv6  
+//isIPv6 configuration [0:IPv4 1:IPv6]
+//type
+//type cfg[1:disSnoop 2:fastLeave 3:MaxGroupSize 4:AgingTime 5:CareSourve 6:RateLimit]
+//value
+//value configuration
+rt_igmp set igmpHookModule devCfg <STRING:devCfg> isIPv6  <UINT:isIPv6> type <UINT:type> value <UINT:value>
+
+//rt_igmp configuration
+//get configuration
+//igmpHookModule 
+//devCfg
+//devive name configuration[ex.eth0.2]
+//isIPv6  
+//isIPv6 configuration [0:IPv4 1:IPv6]
+//type
+//type cfg[1:disSnoop 2:fastLeave 3:MaxGroupSize 4:AgingTime 5:CareSourve 6:RateLimit]
+rt_igmp get igmpHookModule devCfg <STRING:devCfg> isIPv6  <UINT:isIPv6> type <UINT:type>
+
+//rt_igmp configuration
+//set configuration
+//igmpHookModule 
+//brDevCfg
+//br devive name configuration[ex.br0]
+//type
+//type cfg[1:MaxGroup 2:v4MaxGroup 3:v6MaxGroup 4:MaxClient 5:v4MaxClient 6:v6MaxClient]
+//value
+//value configuration
+rt_igmp set igmpHookModule brDevCfg <STRING:brDevCfg> type <UINT:type> value <UINT:value>
+
+//rt_igmp configuration
+//get configuration
+//igmpHookModule 
+//brDevCfg
+//br devive name configuration[ex.br0]
+//type
+//type cfg[1:MaxGroup 2:v4MaxGroup 3:v6MaxGroup 4:MaxClient 5:v4MaxClient 6:v6MaxClient]
+rt_igmp get igmpHookModule brDevCfg <STRING:brDevCfg> type <UINT:type>
+

@@ -1,0 +1,15 @@
+{
+	"luci-app-rtk-tr069": {
+		"description": "Grant access to TR-369 procedures",
+		"read": {
+			"uci": [
+				"obuspa"
+			]
+		},
+		"write": {
+			"uci": [
+				"obuspa"
+			]
+		}
+	}
+}

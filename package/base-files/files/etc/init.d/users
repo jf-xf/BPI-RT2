@@ -1,0 +1,43 @@
+#!/bin/sh /etc/rc.common
+
+START=11
+USE_PROCD=1
+
+handle_user() {
+        local user="$1"
+        local enabled password remote_access
+	config_get password "$user" password ""
+	config_get enabled "$user" enabled "1"
+	config_get remote_access "$user" remote_access "1"
+
+	# create user if it does not exist
+	grep -rq "^$user:" /etc/passwd || {
+		adduser -D -H -s /bin/false $user
+	}
+
+	# set/change password and delete uci entry
+	if [ -n "$password" -a -n "$user" ]; then
+		#echo "$user:$password" | chpasswd -c MD5
+		ubus call luci setPassword '{"username":"'$user'","password":"'$password'"}'
+		uci -q delete users."$user".password
+	fi
+
+	# enable/disable account
+	if [ "$enabled" == "1" -a -n "${user}" ]; then
+		passwd -u "$user" 2>/dev/null
+	else
+		passwd -l "$user"
+	fi
+}
+
+start_service() {
+	config_load users
+	config_foreach handle_user user
+	uci commit users
+}
+
+service_triggers()
+{
+	procd_add_reload_trigger "users"
+}
+

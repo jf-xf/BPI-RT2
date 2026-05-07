@@ -1,0 +1,21 @@
+Index: rpcd-2022-08-24-82904bd4/iwinfo.c
+===================================================================
+--- rpcd-2022-08-24-82904bd4.orig/iwinfo.c
++++ rpcd-2022-08-24-82904bd4/iwinfo.c
+@@ -527,6 +527,16 @@ rpc_iwinfo_scan(struct ubus_context *ctx
+ 				blobmsg_close_table(&buf, t);
+ 			}
+ 
++			if(e->crypto.enabled && e->crypto.wpa_version != 0)//realtek add, add ieee80211w status to scan reaults
++			{
++				if(e->crypto.mfp_opt == 3)
++					blobmsg_add_u32(&buf, "ieee80211w", 2);
++				else if(e->crypto.mfp_opt == 2)
++					blobmsg_add_u32(&buf, "ieee80211w", 1);
++				else
++					blobmsg_add_u32(&buf, "ieee80211w", 0);
++			}
++
+ 			rpc_iwinfo_add_encryption("encryption", &e->crypto);
+ 
+ 			blobmsg_close_table(&buf, d);

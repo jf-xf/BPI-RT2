@@ -1,0 +1,206 @@
+--- a/src/odhcp6c.c
++++ b/src/odhcp6c.c
+@@ -60,6 +60,11 @@ static volatile bool signal_usr1 = false
+ static volatile bool signal_usr2 = false;
+ static volatile bool signal_term = false;
+ 
++#ifdef CONFIG_RTK_ODHCP6C
++bool ra_auto_detect = false;
++bool ra_Mbit_change = false;
++#endif
++
+ static int urandom_fd = -1, allow_slaac_only = 0;
+ static bool bound = false, release = true, ra = false;
+ static time_t last_update = 0;
+@@ -67,6 +72,9 @@ static char *ifname = NULL;
+ 
+ static unsigned int script_sync_delay = 10;
+ static unsigned int script_accu_delay = 1;
++#ifdef CONFIG_RTK_ODHCP6C
++enum odhcp6c_ia_mode global_ia_na_mode = IA_MODE_TRY;
++#endif
+ 
+ static struct odhcp6c_opt opts[] = {
+ 	{ .code = DHCPV6_OPT_CLIENTID, .flags = OPT_INTERNAL | OPT_NO_PASSTHRU, .str = NULL },
+@@ -205,6 +213,13 @@ int main(_unused int argc, char* const a
+ 				ia_na_mode = IA_MODE_NONE;
+ 			else if (!strcmp(optarg, "try"))
+ 				ia_na_mode = IA_MODE_TRY;
++#ifdef CONFIG_RTK_ODHCP6C
++			else if (!strcmp(optarg, "auto")){
++				syslog(LOG_NOTICE, "Enable Realtek Address Auto Mode");
++				ra_auto_detect = true;
++				ia_na_mode = IA_MODE_NONE;	// disable ia_na, and wait RA M/O bit.
++			}
++#endif
+ 			else
+ 				help = true;
+ 			break;
+@@ -443,6 +458,9 @@ int main(_unused int argc, char* const a
+ 			fclose(fp);
+ 		}
+ 	}
++#ifdef CONFIG_RTK_ODHCP6C
++	global_ia_na_mode = ia_na_mode;
++#endif
+ 
+ 	script_call("started", 0, false);
+ 
+@@ -461,6 +479,26 @@ int main(_unused int argc, char* const a
+ 		syslog(LOG_NOTICE, "(re)starting transaction on %s", ifname);
+ 
+ 		signal_usr1 = signal_usr2 = false;
++
++#ifdef CONFIG_RTK_ODHCP6C
++		if(ra_auto_detect == true){
++			if (ra_get_M_bit() == -1){
++				sleep(60);	// wait first RA to update M/O bit.
++				odhcp6c_signal_process();
++				continue;
++			}
++
++			if(ra_get_M_bit() == 0){
++				ia_na_mode = IA_MODE_NONE;
++			}else{
++				ia_na_mode = IA_MODE_FORCE;
++				allow_slaac_only = -1;
++			}
++			global_ia_na_mode = ia_na_mode;	// update global_ia_na_mode.
++			syslog(LOG_NOTICE, "Auto Mode: M=%d, O=%d, ia_na_mode=%d", ra_get_M_bit(), ra_get_O_bit(),ia_na_mode);
++		}
++#endif
++
+ 		int mode = dhcpv6_set_ia_mode(ia_na_mode, ia_pd_mode, stateful_only_mode);
+ 		if (mode != DHCPV6_STATELESS)
+ 			mode = dhcpv6_request(DHCPV6_MSG_SOLICIT);
+@@ -677,6 +715,14 @@ bool odhcp6c_signal_process(void)
+ 
+ 		bool ra_updated = ra_process();
+ 
++#ifdef CONFIG_RTK_ODHCP6C
++		if(ra_auto_detect == true && ra_Mbit_change == true){
++			signal_usr2 = true;	// break out main loop, and re-check address mode.
++			ra_Mbit_change = false;	// reset
++			syslog(LOG_NOTICE, "M bit had be change, set signal_usr2 to true.");
++		}
++#endif
++
+ 		if (ra_link_up()) {
+ 			signal_usr2 = true;
+ 			ra = false;
+--- a/src/odhcp6c.h
++++ b/src/odhcp6c.h
+@@ -342,6 +342,11 @@ enum odhcp6c_ia_mode {
+ 	IA_MODE_FORCE,
+ };
+ 
++#ifdef CONFIG_RTK_ODHCP6C
++extern bool ra_auto_detect;
++extern bool ra_Mbit_change;
++extern enum odhcp6c_ia_mode global_ia_na_mode;
++#endif
+ 
+ struct odhcp6c_entry {
+ 	struct in6_addr router;
+@@ -406,6 +411,10 @@ int ra_get_hoplimit(void);
+ int ra_get_mtu(void);
+ int ra_get_reachable(void);
+ int ra_get_retransmit(void);
++#ifdef CONFIG_RTK_ODHCP6C
++int ra_get_M_bit(void);
++int ra_get_O_bit(void);
++#endif
+ 
+ int script_init(const char *path, const char *ifname);
+ ssize_t script_unhexlify(uint8_t *dst, size_t len, const char *src);
+--- a/src/script.c
++++ b/src/script.c
+@@ -482,7 +482,10 @@ void script_call(const char *status, int
+ 			entry_to_env("PREFIXES", prefix, prefix_len, ENTRY_PREFIX);
+ 			entry_to_env("ADDRESSES", address, address_len, ENTRY_ADDRESS);
+ 		}
+-
++#ifdef CONFIG_RTK_ODHCP6C
++		syslog(LOG_ERR, "global_ia_na_mode: %d", global_ia_na_mode);
++		if(global_ia_na_mode != IA_MODE_FORCE)
++#endif
+ 		entry_to_env("RA_ADDRESSES", ra_pref, ra_pref_len, ENTRY_ADDRESS);
+ 		entry_to_env("RA_ROUTES", ra_route, ra_route_len, ENTRY_ROUTE);
+ 		entry_to_env("RA_DNS", ra_dns, ra_dns_len, ENTRY_HOST);
+--- a/src/ra.c
++++ b/src/ra.c
+@@ -64,6 +64,10 @@ static int ra_hoplimit = 0;
+ static int ra_mtu = 0;
+ static int ra_reachable = 0;
+ static int ra_retransmit = 0;
++#ifdef CONFIG_RTK_ODHCP6C
++static int ra_Managed = -1;
++static int ra_Other = -1;
++#endif
+ 
+ struct {
+ 	struct icmp6_hdr hdr;
+@@ -328,6 +332,32 @@ static bool ra_set_retransmit(int val)
+ 	return false;
+ }
+ 
++#ifdef CONFIG_RTK_ODHCP6C
++static bool ra_set_M_bit(int val)
++{
++	if (ra_Managed != val) {
++		ra_Managed = val;
++		syslog(LOG_NOTICE, "Update M bit to %d", ra_Managed);
++		if(ra_auto_detect == true){
++			ra_Mbit_change = true;
++		}
++		return true;
++	}
++
++	return false;
++}
++
++static bool ra_set_O_bit(int val)
++{
++	if (ra_Other != val) {
++		ra_Other = val;
++		return true;
++	}
++
++	return false;
++}
++#endif
++
+ int ra_get_hoplimit(void)
+ {
+ 	return ra_hoplimit;
+@@ -348,6 +378,18 @@ int ra_get_retransmit(void)
+ 	return ra_retransmit;
+ }
+ 
++#ifdef CONFIG_RTK_ODHCP6C
++int ra_get_M_bit(void)
++{
++	return ra_Managed;
++}
++
++int ra_get_O_bit(void)
++{
++	return ra_Other;
++}
++#endif
++
+ bool ra_process(void)
+ {
+ 	bool found = false;
+@@ -414,6 +456,11 @@ bool ra_process(void)
+ 			found = true;
+ 		}
+ 
++#ifdef CONFIG_RTK_ODHCP6C
++		changed |= ra_set_M_bit(adv->nd_ra_flags_reserved&ND_RA_FLAG_MANAGED ? 1 : 0);
++		changed |= ra_set_O_bit(adv->nd_ra_flags_reserved&ND_RA_FLAG_OTHER ? 1 : 0);
++#endif
++
+ 		router_valid = ntohs(adv->nd_ra_router_lifetime);
+ 
+ 		/* RFC4861 §6.3.7

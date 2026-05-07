@@ -1,0 +1,12 @@
+{
+	"realtek/services/service/igmpproxy": {
+		"title": "IGMP Proxy",
+		"action": {
+			"type": "view",
+			"path": "rtk/services/service/igmpproxy"
+		},
+		"depends": {
+			"acl": [ "luci-app-rtk-igmpproxy" ]
+		}
+	}
+}

@@ -1,0 +1,15 @@
+{
+	"admin/network/wireless": {
+		"title": "Wireless",
+		"order": 15,
+		"action": {
+			"type": "view",
+			"path": "rtk/wlan/wireless"
+		},
+		"depends": {
+			"fs": { "/www/luci-static/resources/view/rtk/wlan": "directory", "/usr/share/luci/menu.d/luci-mod-network.json": "file" },
+			"acl": [ "luci-mod-rtk-network-config-wlan" ],
+			"uci": { "wireless": { "@wifi-device": true } }
+		}
+	}
+}

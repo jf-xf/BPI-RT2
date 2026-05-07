@@ -1,0 +1,71 @@
+Index: libbbfdm-6.8.21/libbbf_api/dmcommon.h
+===================================================================
+--- libbbfdm-6.8.21.orig/libbbf_api/dmcommon.h
++++ libbbfdm-6.8.21/libbbf_api/dmcommon.h
+@@ -64,6 +64,9 @@
+ #include "dmuci.h"
+ #include "dmubus.h"
+ #include "dmjson.h"
++#ifdef BBF_VENDOR_REALTEK
++#include "dmmib.h"
++#endif
+ 
+ extern char *Encapsulation[];
+ extern char *LinkType[];
+Index: libbbfdm-6.8.21/libbbf_api/dmmib.c
+===================================================================
+--- /dev/null
++++ libbbfdm-6.8.21/libbbf_api/dmmib.c
+@@ -0,0 +1,22 @@
++#ifdef BBF_VENDOR_REALTEK
++#include "dmmib.h"
++
++int dmmib_set_value(const char *mibkey, const char *value){
++ 	json_object *res = NULL;
++	if(!mibkey){
++		return 0;
++	}
++
++	return dmubus_call("rtk-rpc", "mib_set", UBUS_ARGS{{"name", mibkey, String}, {"value", ((value==NULL)?"0":value), String}}, 2, &res);
++}
++
++char *dmmib_get_value(const char *mibkey){
++	json_object *res = NULL;
++	if(!mibkey){
++		return NULL;
++	}
++
++	dmubus_call("rtk-rpc", "mib_get", UBUS_ARGS{{"name", mibkey, String}}, 1, &res);
++	return dmjson_get_value(res, 1, "value");
++}
++#endif // BBF_VENDOR_REALTEK
+Index: libbbfdm-6.8.21/libbbf_api/dmmib.h
+===================================================================
+--- /dev/null
++++ libbbfdm-6.8.21/libbbf_api/dmmib.h
+@@ -0,0 +1,12 @@
++#ifdef BBF_VENDOR_REALTEK
++#ifndef __DMMIB_H
++#define __DMMIB_H
++
++#include "dmubus.h"
++#include "dmjson.h"
++
++int dmmib_set_value(const char *mibkey, const char *value);
++char *dmmib_get_value(const char *mibkey);
++
++#endif // __DMMIB_H
++#endif // BBF_VENDOR_REALTEK
+Index: libbbfdm-6.8.21/dmdiagnostics.c
+===================================================================
+--- libbbfdm-6.8.21.orig/dmdiagnostics.c
++++ libbbfdm-6.8.21/dmdiagnostics.c
+@@ -661,7 +661,7 @@ int bbf_fw_image_download(const char *ur
+ 	string_to_bool((char *)auto_activate, &activate);
+ 	char *act = (activate) ? "1" : "0";
+ 	// Apply Firmware Image
+-	dmubus_call_blocking("fwbank", "upgrade", UBUS_ARGS{{"path", fw_image_path, String}, {"auto_activate", act, Boolean}, {"bank", bank_id, Integer}}, 3, &json_obj);
++	dmubus_call_blocking("fwbank", "upgrade", UBUS_ARGS{{"path", fw_image_path, String}, {"auto_activate", act, Boolean}, {"bank", bank_id, Integer}, {"cwmp", "1", Boolean}}, 4, &json_obj);
+ 
+ 	if (json_obj == NULL) {
+ 		res = -1;

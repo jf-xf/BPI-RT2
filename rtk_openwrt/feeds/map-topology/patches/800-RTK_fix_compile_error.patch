@@ -1,0 +1,26 @@
+Index: map-topology-2.5.0.15/src/timer.c
+===================================================================
+--- map-topology-2.5.0.15.orig/src/timer.c
++++ map-topology-2.5.0.15/src/timer.c
+@@ -48,7 +48,7 @@ int timer_pending(atimer_t *t)
+ 
+ 	struct uloop_timeout *ut = (struct uloop_timeout *)t;
+ 
+-	ret = uloop_timeout_remaining(ut);
++	ret = uloop_timeout_remaining64(ut);
+ 
+ 	return (ret < 0) ? 0 : 1;
+ }
+Index: map-topology-2.5.0.15/src/ieee1905/topologyd.c
+===================================================================
+--- map-topology-2.5.0.15.orig/src/ieee1905/topologyd.c
++++ map-topology-2.5.0.15/src/ieee1905/topologyd.c
+@@ -1450,7 +1450,7 @@ void topologyd_dump_node(struct blob_buf
+ 
+ 			hwaddr_ntoa(p->l2_nbr[j].behind_intf_addr[k], mac_str);
+ 			if (k != 0)
+-				snprintf(behind_mac_str + len, size, "%s,", behind_mac_str);
++				snprintf(behind_mac_str + len, size, "%s,", behind_mac_str) < 0 ? abort() : (void)0;;
+ 
+ 			snprintf(behind_mac_str + len,  size, "%s", mac_str);
+ 		}

@@ -1,0 +1,14 @@
+if (PACKAGE_map-plugin)
+
+menu "Configurations"
+
+config MULTIAP_DYNAMIC_CNTLR_SYNC_CONFIG
+	bool "Sync configuration between dynamic controllers in the network"
+	default n
+
+config MULTIAP_FUZZ_1905_CMDUS
+	bool "Include support to fuzz 1905 CMDUs for testing purpose"
+	default n
+
+endmenu
+endif

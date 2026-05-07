@@ -1,0 +1,202 @@
+Index: linux-5.10.138/drivers/gpio/Kconfig
+===================================================================
+--- linux-5.10.138.orig/drivers/gpio/Kconfig
++++ linux-5.10.138/drivers/gpio/Kconfig
+@@ -202,6 +202,14 @@ config GPIO_BRCMSTB
+ 	help
+ 	  Say yes here to enable GPIO support for Broadcom STB (BCM7XXX) SoCs.
+ 
++config GPIO_CA77XX
++	bool "Cortina Access CA77XX GPIO controller"
++	depends on ARCH_CORTINA
++	select IRQ_DOMAIN
++	select GPIOLIB_IRQCHIP
++	help
++	  Say yes here to support Cortina Access CA77XX GPIOs
++
+ config GPIO_CADENCE
+ 	tristate "Cadence GPIO support"
+ 	depends on OF_GPIO
+Index: linux-5.10.138/drivers/gpio/Makefile
+===================================================================
+--- linux-5.10.138.orig/drivers/gpio/Makefile
++++ linux-5.10.138/drivers/gpio/Makefile
+@@ -43,6 +43,7 @@ obj-$(CONFIG_GPIO_BD71828)		+= gpio-bd71
+ obj-$(CONFIG_GPIO_BD9571MWV)		+= gpio-bd9571mwv.o
+ obj-$(CONFIG_GPIO_BRCMSTB)		+= gpio-brcmstb.o
+ obj-$(CONFIG_GPIO_BT8XX)		+= gpio-bt8xx.o
++obj-$(CONFIG_GPIO_CA77XX)       	+= gpio-ca77xx.o
+ obj-$(CONFIG_GPIO_CADENCE)		+= gpio-cadence.o
+ obj-$(CONFIG_GPIO_CASCADE)		+= gpio-cascade.o
+ obj-$(CONFIG_GPIO_CLPS711X)		+= gpio-clps711x.o
+Index: linux-5.10.138/drivers/pci/controller/dwc/Kconfig
+===================================================================
+--- linux-5.10.138.orig/drivers/pci/controller/dwc/Kconfig
++++ linux-5.10.138/drivers/pci/controller/dwc/Kconfig
+@@ -82,6 +82,16 @@ config PCIE_DW_PLAT_EP
+ 	  order to enable device-specific features PCI_DW_PLAT_EP must be
+ 	  selected.
+ 
++config PCIE_CA
++	tristate "Cortina PCIe controller"
++	depends on ARCH_CORTINA
++	depends on PCI && PCI_MSI_IRQ_DOMAIN
++	select PCIE_DW_HOST
++	select PCI_MSI_ARCH_FALLBACKS
++	help
++	  Say Y here if you want PCIE controller support on Cortina Access
++	  SoCs.
++
+ config PCI_EXYNOS
+ 	bool "Samsung Exynos PCIe controller"
+ 	depends on SOC_EXYNOS5440 || COMPILE_TEST
+Index: linux-5.10.138/drivers/pci/controller/dwc/Makefile
+===================================================================
+--- linux-5.10.138.orig/drivers/pci/controller/dwc/Makefile
++++ linux-5.10.138/drivers/pci/controller/dwc/Makefile
+@@ -3,6 +3,10 @@ obj-$(CONFIG_PCIE_DW) += pcie-designware
+ obj-$(CONFIG_PCIE_DW_HOST) += pcie-designware-host.o
+ obj-$(CONFIG_PCIE_DW_EP) += pcie-designware-ep.o
+ obj-$(CONFIG_PCIE_DW_PLAT) += pcie-designware-plat.o
++ifdef CONFIG_PCIE_CA
++obj-$(CONFIG_ARCH_REALTEK_TAURUS) += pcie-cortina.o
++obj-$(CONFIG_ARCH_REALTEK_9607F) += pcie-elnath.o
++endif
+ obj-$(CONFIG_PCI_DRA7XX) += pci-dra7xx.o
+ obj-$(CONFIG_PCI_EXYNOS) += pci-exynos.o
+ obj-$(CONFIG_PCI_IMX6) += pci-imx6.o
+Index: linux-5.10.138/drivers/phy/Kconfig
+===================================================================
+--- linux-5.10.138.orig/drivers/phy/Kconfig
++++ linux-5.10.138/drivers/phy/Kconfig
+@@ -16,6 +16,14 @@ config GENERIC_PHY
+ 	  phy users can obtain reference to the PHY. All the users of this
+ 	  framework should select this config.
+ 
++config PHY_TAURUS
++	tristate "Realtek Taurus PHY driver"
++	depends on OF && (ARCH_CORTINA || COMPILE_TEST)
++	select GENERIC_PHY
++	help
++	  Enable this to support the Realtek Taurus PHY.
++	  If unsure, say N.
++
+ config GENERIC_PHY_MIPI_DPHY
+ 	bool
+ 	help
+Index: linux-5.10.138/drivers/phy/Makefile
+===================================================================
+--- linux-5.10.138.orig/drivers/phy/Makefile
++++ linux-5.10.138/drivers/phy/Makefile
+@@ -4,6 +4,7 @@
+ #
+ 
+ obj-$(CONFIG_GENERIC_PHY)		+= phy-core.o
++obj-$(CONFIG_PHY_TAURUS)		+= phy-rtk-taurus.o
+ obj-$(CONFIG_GENERIC_PHY_MIPI_DPHY)	+= phy-core-mipi-dphy.o
+ obj-$(CONFIG_PHY_LPC18XX_USB_OTG)	+= phy-lpc18xx-usb-otg.o
+ obj-$(CONFIG_PHY_XGENE)			+= phy-xgene.o
+Index: linux-5.10.138/drivers/reset/Kconfig
+===================================================================
+--- linux-5.10.138.orig/drivers/reset/Kconfig
++++ linux-5.10.138/drivers/reset/Kconfig
+@@ -15,6 +15,26 @@ menuconfig RESET_CONTROLLER
+ 
+ if RESET_CONTROLLER
+ 
++config RESET_CORTINA
++	tristate "CORTINA ACCESS Reset Controller"
++	depends on ARCH_CORTINA
++	help
++	  This option enables support for the internal reset functions for
++	  IP module and peripheral PHYs on the CORTINA-ACCESS SoC Chip.
++
++config GPIO_RESET_CONTROLLER
++	tristate "GPIO reset controller"
++	help
++	  Reset controller using GPIO lines
++	
++	  There are two main methods of using this controller:
++	  * As a reset controller within the reset framework allowing device
++	  drivers to request a hardware reset of their devices.
++	  * As a standalone driver performing reset at boot or upon userspace
++	  request (via sysfs)
++	  The second method is suitable for devices on discoverable busses
++	  (SDIO, USB)+config GPIO_RESET_CONTROLLER
++
+ config RESET_A10SR
+ 	tristate "Altera Arria10 System Resource Reset"
+ 	depends on MFD_ALTERA_A10SR
+Index: linux-5.10.138/drivers/reset/Makefile
+===================================================================
+--- linux-5.10.138.orig/drivers/reset/Makefile
++++ linux-5.10.138/drivers/reset/Makefile
+@@ -1,6 +1,8 @@
+ # SPDX-License-Identifier: GPL-2.0
+ obj-y += core.o
+ obj-y += hisilicon/
++obj-$(CONFIG_GPIO_RESET_CONTROLLER) += reset-gpio.o
++obj-$(CONFIG_RESET_CORTINA) += reset-ca77xx.o
+ obj-$(CONFIG_ARCH_STI) += sti/
+ obj-$(CONFIG_ARCH_TEGRA) += tegra/
+ obj-$(CONFIG_RESET_A10SR) += reset-a10sr.o
+Index: linux-5.10.138/drivers/pinctrl/Kconfig
+===================================================================
+--- linux-5.10.138.orig/drivers/pinctrl/Kconfig
++++ linux-5.10.138/drivers/pinctrl/Kconfig
+@@ -374,6 +374,17 @@ config PINCTRL_OCELOT
+ 	select OF_GPIO
+ 	select REGMAP_MMIO
+ 
++config PINCTRL_CORTINA
++	bool "Cortina-Access pin control"
++	depends on OF && ARCH_CORTINA
++	select PINMUX
++	select GENERIC_PINCONF
++
++config PINCTRL_ELNATH
++	bool "Elnath pin control"
++	select PINMUX
++	select GENERIC_PINCONF
++
+ source "drivers/pinctrl/actions/Kconfig"
+ source "drivers/pinctrl/aspeed/Kconfig"
+ source "drivers/pinctrl/bcm/Kconfig"
+Index: linux-5.10.138/drivers/pinctrl/Makefile
+===================================================================
+--- linux-5.10.138.orig/drivers/pinctrl/Makefile
++++ linux-5.10.138/drivers/pinctrl/Makefile
+@@ -8,6 +8,8 @@ obj-$(CONFIG_PINMUX)		+= pinmux.o
+ obj-$(CONFIG_PINCONF)		+= pinconf.o
+ obj-$(CONFIG_OF)		+= devicetree.o
+ obj-$(CONFIG_GENERIC_PINCONF)	+= pinconf-generic.o
++obj-$(CONFIG_PINCTRL_CORTINA)   += pinctrl-cortina.o
++obj-$(CONFIG_PINCTRL_ELNATH)   += pinctrl-rtk-elnath.o
+ obj-$(CONFIG_PINCTRL_ARTPEC6)	+= pinctrl-artpec6.o
+ obj-$(CONFIG_PINCTRL_AS3722)	+= pinctrl-as3722.o
+ obj-$(CONFIG_PINCTRL_AXP209)	+= pinctrl-axp209.o
+Index: linux-5.10.138/drivers/iommu/Kconfig
+===================================================================
+--- linux-5.10.138.orig/drivers/iommu/Kconfig
++++ linux-5.10.138/drivers/iommu/Kconfig
+@@ -401,4 +401,11 @@ config VIRTIO_IOMMU
+ 
+ 	  Say Y here if you intend to run this kernel as a guest.
+ 
++config CORTINA_ATU
++	bool "Cortina ATU Support"
++	depends on ARCH_CORTINA
++	select IOMMU_API
++	help
++	  Support for Address Trnaslation Unit on certain Cortina SoCs.
++
+ endif # IOMMU_SUPPORT
+Index: linux-5.10.138/drivers/iommu/Makefile
+===================================================================
+--- linux-5.10.138.orig/drivers/iommu/Makefile
++++ linux-5.10.138/drivers/iommu/Makefile
+@@ -27,3 +27,4 @@ obj-$(CONFIG_FSL_PAMU) += fsl_pamu.o fsl
+ obj-$(CONFIG_S390_IOMMU) += s390-iommu.o
+ obj-$(CONFIG_HYPERV_IOMMU) += hyperv-iommu.o
+ obj-$(CONFIG_VIRTIO_IOMMU) += virtio-iommu.o
++obj-$(CONFIG_CORTINA_ATU) += cortina-atu.o

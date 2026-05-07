@@ -1,0 +1,13 @@
+{
+	"realtek/advance/ipv6/dhcpv6": {
+		"title": "DHCPv6",
+		"order": 30,
+		"action": {
+			"type": "view",
+			"path": "rtk/advance/ipv6/dhcpv6"
+		},
+		"depends": {
+			"acl": [ "luci-app-rtk-dhcpv6" ]
+		}
+	}
+}

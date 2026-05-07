@@ -1,0 +1,9 @@
+#!/bin/sh
+
+uci -q batch <<-EOF
+	set samba.@samba[0].homes='0'
+	set samba.@sambashare[0].users='root,user'	
+	commit samba
+EOF
+
+exit 0

@@ -1,0 +1,23 @@
+{
+	"realtek/wlan/wlan": {
+		"title": "WLAN",
+		"order": 10,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		}
+	},
+
+	"realtek/wlan/wlan/wireless": {
+		"title": "WLAN Interface Settings",
+		"order": 10,
+		"action": {
+			"type": "view",
+			"path": "rtk/wlan/wireless"
+		},
+		"depends": {
+			"acl": [ "luci-mod-rtk-network-config-wlan" ],
+			"uci": { "wireless": { "@wifi-device": true } }
+		}
+	}
+}

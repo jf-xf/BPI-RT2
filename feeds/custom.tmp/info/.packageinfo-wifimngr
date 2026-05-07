@@ -1,0 +1,25 @@
+Source-Makefile: feeds/custom/wifimngr/Makefile
+
+Package: wifimngr
+Version: 14.0.10
+Depends: +libc +USE_GLIBC:librt +USE_GLIBC:libpthread +libwifi +@LIBWIFI_USE_CTRL_IFACE +libuci +libubox +ubus +libpthread +libnl-genl
+Conflicts: 
+Menu-Depends: 
+Provides: 
+Section: utils
+Category: Utilities
+Repository: base
+Title: WiFi status and configration utility
+Maintainer: Anjan Chanda <anjan.chanda@iopsys.eu>
+Source: wifimngr-14.0.10_b6481f096228da9805ff159d17ddac4dbce0e1ab.tar.xz
+License: GPL-2.0-only
+LicenseFiles: LICENSE
+Type: ipkg
+Description:  This package can be used to configure and provide status about
+ the WiFi modules through UBUS.
+ It does this in an implementation agnostic manner through APIs
+ exposed by the libwifi library.
+Anjan Chanda <anjan.chanda@iopsys.eu>
+@@
+
+

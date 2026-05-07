@@ -1,0 +1,13 @@
+Index: linux-5.10.125/mm/page_alloc.c
+===================================================================
+--- linux-5.10.125.orig/mm/page_alloc.c
++++ linux-5.10.125/mm/page_alloc.c
+@@ -346,6 +346,8 @@ compound_page_dtor * const compound_page
+ 
+ int min_free_kbytes = 1024;
+ int user_min_free_kbytes = -1;
++EXPORT_SYMBOL(min_free_kbytes);
++
+ #ifdef CONFIG_DISCONTIGMEM
+ /*
+  * DiscontigMem defines memory ranges as separate pg_data_t even if the ranges

@@ -1,0 +1,41 @@
+Index: linux-5.10.125/include/net/netfilter/nf_conntrack.h
+===================================================================
+--- linux-5.10.125.orig/include/net/netfilter/nf_conntrack.h
++++ linux-5.10.125/include/net/netfilter/nf_conntrack.h
+@@ -341,4 +341,8 @@ nf_ct_set(struct sk_buff *skb, struct nf
+ #define MODULE_ALIAS_NFCT_HELPER(helper) \
+         MODULE_ALIAS("nfct-helper-" helper)
+ 
++#if defined(CONFIG_RTL_MULTI_PHY_ETH_WAN)
++void rtl_nf_ct_cleanup_by_ipv4(__be32 ipv4);
++#endif
++
+ #endif /* _NF_CONNTRACK_H */
+Index: linux-5.10.125/net/netfilter/nf_conntrack_core.c
+===================================================================
+--- linux-5.10.125.orig/net/netfilter/nf_conntrack_core.c
++++ linux-5.10.125/net/netfilter/nf_conntrack_core.c
+@@ -2747,3 +2747,23 @@ err_pcpu_lists:
+ err_stat:
+ 	return ret;
+ }
++
++#if defined(CONFIG_RTL_MULTI_PHY_ETH_WAN)
++static int rtl_kill_ipv4(struct nf_conn *i, void *data)
++{
++        struct nf_conntrack_tuple *tuple0, *tuple1;
++        __be32 *ipv4_addr;
++        ipv4_addr = (__be32*)data;
++
++        tuple0 = &(i->tuplehash[IP_CT_DIR_ORIGINAL].tuple);
++        tuple1 = &(i->tuplehash[IP_CT_DIR_REPLY].tuple);
++
++        return ( tuple0->src.u3.ip == *ipv4_addr || tuple0->dst.u3.ip == *ipv4_addr || tuple1->src.u3.ip == *ipv4_addr || tuple1->dst.u3.ip == *ipv4_addr );
++}
++
++void rtl_nf_ct_cleanup_by_ipv4(__be32 ipv4)
++{
++        nf_ct_iterate_cleanup(rtl_kill_ipv4, &ipv4, 0, 0);
++}
++EXPORT_SYMBOL_GPL(rtl_nf_ct_cleanup_by_ipv4);
++#endif

@@ -1,0 +1,17 @@
+{
+	"luci-app-rtk-br-group": {
+		"description": "Grant access to bridge grouping configuration",
+		"read": {
+			"ubus": {
+				"network.device": [ "status" ]
+			},
+			"uci": [ "network", "wireless" ]
+		},
+		"write": {
+			"ubus": {
+				"network.device": [ "status" ]
+			},
+			"uci": [ "network", "wireless" ]
+		}
+	}
+}

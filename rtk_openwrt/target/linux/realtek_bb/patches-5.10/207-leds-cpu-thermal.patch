@@ -1,0 +1,81 @@
+--- a/drivers/cpufreq/Kconfig
++++ b/drivers/cpufreq/Kconfig
+@@ -333,4 +333,13 @@ config QORIQ_CPUFREQ
+ 	  which are capable of changing the CPU's frequency dynamically.
+ 
+ endif
++
++config ARM_CA7774_CPUFREQ
++	tristate "Cortina CA7774 CPUfreq driver"
++	depends on (ARCH_CORTINA) && CPUFREQ_DT
++	select PM_OPP
++	help
++	  This enables the Cortina CA7774 CPUfreq driver.
++	  If in doubt, say N.
++
+ endmenu
+--- a/drivers/cpufreq/Makefile
++++ b/drivers/cpufreq/Makefile
+@@ -5,7 +5,7 @@ obj-$(CONFIG_CPU_FREQ)			+= cpufreq.o fr
+ # CPUfreq stats
+ obj-$(CONFIG_CPU_FREQ_STAT)             += cpufreq_stats.o
+ 
+-# CPUfreq governors 
++# CPUfreq governors
+ obj-$(CONFIG_CPU_FREQ_GOV_PERFORMANCE)	+= cpufreq_performance.o
+ obj-$(CONFIG_CPU_FREQ_GOV_POWERSAVE)	+= cpufreq_powersave.o
+ obj-$(CONFIG_CPU_FREQ_GOV_USERSPACE)	+= cpufreq_userspace.o
+@@ -109,3 +109,4 @@ obj-$(CONFIG_LOONGSON1_CPUFREQ)		+= loon
+ obj-$(CONFIG_SH_CPU_FREQ)		+= sh-cpufreq.o
+ obj-$(CONFIG_SPARC_US2E_CPUFREQ)	+= sparc-us2e-cpufreq.o
+ obj-$(CONFIG_SPARC_US3_CPUFREQ)		+= sparc-us3-cpufreq.o
++obj-$(CONFIG_ARM_CA7774_CPUFREQ)        += ca7774-cpufreq.o
+--- a/drivers/leds/Kconfig
++++ b/drivers/leds/Kconfig
+@@ -929,6 +929,13 @@ config LEDS_ACER_A500
+ 	  This option enables support for the Power Button LED of
+ 	  Acer Iconia Tab A500.
+ 
++config LEDS_RTK_GPIO_LED
++	tristate "LED Support for RTK GPIO_LED demo board"
++	depends on LEDS_CLASS
++	depends on OF
++	help
++	  This option enables support for LEDs using GPIO.
++
+ comment "LED Triggers"
+ source "drivers/leds/trigger/Kconfig"
+ 
+--- a/drivers/leds/Makefile
++++ b/drivers/leds/Makefile
+@@ -93,6 +93,8 @@ obj-$(CONFIG_LEDS_TURRIS_OMNIA)		+= leds
+ obj-$(CONFIG_LEDS_WM831X_STATUS)	+= leds-wm831x-status.o
+ obj-$(CONFIG_LEDS_WM8350)		+= leds-wm8350.o
+ obj-$(CONFIG_LEDS_WRAP)			+= leds-wrap.o
++obj-$(CONFIG_LEDS_RTK_GPIO_LED)         += leds-rtk-gpio-led.o
++
+ 
+ # LED SPI Drivers
+ obj-$(CONFIG_LEDS_CR0014114)		+= leds-cr0014114.o
+--- a/drivers/thermal/Kconfig
++++ b/drivers/thermal/Kconfig
+@@ -445,6 +445,12 @@ depends on ARCH_EXYNOS || COMPILE_TEST
+ source "drivers/thermal/samsung/Kconfig"
+ endmenu
+ 
++menu "Cortina thermal drivers"
++depends on ARCH_CORTINA && OF
++source "drivers/thermal/cortina/Kconfig"
++endmenu
++
++
+ menu "STMicroelectronics thermal drivers"
+ depends on (ARCH_STI || ARCH_STM32) && OF
+ source "drivers/thermal/st/Kconfig"
+--- a/drivers/thermal/Makefile
++++ b/drivers/thermal/Makefile
+@@ -62,3 +62,4 @@ obj-$(CONFIG_UNIPHIER_THERMAL)	+= uniphi
+ obj-$(CONFIG_AMLOGIC_THERMAL)     += amlogic_thermal.o
+ obj-$(CONFIG_SPRD_THERMAL)	+= sprd_thermal.o
+ obj-$(CONFIG_KHADAS_MCU_FAN_THERMAL)	+= khadas_mcu_fan.o
++obj-$(CONFIG_ARCH_CORTINA)      += cortina/

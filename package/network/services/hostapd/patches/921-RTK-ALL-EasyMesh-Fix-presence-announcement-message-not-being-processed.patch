@@ -1,0 +1,30 @@
+From 784bbdb889f091f3fec0b9b2f4de98469adfb651 Mon Sep 17 00:00:00 2001
+From: "ryan.kuo" <ryan.kuo@realtek.com>
+Date: Fri, 10 Feb 2023 14:51:54 +0800
+Subject: [PATCH] [ALL][EasyMesh] Fix presence announcement message not being
+ processed issue when hapd global option enabled.
+
+---
+ src/common/dpp_tcp.c | 3 +++
+ 1 file changed, 3 insertions(+)
+ mode change 100644 => 100755 src/common/dpp_tcp.c
+
+diff --git a/src/common/dpp_tcp.c b/src/common/dpp_tcp.c
+old mode 100644
+new mode 100755
+index fb8ef1c..429a4d3
+--- a/src/common/dpp_tcp.c
++++ b/src/common/dpp_tcp.c
+@@ -520,6 +520,9 @@ int dpp_relay_rx_action(struct dpp_global *dpp, const u8 *src, const u8 *hdr,
+ 		}
+ 	}
+ 
++	if (type == DPP_PA_PRESENCE_ANNOUNCEMENT && !r_bootstrap)
++		return -1;
++
+ 	if (type == DPP_PA_PRESENCE_ANNOUNCEMENT ||
+ 	    type == DPP_PA_RECONFIG_ANNOUNCEMENT) {
+ 		/* TODO: Could send this to all configured Controllers. For now,
+-- 
+2.17.1
+

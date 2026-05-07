@@ -1,0 +1,92 @@
+#!/bin/sh
+PPP_IPPARAM="$6"
+
+. /lib/netifd/netifd-proto.sh
+proto_init_update "$IFNAME" 1 1
+proto_set_keep 1
+[ -n "$PPP_IPPARAM" ] && {
+	[ -n "$LLLOCAL" ] && proto_add_ipv6_address "$LLLOCAL" 128
+	#for LLA(Gateway)
+	[ -n "$LLREMOTE" ] &&  echo $LLREMOTE > $RTK_MER_GWINFO_V6"."$1
+}
+proto_send_update "$PPP_IPPARAM"
+
+[ -d /etc/ppp/ip-up.d ] && {
+	for SCRIPT in /etc/ppp/ip-up.d/*
+	do
+		[ -x "$SCRIPT" ] && "$SCRIPT" "$@"
+	done
+}
+
+wan_data=$(ubus call network.interface."$PPP_IPPARAM" status)
+
+if [ -n "$AUTOIPV6" ] && [ -n "$dhcpv6_zone" ]; then
+	ZONE=$(fw3 -q network $PPP_IPPARAM 2>/dev/null)
+	#Get ZONE from env parameter if don't have fw3 command
+	[ -z "$ZONE" ] && [ -n "$dhcpv6_zone" ] && ZONE=$dhcpv6_zone
+
+	wan_mark=$(jsonfilter -s "$wan_data" -e '@["policy-route-info"].wan_mark')
+	wan_mask=$(jsonfilter -s "$wan_data" -e '@["policy-route-info"].wan_mask')
+	ip6table2=$(jsonfilter -s "$wan_data" -e '@["policy-route-info"].ip6table2')
+	
+	json_init
+	json_add_string name "${PPP_IPPARAM}_6"
+	json_add_string ifname "@$PPP_IPPARAM"
+	json_add_string proto "dhcpv6"
+	[ -n "$ZONE" ] && json_add_string zone "$ZONE"
+	[ -n "$EXTENDPREFIX" ] && json_add_string extendprefix 1
+	[ -n "$IP6TABLE" ] && json_add_string ip6table $IP6TABLE
+	[ -n "$PEERDNS" ] && json_add_boolean peerdns $PEERDNS
+	#for IANA(SLAAC or stateful DHCPv6) and IAPD
+	[ -n "$reqaddress" ] && json_add_string reqaddress $reqaddress
+	[ -n "$reqprefix" ] && json_add_string reqprefix $reqprefix
+	[ -n "$ip6dns" ] && _proto_push_array "dns" "$ip6dns" _proto_push_string
+	#for dslite
+	[ -n "$zone_dslite" ] && json_add_string zone_dslite $zone_dslite
+	[ -n "$iface_dslite" ] && json_add_string iface_dslite $iface_dslite
+	[ -n "$peeraddr" ] && json_add_string peeraddr $peeraddr
+
+	[ "$wan_mark" -gt 0 ] && json_add_int wan_mark "$wan_mark"
+	[ "$wan_mask" -gt 0 ] && json_add_int wan_mask "$wan_mask"
+	[ "$ip6table2" -gt 0 ] && json_add_string ip6table2 "$ip6table2"
+
+	json_close_object
+	# For debug
+	json_dump > /tmp/ppp_dhcpv6_$IFNAME
+	ubus call network add_dynamic "$(json_dump)"
+	
+elif [ -n "$AUTOIPV6" ] && [ -n "$static_zone" ]; then
+	ZONE=$(fw3 -q network $PPP_IPPARAM 2>/dev/null)
+	#Get ZONE from env parameter if don't have fw3 command
+	[ -z "$ZONE" ] && [ -n "$static_zone" ] && ZONE=$static_zone
+
+	wan_mark=$(jsonfilter -s "$wan_data" -e '@["policy-route-info"].wan_mark')
+	wan_mask=$(jsonfilter -s "$wan_data" -e '@["policy-route-info"].wan_mask')
+	ip6table2=$(jsonfilter -s "$wan_data" -e '@["policy-route-info"].ip6table2')
+	
+	json_init
+	json_add_string name "${PPP_IPPARAM}_6"
+	json_add_string ifname "@$PPP_IPPARAM"
+	json_add_string proto "static"
+	[ -n "$ZONE" ] && json_add_string zone "$ZONE"
+	[ -n "$EXTENDPREFIX" ] && json_add_string extendprefix 1
+	[ -n "$IP6TABLE" ] && json_add_string ip6table $IP6TABLE
+	[ -n "$PEERDNS" ] && json_add_boolean peerdns $PEERDNS
+	[ -n "$ip6addr" ] && _proto_push_array "ip6addr" "$ip6addr" _proto_push_string
+	[ -n "$ip6prefix" ] && _proto_push_array "ip6prefix" "$ip6prefix" _proto_push_string
+	[ -n "$ip6gw" ] && json_add_string ip6gw $ip6gw
+	[ -n "$ip6dns" ] && _proto_push_array "dns" "$ip6dns" _proto_push_string
+	#for dslite
+	[ -n "$zone_dslite" ] && json_add_string zone_dslite $zone_dslite
+	[ -n "$iface_dslite" ] && json_add_string iface_dslite $iface_dslite
+	[ -n "$peeraddr" ] && json_add_string peeraddr $peeraddr
+
+	[ "$wan_mark" -gt 0 ] && json_add_int wan_mark "$wan_mark"
+	[ "$wan_mask" -gt 0 ] && json_add_int wan_mask "$wan_mask"
+	[ "$ip6table2" -gt 0 ] && json_add_string ip6table2 "$ip6table2"
+
+	json_close_object
+	# For debug
+	json_dump > /tmp/ppp_static_$PPP_IPPARAM
+	ubus call network add_dynamic "$(json_dump)"
+fi

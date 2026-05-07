@@ -1,0 +1,34 @@
+Index: ppp-2.4.9.git-2021-01-04/pppd/plugins/pppoe/if.c
+===================================================================
+--- ppp-2.4.9.git-2021-01-04.orig/pppd/plugins/pppoe/if.c
++++ ppp-2.4.9.git-2021-01-04/pppd/plugins/pppoe/if.c
+@@ -46,6 +46,8 @@ static char const RCSID[] =
+ #include <net/if_arp.h>
+ #endif
+ 
++#include <linux/pkt_sched.h>
++
+ /* Initialize frame types to RFC 2516 values.  Some broken peers apparently
+    use different frame types... sigh... */
+ 
+@@ -95,6 +97,7 @@ openInterface(char const *ifname, UINT16
+     int fd;
+     struct ifreq ifr;
+     int domain, stype;
++    int sockbufpriority = TC_PRIO_CONTROL;
+ 
+ #ifdef HAVE_STRUCT_SOCKADDR_LL
+     struct sockaddr_ll sa;
+@@ -126,6 +129,12 @@ openInterface(char const *ifname, UINT16
+ 	close(fd);
+ 	return -1;
+     }
++
++    if (setsockopt(fd, SOL_SOCKET, SO_PRIORITY, (void *) &sockbufpriority, sizeof(sockbufpriority)) == -1) { // Jenny
++	error("set PPPoE (SO_PRIORITY) error! ");
++	close(fd);
++	return -1;
++    }
+ 
+     /* Fill in hardware address */
+     if (hwaddr) {

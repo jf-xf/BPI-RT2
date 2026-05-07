@@ -1,0 +1,37 @@
+From 1a4006cb4133ae91deaf38085a017651d5a0deaa Mon Sep 17 00:00:00 2001
+From: "ryan.kuo" <ryan.kuo@realtek.com>
+Date: Thu, 13 Oct 2022 20:19:16 +0800
+Subject: [PATCH] [wpa-supplicant] Fixed wps connection failure when remote ap
+ security is wpa2-psk + pmf required.
+
+---
+ wpa_supplicant/wps_supplicant.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/wpa_supplicant/wps_supplicant.c b/wpa_supplicant/wps_supplicant.c
+index 1504d0f..b44349b 100755
+--- a/wpa_supplicant/wps_supplicant.c
++++ b/wpa_supplicant/wps_supplicant.c
+@@ -537,7 +537,7 @@ static int wpa_supplicant_wps_cred(void *ctx,
+ 		break;
+ 	case WPS_AUTH_WPA2PSK:
+ 		ssid->auth_alg = WPA_AUTH_ALG_OPEN;
+-		ssid->key_mgmt = WPA_KEY_MGMT_PSK;
++		ssid->key_mgmt = WPA_KEY_MGMT_PSK | WPA_KEY_MGMT_PSK_SHA256;
+ 		add_sae = wpa_s->conf->wps_cred_add_sae;
+ #ifdef CONFIG_P2P
+ 		if (ssid->p2p_group && is_p2p_6ghz_capable(wpa_s->global->p2p))
+@@ -546,8 +546,9 @@ static int wpa_supplicant_wps_cred(void *ctx,
+ 		if (add_sae && cred->key_len != 2 * PMK_LEN) {
+ 			ssid->auth_alg = 0;
+ 			ssid->key_mgmt |= WPA_KEY_MGMT_SAE;
+-			ssid->ieee80211w = MGMT_FRAME_PROTECTION_OPTIONAL;
++			//ssid->ieee80211w = MGMT_FRAME_PROTECTION_OPTIONAL;
+ 		}
++		ssid->ieee80211w = MGMT_FRAME_PROTECTION_OPTIONAL;
+ 		ssid->proto = WPA_PROTO_RSN;
+ 		break;
+ 	}
+-- 
+2.17.1
+

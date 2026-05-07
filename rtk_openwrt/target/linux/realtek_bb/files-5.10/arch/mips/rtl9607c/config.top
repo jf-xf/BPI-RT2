@@ -1,0 +1,50 @@
+# Automatically generated, do not edit
+
+config SOC_CPU_MIPS
+	bool
+	default y
+
+config SOC_CPU_MIPSIA
+	bool
+	default y
+
+config SOC_CPU_EB
+	bool
+	default y
+
+config SOC_ENABLE_SMP
+	bool
+	default y
+
+config SOC_ENABLE_CPS
+	bool
+	default y
+
+config SOC_ENABLE_IRQ_VI
+	bool
+	default y
+
+config SOC_ENABLE_AR7
+	bool
+	default y
+
+config SOC_ENABLE_L2C
+	bool
+	default y
+
+config SOC_ENABLE_OF
+	bool
+	default y
+
+config SOC_ENABLE_BUILTIN_DTB
+	bool
+	default y
+
+config SOC_MEM_SIZE
+	int "SoC Memory Size"
+	default 64
+
+config SOC_ENABLE_MIPS_VDSO
+	bool "SoC support MIPS VDSO"
+	default n
+

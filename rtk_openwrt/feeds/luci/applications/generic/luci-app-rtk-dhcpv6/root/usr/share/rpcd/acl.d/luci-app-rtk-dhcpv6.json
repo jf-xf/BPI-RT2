@@ -1,0 +1,14 @@
+{
+	"luci-app-rtk-dhcpv6": {
+		"description": "Grant access to dhcpv6 configuration",
+		"read": {
+			"ubus": {
+				"luci-rpc": [ "getHostHints", "getDUIDHints" , "getDHCPLeases" ]
+			},
+			"uci": [ "dhcp", "network" ]
+		},
+		"write": {
+			"uci": [ "dhcp", "network" ]
+		}
+	}
+}

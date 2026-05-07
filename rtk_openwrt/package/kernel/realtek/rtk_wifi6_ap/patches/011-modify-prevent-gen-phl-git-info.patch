@@ -1,0 +1,13 @@
+diff --git a/phl/gen_git_info.sh b/phl/gen_git_info.sh
+index ede6d111f..ffa81802a 100755
+--- a/phl/gen_git_info.sh
++++ b/phl/gen_git_info.sh
+@@ -1,4 +1,8 @@
+ #!/bin/bash
++
++echo "$0"': Do nothing, phl_git_info.h is generated in prepare stage'
++exit 0
++
+ if [ -z "$1" ]; then
+        TARGET="$( cd "$( dirname "$0" )" && pwd )"
+ else

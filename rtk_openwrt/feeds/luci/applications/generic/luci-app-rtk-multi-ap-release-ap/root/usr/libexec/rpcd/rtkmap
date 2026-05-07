@@ -1,0 +1,168 @@
+#!/usr/bin/env lua
+
+local json = require "luci.jsonc"
+local fs   = require "nixio.fs"
+
+local function readfile(path)
+	local s = fs.readfile(path)
+	return s and (s:gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
+local function writefile(path, data)
+	return fs.writefile(path, data)
+end
+
+local function rmfile(path)
+	return fs.remove(path)
+end
+
+local function getChannelScanReportPath(band)
+	if band == 0 then
+		return "/tmp/map_channel_scan_report_5G"
+	elseif band == 1 then
+		return "/tmp/map_channel_scan_report_2G"
+	else
+		return nil
+	end
+end
+
+local function getRadioName(band)
+	if band == 0 then
+		return "phy0"
+	elseif band == 1 then
+		return "phy1"
+	else
+		return nil
+	end
+end
+
+local methods = {
+	restart = {
+		call = function(args)
+			os.execute("service rtk_multiap restart")
+		end
+	},
+	triggerWPS = {
+		call = function(args)
+			writefile("/tmp/virtual_push_button", "1")
+		end
+	},
+	initBhIntf = {
+		call = function(args)
+			os.execute("sleep 3 && map_init")
+		end
+	},
+	channelScan = {
+		args = { band = 0 },
+		call = function(args)
+			writefile("/tmp/channel_scan_band", args.band)
+		end
+	},
+	setChannel = {
+		args = { band = -1, channel = -1 },
+		call = function(args)
+			if args.band == -1 then
+				return { error = "band required" }
+			elseif args.channel == -1 then
+				return { error = "channel required" }
+			end
+			local uci = require("luci.model.uci").cursor()
+			local radio_name = getRadioName(args.band)
+			local chn = uci:get("wireless", radio_name, "channel")
+			if ""..chn == ""..args.channel then return args end
+			uci:set("wireless", radio_name, "channel", args.channel)
+			uci:commit("wireless")
+			return args
+		end
+	},
+  getChannelScanReport = {
+		args = { band = 0 },
+		call = function(args)
+			local result = {}
+			local path = getChannelScanReportPath(args.band)
+			if not path then return result end
+			local s = readfile(path)
+      if not s then return result end
+      result.res = s
+      return result
+		end
+	},
+	delChannelScanReport = {
+		args = { band = 0 },
+		call = function(args)
+			local path = getChannelScanReportPath(args.band)
+			if not path then return end
+			rmfile(path)
+		end
+	},
+	getTopologyJson = {
+		call = function(args)
+			local s = readfile("/tmp/topology_json")
+      local result = {}
+      result.res = s
+      return result
+		end
+	}
+}
+
+local function parseInput()
+	local parse = json.new()
+	local done, err
+
+	while true do
+		local chunk = io.read(4096)
+		if not chunk then
+			break
+		elseif not done and not err then
+			done, err = parse:parse(chunk)
+		end
+	end
+
+	if not done then
+		print(json.stringify({ error = err or "Incomplete input" }))
+		os.exit(1)
+	end
+
+	return parse:get()
+end
+
+local function validateArgs(func, uargs)
+	local method = methods[func]
+	if not method then
+		print(json.stringify({ error = "Method not found" }))
+		os.exit(1)
+	end
+
+	if type(uargs) ~= "table" then
+		print(json.stringify({ error = "Invalid arguments" }))
+		os.exit(1)
+	end
+
+	uargs.ubus_rpc_session = nil
+
+	local k, v
+	local margs = method.args or {}
+	for k, v in pairs(uargs) do
+		if margs[k] == nil or
+		   (v ~= nil and type(v) ~= type(margs[k]))
+		then
+			print(json.stringify({ error = "Invalid arguments" }))
+			os.exit(1)
+		end
+	end
+
+	return method
+end
+
+if arg[1] == "list" then
+	local _, method, rv = nil, nil, {}
+	for _, method in pairs(methods) do rv[_] = method.args or {} end
+	print((json.stringify(rv):gsub(":%[%]", ":{}")))
+elseif arg[1] == "call" then
+	local args = parseInput()
+	local method = validateArgs(arg[2], args)
+	local result, code = method.call(args)
+	print((json.stringify(result):gsub("^%[%]$", "{}")))
+	os.exit(code or 0)
+end
+

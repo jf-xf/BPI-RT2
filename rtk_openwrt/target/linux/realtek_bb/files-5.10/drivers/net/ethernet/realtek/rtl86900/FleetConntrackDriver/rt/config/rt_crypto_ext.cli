@@ -1,0 +1,80 @@
+//
+// Copyright (C) 2012 Realtek Semiconductor Corp.
+// All Rights Reserved.
+//
+// This program is the proprietary software of Realtek Semiconductor
+// Corporation and/or its licensors, and only be used, duplicated,
+// modified or distributed under the authorized license from Realtek.
+//
+// ANY USE OF THE SOFTWARE OTHER THAN AS AUTHORIZED UNDER
+// THIS LICENSE OR COPYRIGHT LAW IS PROHIBITED.
+//
+// $Revision: 68395 $
+// $Date: 2016-05-27 16:38:35 +0800 (Fri, 27 May 2016) $
+//
+// Purpose : Define diag shell commands for CRYPTO
+//
+// Feature : The file have include the following module and sub-modules
+//           1) crypto api
+//
+
+//rt_crypto configuration
+//key
+//add
+//key configuration
+//key
+//key_size configration
+//key_size
+rt_crypto key add key <STRING:key> key_size <INT:key_size>
+
+//rt_crypto configuration
+//key
+//get
+//key_index
+rt_crypto get key_index
+
+
+//rt_crypto configuration
+//key
+//add_by_index
+//index configuration
+//index
+//key configuration
+//key
+//key_size configration
+//key_size
+rt_crypto add_key_by_index index <INT:index> key <STRING:key> key_size <INT:key_size>
+
+//rt_crypto configuration
+//key
+//del_by_index
+//index configuration
+//index
+rt_crypto del_key_by_index index <INT:index>
+
+//rt_crypto configuration
+//key_hash
+//get
+//key_hash_index
+rt_crypto get key_hash_index
+
+
+//rt_crypto configuration
+//key_hash
+//add_keyhash_by_index
+//index configuration
+//index
+//key configuration
+//key
+//key_size configration
+//key_size
+rt_crypto add_keyhash_by_index index <INT:index> key <STRING:key> key_size <INT:key_size>
+
+//rt_crypto configuration
+//key_hash
+//del_by_index
+//index configuration
+//index
+rt_crypto del_keyhash_by_index index <INT:index>
+
+

@@ -1,0 +1,2733 @@
+Index: netifd-2022-08-25-76d2d41b/device.c
+===================================================================
+--- netifd-2022-08-25-76d2d41b.orig/device.c
++++ netifd-2022-08-25-76d2d41b/device.c
+@@ -24,6 +24,9 @@
+ #include "netifd.h"
+ #include "system.h"
+ #include "config.h"
++#ifdef CONFIG_RTK_NETIFD
++#include "ubus.h"
++#endif
+ #include "wireless.h"
+ 
+ static struct list_head devtypes = LIST_HEAD_INIT(devtypes);
+@@ -55,6 +58,10 @@ static const struct blobmsg_policy dev_a
+ 	[DEV_ATTR_SENDREDIRECTS] = { .name = "sendredirects", .type = BLOBMSG_TYPE_BOOL },
+ 	[DEV_ATTR_NEIGHLOCKTIME] = { .name = "neighlocktime", .type = BLOBMSG_TYPE_INT32 },
+ 	[DEV_ATTR_ISOLATE] = { .name = "isolate", .type = BLOBMSG_TYPE_BOOL },
++#ifdef CONFIG_RTK_NETIFD
++	[DEV_ATTR_EXTERNAL] = { .name = "external", .type = BLOBMSG_TYPE_BOOL },
++	[DEV_ATTR_ADDR_GEN_MODE] = { .name = "addr_gen_mode", .type = BLOBMSG_TYPE_INT32 },
++#endif
+ 	[DEV_ATTR_DROP_V4_UNICAST_IN_L2_MULTICAST] = { .name = "drop_v4_unicast_in_l2_multicast", .type = BLOBMSG_TYPE_BOOL },
+ 	[DEV_ATTR_DROP_V6_UNICAST_IN_L2_MULTICAST] = { .name = "drop_v6_unicast_in_l2_multicast", .type = BLOBMSG_TYPE_BOOL },
+ 	[DEV_ATTR_DROP_GRATUITOUS_ARP] = { .name = "drop_gratuitous_arp", .type = BLOBMSG_TYPE_BOOL },
+@@ -199,6 +206,11 @@ simple_device_create(const char *name, s
+ 	devtype = NULL;
+ 
+ 	blobmsg_parse(dev_attrs, __DEV_ATTR_MAX, tb, blob_data(attr), blob_len(attr));
++#ifdef CONFIG_RTK_NETIFD
++	if(tb[DEV_ATTR_EXTERNAL] && blobmsg_get_u8(tb[DEV_ATTR_EXTERNAL]))
++		dev = device_get(name, 2);
++	else
++#endif
+ 	dev = device_get(name, true);
+ 	if (!dev)
+ 		return NULL;
+@@ -240,6 +252,10 @@ device_merge_settings(struct device *dev
+ 		(s->flags & (DEV_OPT_MACADDR|DEV_OPT_DEFAULT_MACADDR) ? s->macaddr : os->macaddr),
+ 		sizeof(n->macaddr));
+ 	n->ipv6 = s->flags & DEV_OPT_IPV6 ? s->ipv6 : os->ipv6;
++#ifdef CONFIG_RTK_NETIFD
++	n->addr_gen_mode = s->flags & DEV_OPT_ADDR_GEN_MODE ?
++		s->addr_gen_mode : os->addr_gen_mode;
++#endif
+ 	n->ip6segmentrouting = s->flags & DEV_OPT_IP6SEGMENTROUTING ? s->ip6segmentrouting : os->ip6segmentrouting;
+ 	n->promisc = s->flags & DEV_OPT_PROMISC ? s->promisc : os->promisc;
+ 	n->rpfilter = s->flags & DEV_OPT_RPFILTER ? s->rpfilter : os->rpfilter;
+@@ -323,6 +339,13 @@ device_init_settings(struct device *dev,
+ 		s->flags |= DEV_OPT_IPV6;
+ 	}
+ 
++#ifdef CONFIG_RTK_NETIFD
++	if ((cur = tb[DEV_ATTR_ADDR_GEN_MODE])) {
++		s->addr_gen_mode = blobmsg_get_u32(cur);
++		s->flags |= DEV_OPT_ADDR_GEN_MODE;
++	}
++#endif
++
+ 	if ((cur = tb[DEV_ATTR_IP6SEGMENTROUTING])) {
+ 		s->ip6segmentrouting = blobmsg_get_bool(cur);
+ 		s->flags |= DEV_OPT_IP6SEGMENTROUTING;
+@@ -492,6 +515,11 @@ void device_broadcast_event(struct devic
+ 
+ 	safe_list_for_each(&dev->aliases, device_broadcast_cb, &dev_ev);
+ 	safe_list_for_each(&dev->users, device_broadcast_cb, &dev_ev);
++#ifdef CONFIG_RTK_NETIFD
++	if(dev_ev == DEV_EVENT_LINK_UP || dev_ev == DEV_EVENT_LINK_DOWN ||
++		dev_ev == DEV_EVENT_UP || dev_ev == DEV_EVENT_DOWN)
++		netifd_ubus_device_event(dev, dev_ev);
++#endif
+ }
+ 
+ static void
+@@ -669,6 +697,11 @@ __device_get(const char *name, int creat
+ {
+ 	struct device *dev;
+ 
++#ifdef CONFIG_RTK_NETIFD
++	dev = device_find(name);
++	if(dev) return dev;
++#endif
++
+ 	dev = avl_find_element(&devices, name, dev, avl);
+ 
+ 	if (!dev && check_vlan && strchr(name, '.'))
+@@ -1160,6 +1193,10 @@ device_dump_status(struct blob_buf *b, s
+ 			blobmsg_add_u32(b, "txqueuelen", st.txqueuelen);
+ 		if (st.flags & DEV_OPT_IPV6)
+ 			blobmsg_add_u8(b, "ipv6", st.ipv6);
++#ifdef CONFIG_RTK_NETIFD
++		if (st.flags & DEV_OPT_ADDR_GEN_MODE)
++			blobmsg_add_u32(b, "addr_gen_mode", st.addr_gen_mode);
++#endif
+ 		if (st.flags & DEV_OPT_IP6SEGMENTROUTING)
+ 			blobmsg_add_u8(b, "ip6segmentrouting", st.ip6segmentrouting);
+ 		if (st.flags & DEV_OPT_PROMISC)
+Index: netifd-2022-08-25-76d2d41b/device.h
+===================================================================
+--- netifd-2022-08-25-76d2d41b.orig/device.h
++++ netifd-2022-08-25-76d2d41b/device.h
+@@ -53,6 +53,10 @@ enum {
+ 	DEV_ATTR_SENDREDIRECTS,
+ 	DEV_ATTR_NEIGHLOCKTIME,
+ 	DEV_ATTR_ISOLATE,
++#ifdef CONFIG_RTK_NETIFD
++	DEV_ATTR_EXTERNAL,
++	DEV_ATTR_ADDR_GEN_MODE,
++#endif
+ 	DEV_ATTR_IP6SEGMENTROUTING,
+ 	DEV_ATTR_DROP_V4_UNICAST_IN_L2_MULTICAST,
+ 	DEV_ATTR_DROP_V6_UNICAST_IN_L2_MULTICAST,
+@@ -118,6 +122,9 @@ enum {
+ 	DEV_OPT_SENDREDIRECTS		= (1ULL << 21),
+ 	DEV_OPT_NEIGHLOCKTIME		= (1ULL << 22),
+ 	DEV_OPT_ISOLATE			= (1ULL << 23),
++#ifdef CONFIG_RTK_NETIFD
++	DEV_OPT_ADDR_GEN_MODE		= (1 << 24),
++#endif
+ 	DEV_OPT_IP6SEGMENTROUTING	= (1ULL << 24),
+ 	DEV_OPT_DROP_V4_UNICAST_IN_L2_MULTICAST = (1ULL << 25),
+ 	DEV_OPT_DROP_V6_UNICAST_IN_L2_MULTICAST = (1ULL << 26),
+@@ -175,6 +182,9 @@ struct device_settings {
+ 	unsigned int txqueuelen;
+ 	uint8_t macaddr[6];
+ 	bool ipv6;
++#ifdef CONFIG_RTK_NETIFD
++	unsigned int addr_gen_mode;
++#endif
+ 	bool promisc;
+ 	unsigned int rpfilter;
+ 	bool acceptlocal;
+Index: netifd-2022-08-25-76d2d41b/interface-ip.c
+===================================================================
+--- netifd-2022-08-25-76d2d41b.orig/interface-ip.c
++++ netifd-2022-08-25-76d2d41b/interface-ip.c
+@@ -22,6 +22,10 @@
+ #include <arpa/inet.h>
+ #include <netinet/in.h>
+ 
++#if defined(CONFIG_RTK_NETIFD)
++#include <linux/rtnetlink.h>
++#endif
++
+ #include "netifd.h"
+ #include "device.h"
+ #include "interface.h"
+@@ -43,6 +47,9 @@ enum {
+ 	ROUTE_ONLINK,
+ 	ROUTE_TYPE,
+ 	ROUTE_PROTO,
++#ifdef CONFIG_RTK_NETIFD
++	ROUTE_IFNAME,
++#endif
+ 	ROUTE_DISABLED,
+ 	__ROUTE_MAX
+ };
+@@ -60,6 +67,9 @@ static const struct blobmsg_policy route
+ 	[ROUTE_ONLINK] = { .name = "onlink", .type = BLOBMSG_TYPE_BOOL },
+ 	[ROUTE_TYPE] = { .name = "type", .type = BLOBMSG_TYPE_STRING },
+ 	[ROUTE_PROTO] = { .name = "proto", .type = BLOBMSG_TYPE_STRING },
++#ifdef CONFIG_RTK_NETIFD
++	[ROUTE_IFNAME] = { .name = "ifname", .type = BLOBMSG_TYPE_STRING },
++#endif
+ 	[ROUTE_DISABLED] = { .name = "disabled", .type = BLOBMSG_TYPE_BOOL },
+ };
+ 
+@@ -90,11 +100,13 @@ const struct uci_blob_param_list neighbo
+ 	.params = neighbor_attr,
+ };
+ 
+-
+ struct list_head prefixes = LIST_HEAD_INIT(prefixes);
+ static struct device_prefix *ula_prefix = NULL;
+ static struct uloop_timeout valid_until_timeout;
+ 
++#ifdef CONFIG_RTK_NETIFD
++struct vlist_tree route_lists;
++#endif
+ 
+ static void
+ clear_if_addr(union if_addr *a, int mask)
+@@ -234,6 +246,14 @@ __find_ip_route_target(struct interface_
+ 		if (route->flags & DEVROUTE_TABLE)
+ 			continue;
+ 
++#ifdef CONFIG_RTK_NETIFD
++		if (!(
++				((route->flags & DEVROUTE_SRCTABLE) && route->table == RT_TABLE_MAIN) ||
++				route->table2 == RT_TABLE_MAIN
++			))
++			continue;
++#endif
++
+ 		if (!*res || route->mask > (*res)->mask ||
+ 	            ((route->mask == (*res)->mask) && (route->flags & DEVROUTE_METRIC)
+ 		     && (route->metric < (*res)->metric)))
+@@ -316,6 +336,10 @@ interface_ip_add_target_route(union if_a
+ 	route->mtu = r_next->mtu;
+ 	route->metric = r_next->metric;
+ 	route->table = r_next->table;
++#ifdef CONFIG_RTK_NETIFD
++	route->flags |= (r_next->flags & (DEVROUTE_SRCTABLE|DEVROUTE_TABLE));
++	route->table2 = r_next->table2;
++#endif
+ 	route->iface = iface;
+ 	vlist_add(&iface->host_routes, &route->node, route);
+ 
+@@ -338,6 +362,15 @@ interface_set_route_info(struct interfac
+ 		if (route->table)
+ 			route->flags |= DEVROUTE_SRCTABLE;
+ 	}
++
++#ifdef CONFIG_RTK_NETIFD // duplicate the route to anot her table
++	{
++		if(v6 && iface->ip6table2)
++			route->table2 = iface->ip6table2;
++		else if(iface->ip4table2)
++			route->table2 = iface->ip4table2;
++	}
++#endif
+ }
+ 
+ void
+@@ -412,14 +445,22 @@ interface_ip_add_route(struct interface
+ 		return;
+ 
+ 	if (!iface) {
++#ifdef CONFIG_RTK_NETIFD
++		if ((cur = tb[ROUTE_INTERFACE]) == NULL)
++			ip = NULL;
++		else {
++#else
+ 		if ((cur = tb[ROUTE_INTERFACE]) == NULL)
+ 			return;
+-
++#endif
+ 		iface = vlist_find(&interfaces, blobmsg_data(cur), iface, node);
+ 		if (!iface)
+ 			return;
+ 
+ 		ip = &iface->config_ip;
++#ifdef CONFIG_RTK_NETIFD
++		}
++#endif
+ 	} else {
+ 		ip = &iface->proto_ip;
+ 	}
+@@ -428,6 +469,13 @@ interface_ip_add_route(struct interface
+ 	if (!route)
+ 		return;
+ 
++#ifdef CONFIG_RTK_NETIFD
++	route->ifdev[0] = '\0';
++	if ((cur = tb[ROUTE_IFNAME]) != NULL){
++		snprintf(route->ifdev, sizeof(route->ifdev), "%s", (char *) blobmsg_data(cur));
++	}
++#endif
++
+ 	route->flags = v6 ? DEVADDR_INET6 : DEVADDR_INET4;
+ 	route->mask = v6 ? 128 : 32;
+ 	if ((cur = tb[ROUTE_MASK]) != NULL) {
+@@ -516,8 +564,22 @@ interface_ip_add_route(struct interface
+ 		route->flags |= DEVROUTE_PROTO;
+ 	}
+ 
++#ifdef CONFIG_RTK_NETIFD
++	if(!iface || !ip)
++	{
++		if(!route->ifdev[0] && !(route->flags & DEVROUTE_TYPE) &&
++			    system_resolve_rt_type("unicast", &route->type))
++			route->flags |= DEVROUTE_TYPE;
++		vlist_add(&route_lists, &route->node, route);
++	}
++	else
++	{
++#endif
+ 	interface_set_route_info(iface, route);
+ 	vlist_add(&ip->route, &route->node, route);
++#ifdef CONFIG_RTK_NETIFD
++	}
++#endif
+ 	return;
+ 
+ error:
+@@ -569,6 +631,12 @@ route_cmp(const void *k1, const void *k2
+ 	if (maskcmp)
+ 		return maskcmp;
+ 
++#ifdef CONFIG_RTK_NETIFD
++	int ifdevcmp = strcmp(r1->ifdev, r2->ifdev);
++	if(ifdevcmp)
++		return ifdevcmp;
++#endif
++
+ 	return memcmp(&r1->addr, &r2->addr, sizeof(r1->addr));
+ }
+ 
+@@ -731,6 +799,11 @@ interface_update_proto_addr(struct vlist
+ 
+ 		a_new->policy_table = (v6) ? iface->ip6table : iface->ip4table;
+ 
++#if defined(CONFIG_RTK_NETIFD)
++		if(!a_new->policy_table || a_new->policy_table == RT_TABLE_MAIN)
++			a_new->policy_table = (v6) ? iface->ip6table2 : iface->ip4table2;
++#endif
++
+ 		if (!keep || replace) {
+ 			if (!(a_new->flags & DEVADDR_EXTERNAL)) {
+ 				if (system_add_address(dev, a_new))
+@@ -879,6 +952,92 @@ interface_update_host_route(struct vlist
+ 	__interface_update_route(&iface->proto_ip, node_new, node_old);
+ }
+ 
++#ifdef CONFIG_RTK_NETIFD
++static void
++update_proto_route(struct vlist_tree *tree,
++			     struct vlist_node *node_new,
++			     struct vlist_node *node_old)
++{
++	struct device_route *route_old, *route_new;
++	bool keep = false;
++
++	route_old = container_of(node_old, struct device_route, node);
++	route_new = container_of(node_new, struct device_route, node);
++
++	if (node_old && node_new)
++		keep = !memcmp(&route_old->nexthop, &route_new->nexthop, sizeof(route_old->nexthop)) &&
++			(route_old->mtu == route_new->mtu) && (route_old->type == route_new->type) &&
++			(route_old->proto == route_new->proto) && !route_old->failed &&
++			!memcmp(&route_old->ifdev, &route_new->ifdev, sizeof(route_old->ifdev));
++
++	if (node_old) {
++		if (!(route_old->flags & DEVADDR_EXTERNAL) && route_old->enabled && !keep)
++			system_del_route(NULL, route_old);
++
++		free(route_old);
++	}
++
++	if (node_new) {
++		if (!(route_new->flags & DEVADDR_EXTERNAL) && !keep)
++			if (system_add_route(NULL, route_new))
++				route_new->failed = true;
++
++		route_new->iface = NULL;
++		route_new->enabled = 1;
++	}
++}
++
++void check_proto_route(struct interface *iface)
++{
++	struct device_route *route;
++	struct device *dev;
++
++	if (!iface) return;
++
++	dev = iface->l3_dev.dev;
++	if (!dev) return;
++
++	vlist_for_each_element(&route_lists, route, node)
++	{
++		if (!route->enabled)
++			continue;
++
++		if(route->ifdev[0] && strcmp(dev->ifname, route->ifdev))
++			continue;
++
++		if (iface->state == IFS_UP)
++		{
++			if (system_add_route(NULL, route))
++				route->failed = true;
++			else
++				route->failed = false;
++		}
++		else
++		{
++			if (!route->failed)
++			{
++				if (route->ifdev[0] || system_add_route(NULL, route))
++					route->failed = true;
++			}
++		}
++	}
++}
++
++struct device_addr *
++find_interface_address(struct interface_ip_settings *ip, struct device_addr *b)
++{
++	struct device_addr *a;
++
++	vlist_for_each_element(&ip->addr, a, node)
++	{
++		if ((a->flags&DEVADDR_FAMILY) == (b->flags&DEVADDR_FAMILY) &&
++			a->mask == b->mask && !memcmp(&a->addr, &b->addr, sizeof(a->addr)))
++			return a;
++	}
++	return NULL;
++}
++#endif
++
+ static void
+ random_ifaceid(struct in6_addr *addr)
+ {
+@@ -1253,6 +1412,15 @@ void interface_refresh_assignments(bool
+ 	refresh = hint;
+ }
+ 
++#ifdef CONFIG_RTK_NETIFD
++void interface_force_refresh_assignments(void)
++{
++	struct device_prefix *p;
++	list_for_each_entry(p, &prefixes, head)
++		interface_update_prefix_assignments(p, true);
++}
++#endif
++
+ void interface_update_prefix_delegation(struct interface_ip_settings *ip)
+ {
+ 	struct device_prefix *prefix;
+@@ -1667,6 +1835,10 @@ void interface_ip_set_enabled(struct int
+ 			system_add_address(dev, addr);
+ 
+ 			addr->policy_table = (v6) ? iface->ip6table : iface->ip4table;
++#if defined(CONFIG_RTK_NETIFD)
++			if(!addr->policy_table || addr->policy_table == RT_TABLE_MAIN)
++				addr->policy_table = (v6) ? iface->ip6table2 : iface->ip4table2;
++#endif
+ 			if (iface->metric || addr->policy_table)
+ 				interface_handle_subnet_route(iface, addr, true);
+ 
+@@ -1840,6 +2012,17 @@ interface_ip_valid_until_handler(struct
+ 
+ 	}
+ 
++#ifdef CONFIG_RTK_NETIFD
++	struct device_route *route, *routep;
++	vlist_for_each_element_safe(&route_lists, route, node, routep)
++	{
++		if (!route->enabled)
++			continue;
++
++		if (route->valid_until && route->valid_until < now)
++			vlist_delete(&route_lists, &route->node);
++	}
++#endif
+ 	uloop_timeout_set(t, 1000);
+ }
+ 
+@@ -1848,4 +2031,7 @@ interface_ip_init_worker(void)
+ {
+ 	valid_until_timeout.cb = interface_ip_valid_until_handler;
+ 	uloop_timeout_set(&valid_until_timeout, 1000);
++#ifdef CONFIG_RTK_NETIFD
++	vlist_init(&route_lists, route_cmp, update_proto_route);
++#endif
+ }
+Index: netifd-2022-08-25-76d2d41b/interface.c
+===================================================================
+--- netifd-2022-08-25-76d2d41b.orig/interface.c
++++ netifd-2022-08-25-76d2d41b/interface.c
+@@ -55,6 +55,17 @@ enum {
+ 	IFACE_ATTR_IP6IFACEID,
+ 	IFACE_ATTR_FORCE_LINK,
+ 	IFACE_ATTR_IP6WEIGHT,
++#ifdef CONFIG_RTK_NETIFD
++	// policy route
++	IFACE_ATTR_WAN_MARK,
++	IFACE_ATTR_WAN_MASK,
++	IFACE_ATTR_IP4TABLE2,
++	IFACE_ATTR_IP6TABLE2,
++	// WAN/LAN feature
++	IFACE_ATTR_UPSTREAM,
++	// for auto start wait time
++	IFACE_ATTR_AUTO_WAIT,
++#endif
+ 	IFACE_ATTR_MAX
+ };
+ 
+@@ -84,6 +95,17 @@ static const struct blobmsg_policy iface
+ 	[IFACE_ATTR_IP6IFACEID] = { .name = "ip6ifaceid", .type = BLOBMSG_TYPE_STRING },
+ 	[IFACE_ATTR_FORCE_LINK] = { .name = "force_link", .type = BLOBMSG_TYPE_BOOL },
+ 	[IFACE_ATTR_IP6WEIGHT] = { .name = "ip6weight", .type = BLOBMSG_TYPE_INT32 },
++#ifdef CONFIG_RTK_NETIFD
++	// policy route
++	[IFACE_ATTR_WAN_MARK] = { .name = "wan_mark", .type = BLOBMSG_TYPE_INT32 },
++	[IFACE_ATTR_WAN_MASK] = { .name = "wan_mask", .type = BLOBMSG_TYPE_INT32 },
++	[IFACE_ATTR_IP4TABLE2] = { .name = "ip4table2", .type = BLOBMSG_TYPE_STRING },
++	[IFACE_ATTR_IP6TABLE2] = { .name = "ip6table2", .type = BLOBMSG_TYPE_STRING },
++	// WAN/LAN feature
++	[IFACE_ATTR_UPSTREAM] = { .name = "upstream", .type = BLOBMSG_TYPE_BOOL },
++	// for auto start wait time
++	[IFACE_ATTR_AUTO_WAIT] = { .name = "auto_wait", .type = BLOBMSG_TYPE_INT32 },
++#endif
+ };
+ 
+ const struct uci_blob_param_list interface_attr_list = {
+@@ -91,8 +113,10 @@ const struct uci_blob_param_list interfa
+ 	.params = iface_attrs,
+ };
+ 
++#ifndef CONFIG_RTK_NETIFD
+ static void
+ interface_set_main_dev(struct interface *iface, struct device *dev);
++#endif
+ static void
+ interface_event(struct interface *iface, enum interface_event ev);
+ 
+@@ -308,6 +332,9 @@ mark_interface_down(struct interface *if
+ 	interface_ip_flush(&iface->proto_ip);
+ 	interface_flush_state(iface);
+ 	system_flush_routes();
++#ifdef CONFIG_RTK_NETIFD
++	check_proto_route(iface);
++#endif
+ }
+ 
+ static inline void
+@@ -320,6 +347,9 @@ static void
+ __interface_set_down(struct interface *iface, bool force)
+ {
+ 	enum interface_state state = iface->state;
++#if defined(CONFIG_RTK_NETIFD)
++	uloop_timeout_cancel(&iface->auto_start_timer);
++#endif
+ 	switch (state) {
+ 	case IFS_UP:
+ 	case IFS_SETUP:
+@@ -349,7 +379,9 @@ static int
+ __interface_set_up(struct interface *iface)
+ {
+ 	int ret;
+-
++#if defined(CONFIG_RTK_NETIFD)
++	uloop_timeout_cancel(&iface->auto_start_timer);
++#endif
+ 	netifd_log_message(L_NOTICE, "Interface '%s' is setting up now\n", iface->name);
+ 
+ 	iface->state = IFS_SETUP;
+@@ -360,6 +392,16 @@ __interface_set_up(struct interface *ifa
+ 	return ret;
+ }
+ 
++#if defined(CONFIG_RTK_NETIFD)
++static void
++netifd_iface_do_auto_start(struct uloop_timeout *timeout)
++{
++	struct interface *iface;
++	iface = container_of(timeout, struct interface, auto_start_timer);
++	interface_set_up(iface);
++}
++#endif
++
+ static void
+ interface_check_state(struct interface *iface)
+ {
+@@ -681,6 +723,9 @@ interface_cleanup(struct interface *ifac
+ 	struct interface_user *dep, *tmp;
+ 
+ 	uloop_timeout_cancel(&iface->remove_timer);
++#if defined(CONFIG_RTK_NETIFD)
++	uloop_timeout_cancel(&iface->auto_start_timer);
++#endif
+ 	device_remove_user(&iface->ext_dev);
+ 
+ 	if (iface->parent_iface.iface)
+@@ -738,7 +783,20 @@ interface_handle_config_change(struct in
+ 		return;
+ 	}
+ 	if (iface->autostart)
++#if defined(CONFIG_RTK_NETIFD)
++	{
++		uloop_timeout_cancel(&iface->auto_start_timer);
++		if(iface->auto_wait > 0)
++		{
++			iface->auto_start_timer.cb = netifd_iface_do_auto_start;
++			uloop_timeout_set(&iface->auto_start_timer, iface->auto_wait*1000);
++		}
++		else
++			interface_set_up(iface);
++	}
++#else
+ 		interface_set_up(iface);
++#endif
+ }
+ 
+ static void
+@@ -764,6 +822,9 @@ interface_proto_event_cb(struct interfac
+ 		iface->start_time = system_get_rtime();
+ 		interface_event(iface, IFEV_UP);
+ 		netifd_log_message(L_NOTICE, "Interface '%s' is now up\n", iface->name);
++#ifdef CONFIG_RTK_NETIFD
++		check_proto_route(iface);
++#endif
+ 		break;
+ 	case IFPEV_DOWN:
+ 		if (iface->state == IFS_DOWN)
+@@ -922,6 +983,34 @@ interface_alloc(const char *name, struct
+ 	iface->config_autostart = iface->autostart;
+ 	iface->jail = NULL;
+ 
++#ifdef CONFIG_RTK_NETIFD
++	// policy route
++	iface->iface_wan_mark = 0;
++	if ((cur = tb[IFACE_ATTR_WAN_MARK]))
++		iface->iface_wan_mark = blobmsg_get_u32(cur);
++
++	iface->iface_wan_mask = 0;
++	if ((cur = tb[IFACE_ATTR_WAN_MASK]))
++		iface->iface_wan_mask = blobmsg_get_u32(cur);
++
++	if ((cur = tb[IFACE_ATTR_IP4TABLE2])) {
++		if (!system_resolve_rt_table(blobmsg_data(cur), &iface->ip4table2))
++			DPRINTF("Failed to resolve routing table: %s\n", (char *) blobmsg_data(cur));
++	}
++
++	if ((cur = tb[IFACE_ATTR_IP6TABLE2])) {
++		if (!system_resolve_rt_table(blobmsg_data(cur), &iface->ip6table2))
++			DPRINTF("Failed to resolve routing table: %s\n", (char *) blobmsg_data(cur));
++	}
++
++	// WAN/LAN feature
++	iface->upstream = blobmsg_get_bool_default(tb[IFACE_ATTR_UPSTREAM], false);
++
++	iface->auto_wait = 10;
++	if((cur = tb[IFACE_ATTR_AUTO_WAIT]))
++		iface->auto_wait = blobmsg_get_u32(cur);
++#endif
++
+ 	if ((cur = tb[IFACE_ATTR_JAIL])) {
+ 		iface->jail = strdup(blobmsg_get_string(cur));
+ 		iface->autostart = false;
+@@ -1024,8 +1113,11 @@ interface_set_l3_dev(struct interface *i
+ 	}
+ }
+ 
+-static void
+-interface_set_main_dev(struct interface *iface, struct device *dev)
++#ifdef CONFIG_RTK_NETIFD
++void interface_set_main_dev(struct interface *iface, struct device *dev)
++#else
++static void interface_set_main_dev(struct interface *iface, struct device *dev)
++#endif
+ {
+ 	bool claimed = iface->l3_dev.claimed;
+ 
+@@ -1399,6 +1491,9 @@ interface_update(struct vlist_tree *tree
+ 	} else if (node_old) {
+ 		D(INTERFACE, "Remove interface '%s'\n", if_old->name);
+ 		set_config_state(if_old, IFC_REMOVE);
++#ifdef CONFIG_RTK_NETIFD
++		interface_force_refresh_assignments();
++#endif
+ 	} else if (node_new) {
+ 		D(INTERFACE, "Create interface '%s'\n", if_new->name);
+ 		interface_event(if_new, IFEV_CREATE);
+Index: netifd-2022-08-25-76d2d41b/interface.h
+===================================================================
+--- netifd-2022-08-25-76d2d41b.orig/interface.h
++++ netifd-2022-08-25-76d2d41b/interface.h
+@@ -175,6 +175,24 @@ struct interface {
+ 
+ 	struct uloop_timeout remove_timer;
+ 	struct ubus_object ubus;
++#ifdef CONFIG_RTK_NETIFD
++	// policy route
++	uint32_t iface_wan_mark;
++	uint32_t iface_wan_mask;
++	unsigned int ip4table2;
++	unsigned int ip6table2;
++	// interface config
++	char ip6gw[64];
++	bool static_peerdns;
++	char iface_dslite[64];
++	char zone_dslite[64];
++	char peeraddr[64];
++	// WAN/LAN feature
++	bool upstream;
++	// for auto start wait time
++	uint32_t auto_wait;
++	struct uloop_timeout auto_start_timer;
++#endif
+ };
+ 
+ 
+@@ -188,6 +206,10 @@ bool interface_add_alias(struct interfac
+ 
+ void interface_set_proto_state(struct interface *iface, struct interface_proto_state *state);
+ 
++#ifdef CONFIG_RTK_NETIFD
++void interface_set_main_dev(struct interface *iface, struct device *dev);
++#endif
++
+ void interface_set_available(struct interface *iface, bool new_state);
+ void interface_set_up(struct interface *iface);
+ void interface_set_down(struct interface *iface);
+Index: netifd-2022-08-25-76d2d41b/proto.c
+===================================================================
+--- netifd-2022-08-25-76d2d41b.orig/proto.c
++++ netifd-2022-08-25-76d2d41b/proto.c
+@@ -38,6 +38,13 @@ enum {
+ 	OPT_IP6GW,
+ 	OPT_IP6PREFIX,
+ 	OPT_IP6DEPRECATED,
++#ifdef CONFIG_RTK_NETIFD
++	OPT_STATIC_PEERDNS,
++	OPT_STATIC_IFACE_DSLITE,
++	OPT_STATIC_ZONE_DSLITE,
++	OPT_STATIC_PEERADDR,
++	OPT_IP6CLASS,
++#endif
+ 	__OPT_MAX,
+ };
+ 
+@@ -51,6 +58,13 @@ static const struct blobmsg_policy proto
+ 	[OPT_IP6GW] = { .name = "ip6gw", .type = BLOBMSG_TYPE_STRING },
+ 	[OPT_IP6PREFIX] = { .name = "ip6prefix", .type = BLOBMSG_TYPE_ARRAY },
+ 	[OPT_IP6DEPRECATED] = { .name = "ip6deprecated", .type = BLOBMSG_TYPE_BOOL },
++#ifdef CONFIG_RTK_NETIFD
++	[OPT_STATIC_PEERDNS] = { .name = "peerdns", .type = BLOBMSG_TYPE_BOOL },
++	[OPT_STATIC_IFACE_DSLITE] = { .name = "iface_dslite", .type = BLOBMSG_TYPE_STRING },
++	[OPT_STATIC_ZONE_DSLITE] = { .name = "zone_dslite", .type = BLOBMSG_TYPE_STRING },
++	[OPT_STATIC_PEERADDR] = { .name = "peeraddr", .type = BLOBMSG_TYPE_STRING },
++	[OPT_IP6CLASS] = { .name = "ip6class", .type = BLOBMSG_TYPE_ARRAY },
++#endif
+ };
+ 
+ static const struct uci_blob_param_info proto_ip_attr_info[__OPT_MAX] = {
+@@ -407,6 +421,38 @@ parse_prefix_list(struct interface *ifac
+ 	return n_addr;
+ }
+ 
++#ifdef CONFIG_RTK_NETIFD
++static void
++interface_add_assignment_classes(struct interface *iface, struct blob_attr *list)
++{
++	struct blob_attr *cur;
++	int rem;
++
++	blobmsg_for_each_attr(cur, list, rem) {
++		if (blobmsg_type(cur) != BLOBMSG_TYPE_STRING)
++			continue;
++
++		if (!blobmsg_check_attr(cur, false))
++			continue;
++
++		struct interface_assignment_class *c = malloc(sizeof(*c) + blobmsg_data_len(cur));
++		memcpy(c->name, blobmsg_data(cur), blobmsg_data_len(cur));
++		list_add(&c->head, &iface->assignment_classes);
++	}
++}
++
++static void
++interface_clear_assignment_classes(struct interface *iface)
++{
++	while (!list_empty(&iface->assignment_classes)) {
++		struct interface_assignment_class *c = list_first_entry(&iface->assignment_classes,
++				struct interface_assignment_class, head);
++		list_del(&c->head);
++		free(c);
++	}
++}
++#endif
++
+ int
+ proto_apply_static_ip_settings(struct interface *iface, struct blob_attr *attr)
+ {
+@@ -417,6 +463,9 @@ proto_apply_static_ip_settings(struct in
+ 	bool ip6deprecated;
+ 	int n_v4 = 0, n_v6 = 0;
+ 	struct in_addr bcast = {}, ptp = {};
++#ifdef CONFIG_RTK_NETIFD
++	const char *str = NULL;
++#endif
+ 
+ 	blobmsg_parse(proto_ip_attributes, __OPT_MAX, tb, blob_data(attr), blob_len(attr));
+ 
+@@ -469,6 +518,29 @@ proto_apply_static_ip_settings(struct in
+ 			goto out;
+ 	}
+ 
++#ifdef CONFIG_RTK_NETIFD
++	if ((cur = tb[OPT_STATIC_PEERDNS])) {
++		iface->static_peerdns = blobmsg_get_bool_default(tb[OPT_STATIC_PEERDNS], false);
++	}
++	if ((cur = tb[OPT_STATIC_IFACE_DSLITE])) {
++		str = blobmsg_data(cur);
++		snprintf(iface->iface_dslite, sizeof(iface->iface_dslite), "%s", str);
++	}
++	if ((cur = tb[OPT_STATIC_ZONE_DSLITE])) {
++		str = blobmsg_data(cur);
++		snprintf(iface->zone_dslite, sizeof(iface->zone_dslite), "%s", str);
++	}
++	if ((cur = tb[OPT_STATIC_PEERADDR])) {
++		str = blobmsg_data(cur);
++		snprintf(iface->peeraddr, sizeof(iface->peeraddr), "%s", str);
++	}
++	if ((cur = tb[OPT_IP6CLASS])){
++		interface_clear_assignment_classes(iface);
++		interface_add_assignment_classes(iface, cur);
++		interface_force_refresh_assignments();
++	}
++#endif
++
+ 	return 0;
+ 
+ error:
+Index: netifd-2022-08-25-76d2d41b/scripts/netifd-proto.sh
+===================================================================
+--- netifd-2022-08-25-76d2d41b.orig/scripts/netifd-proto.sh
++++ netifd-2022-08-25-76d2d41b/scripts/netifd-proto.sh
+@@ -1,5 +1,11 @@
+ NETIFD_MAIN_DIR="${NETIFD_MAIN_DIR:-/lib/netifd}"
+ PROTO_DEFAULT_OPTIONS="defaultroute peerdns metric"
++RTK_MER_GWINFO="/tmp/MERgw"
++RTK_MER_GWINFO_V6="/tmp/MERgwV6"
++RTK_DNS_RESOLV_FILE="/var/resolv.conf"
++RTK_DNS6_RESOLV_FILE="/var/resolv6.conf"
++RTK_DNS_DOMAIN_SEARCH_FILE="/var/resolv.domain"
++RTK_DNS6_DOMAIN_SEARCH_FILE="/var/resolv6.domain"
+ 
+ . /usr/share/libubox/jshn.sh
+ . $NETIFD_MAIN_DIR/utils.sh
+@@ -158,8 +164,18 @@ proto_add_ipv4_route() {
+ 	local gw="$3"
+ 	local source="$4"
+ 	local metric="$5"
++	local table="$6"
++	local ifname="$7"
+ 
+-	append PROTO_ROUTE "$target/$mask/$gw/$metric///$source"
++	if [ ! -z "$source" ]; then
++		local s=${source#*/}
++		source=${source%%/*}
++		if [ ! -z "$s" -a ! "$s" = "$source" ]; then
++			source=${source}_${s}
++		fi
++	fi
++
++	append PROTO_ROUTE "$target/$mask/$gw/$metric//$table/$source/$ifname"
+ }
+ 
+ proto_add_ipv6_route() {
+@@ -170,8 +186,17 @@ proto_add_ipv6_route() {
+ 	local valid="$5"
+ 	local source="$6"
+ 	local table="$7"
++	local ifname="$8"
++
++	if [ ! -z "$source" ]; then
++		local s=${source#*/}
++		source=${source%%/*}
++		if [ ! -z "$s" -a ! "$s" = "$source" ]; then
++			source=${source}_${s}
++		fi
++	fi
+ 
+-	append PROTO_ROUTE6 "$target/$mask/$gw/$metric/$valid/$table/$source"
++	append PROTO_ROUTE6 "$target/$mask/$gw/$metric/$valid/$table/$source/$ifname"
+ }
+ 
+ proto_add_ipv6_prefix() {
+@@ -288,7 +313,18 @@ _proto_push_route() {
+ 	str="${str#*/}"
+ 	local table="${str%%/*}"
+ 	str="${str#*/}"
+-	local source="${str}"
++	local source="${str%%/*}"
++	str="${str#*/}"
++	local ifname="${str%%/*}"
++	str="${str#*/}"
++
++	if [ ! -z "$source" ]; then
++		local s=${source#*_}
++		source=${source%%_*}
++		if [ ! -z "$s" -a ! "$s" = "$source" ]; then
++			source=${source}/${s}
++		fi
++	fi
+ 
+ 	json_add_object ""
+ 	json_add_string target "$target"
+@@ -298,7 +334,10 @@ _proto_push_route() {
+ 	[ -n "$valid" ] && json_add_int valid "$valid"
+ 	[ -n "$source" ] && json_add_string source "$source"
+ 	[ -n "$table" ] && json_add_string table "$table"
++	[ -n "$ifname" ] && json_add_string ifname "$ifname"
+ 	json_close_object
++#	MSG=`json_dump`
++#	echo "$MSG" >> /tmp/json_dump
+ }
+ 
+ _proto_push_array() {
+Index: netifd-2022-08-25-76d2d41b/system-linux.c
+===================================================================
+--- netifd-2022-08-25-76d2d41b.orig/system-linux.c
++++ netifd-2022-08-25-76d2d41b/system-linux.c
+@@ -375,6 +375,13 @@ static void system_set_disable_ipv6(stru
+ 	system_set_dev_sysctl("ipv6/conf", "disable_ipv6", dev->ifname, val);
+ }
+ 
++#ifdef CONFIG_RTK_NETIFD
++static void system_set_addr_gen_mode(struct device *dev, const char *val)
++{
++	system_set_dev_sysctl("ipv6/conf", "addr_gen_mode", dev->ifname, val);
++}
++#endif
++
+ static void system_set_ip6segmentrouting(struct device *dev, const char *val)
+ {
+ 	system_set_dev_sysctl("ipv6/conf", "seg6_enabled", dev->ifname, val);
+@@ -524,6 +531,14 @@ static int system_get_ip6segmentrouting(
+ 				     dev->ifname, buf, buf_sz);
+ }
+ 
++#ifdef CONFIG_RTK_NETIFD
++static int system_get_addr_gen_mode(struct device *dev, char *buf, const size_t buf_sz)
++{
++	return system_get_dev_sysctl("ipv6/conf", "addr_gen_mode",
++					dev->ifname, buf, buf_sz);
++}
++#endif
++
+ static int system_get_rpfilter(struct device *dev, char *buf, const size_t buf_sz)
+ {
+ 	return system_get_dev_sysctl("ipv4/conf", "rp_filter",
+@@ -1703,6 +1718,13 @@ system_if_get_settings(struct device *de
+ 		s->flags |= DEV_OPT_IPV6;
+ 	}
+ 
++#ifdef CONFIG_RTK_NETIFD
++	if (!system_get_addr_gen_mode(dev, buf, sizeof(buf))) {
++		s->addr_gen_mode = strtoul(buf, NULL, 0);
++		s->flags |= DEV_OPT_ADDR_GEN_MODE;
++	}
++#endif
++
+ 	if (!system_get_ip6segmentrouting(dev, buf, sizeof(buf))) {
+ 		s->ip6segmentrouting = strtoul(buf, NULL, 0);
+ 		s->flags |= DEV_OPT_IP6SEGMENTROUTING;
+@@ -1828,6 +1850,13 @@ system_if_apply_settings(struct device *
+ 	}
+ 	if (apply_mask & DEV_OPT_IPV6)
+ 		system_set_disable_ipv6(dev, s->ipv6 ? "0" : "1");
++#ifdef CONFIG_RTK_NETIFD
++	if (s->flags & DEV_OPT_ADDR_GEN_MODE & apply_mask)
++	{
++		snprintf(buf, sizeof(buf), "%u", s->addr_gen_mode);
++		system_set_addr_gen_mode(dev, buf);
++	}
++#endif
+ 	if (s->flags & DEV_OPT_IP6SEGMENTROUTING & apply_mask) {
+ 		struct device dummy = {
+ 			.ifname = "all",
+@@ -2647,7 +2676,11 @@ int system_del_neighbor(struct device *d
+ 	return system_neigh(dev, neighbor, RTM_DELNEIGH);
+ }
+ 
++#ifdef CONFIG_RTK_NETIFD
++static int system_rt(struct device *dev, struct device_route *route, unsigned int table2, int cmd)
++#else
+ static int system_rt(struct device *dev, struct device_route *route, int cmd)
++#endif
+ {
+ 	int alen = ((route->flags & DEVADDR_FAMILY) == DEVADDR_INET4) ? 4 : 16;
+ 	bool have_gw;
+@@ -2664,10 +2697,36 @@ static int system_rt(struct device *dev,
+ 	unsigned int table = (route->flags & (DEVROUTE_TABLE | DEVROUTE_SRCTABLE))
+ 			? route->table : RT_TABLE_MAIN;
+ 
++#ifdef CONFIG_RTK_NETIFD
++	unsigned int sourcemask = route->sourcemask;
++	if(table2)
++	{
++		table = table2;
++		if(alen == 16 && route->mask == 0 && sourcemask)
++		{
++			if(route->iface)
++			{
++				struct device_addr *a=NULL, a2;
++				memset(&a2, 0, sizeof(a2));
++				a2.flags = DEVADDR_INET6;
++				a2.mask = sourcemask;
++				memcpy(&a2.addr, &route->source, sizeof(route->source));
++				a = find_interface_address(&route->iface->config_ip, &a2);
++				if(a == NULL) a = find_interface_address(&route->iface->proto_ip, &a2);
++				if(a) sourcemask = 0;
++			}
++		}
++	}
++#endif
++
+ 	struct rtmsg rtm = {
+ 		.rtm_family = (alen == 4) ? AF_INET : AF_INET6,
+ 		.rtm_dst_len = route->mask,
++#ifdef CONFIG_RTK_NETIFD
++		.rtm_src_len = sourcemask,
++#else
+ 		.rtm_src_len = route->sourcemask,
++#endif
+ 		.rtm_table = (table < 256) ? table : RT_TABLE_UNSPEC,
+ 		.rtm_protocol = (route->flags & DEVROUTE_PROTO) ? route->proto : RTPROT_STATIC,
+ 		.rtm_scope = RT_SCOPE_NOWHERE,
+@@ -2676,6 +2735,16 @@ static int system_rt(struct device *dev,
+ 	};
+ 	struct nl_msg *msg;
+ 
++#ifdef CONFIG_RTK_NETIFD
++	struct device *dev_tmp = NULL;
++	if( route->ifdev[0] ){
++		if((dev_tmp = device_get((const char*)(route->ifdev), false)))
++			dev = dev_tmp;
++		else if(!dev) // if specific ifname not exist, return error
++			return -ENXIO;
++	}
++#endif
++
+ 	if (cmd == RTM_NEWROUTE) {
+ 		flags |= NLM_F_CREATE | NLM_F_REPLACE;
+ 
+@@ -2717,7 +2786,12 @@ static int system_rt(struct device *dev,
+ 	if (route->mask)
+ 		nla_put(msg, RTA_DST, alen, &route->addr);
+ 
+-	if (route->sourcemask) {
++#ifdef CONFIG_RTK_NETIFD
++	if (sourcemask)
++#else
++	if (route->sourcemask)
++#endif
++	{
+ 		if (rtm.rtm_family == AF_INET)
+ 			nla_put(msg, RTA_PREFSRC, alen, &route->source);
+ 		else
+@@ -2756,12 +2830,30 @@ nla_put_failure:
+ 
+ int system_add_route(struct device *dev, struct device_route *route)
+ {
++#ifdef CONFIG_RTK_NETIFD
++	int ret = 1, ret2 = 1;
++	if (!route->table || route->table != route->table2)
++		ret = system_rt(dev, route, 0, RTM_NEWROUTE);
++	if(route->table2)
++		ret2 = system_rt(dev, route, route->table2, RTM_NEWROUTE);
++	return (ret && ret2);
++#else
+ 	return system_rt(dev, route, RTM_NEWROUTE);
++#endif
+ }
+ 
+ int system_del_route(struct device *dev, struct device_route *route)
+ {
++#ifdef CONFIG_RTK_NETIFD
++	int ret = 1, ret2 = 1;
++	if (!route->table || route->table != route->table2)
++		ret = system_rt(dev, route, 0, RTM_DELROUTE);
++	if(route->table2)
++		ret2 = system_rt(dev, route, route->table2, RTM_DELROUTE);
++	return (ret && ret2);
++#else
+ 	return system_rt(dev, route, RTM_DELROUTE);
++#endif
+ }
+ 
+ int system_flush_routes(void)
+Index: netifd-2022-08-25-76d2d41b/ubus.c
+===================================================================
+--- netifd-2022-08-25-76d2d41b.orig/ubus.c
++++ netifd-2022-08-25-76d2d41b/ubus.c
+@@ -119,11 +119,21 @@ netifd_get_proto_handlers(struct ubus_co
+ 
+ enum {
+ 	DI_NAME,
++#ifdef CONFIG_RTK_NETIFD
++	DI_DYNAMIC,
++	DI_TYPE,
++	DI_IFNAME,
++#endif
+ 	__DI_MAX
+ };
+ 
+ static const struct blobmsg_policy dynamic_policy[__DI_MAX] = {
+ 	[DI_NAME] = { .name = "name", .type = BLOBMSG_TYPE_STRING },
++#ifdef CONFIG_RTK_NETIFD
++	[DI_DYNAMIC] = { .name = "dynamic", .type = BLOBMSG_TYPE_BOOL},
++	[DI_TYPE] = { .name = "type", .type = BLOBMSG_TYPE_STRING},
++	[DI_IFNAME] = { .name = "ifname", .type = BLOBMSG_TYPE_STRING},
++#endif
+ };
+ 
+ static int
+@@ -141,8 +151,32 @@ netifd_add_dynamic(struct ubus_context *
+ 		return UBUS_STATUS_INVALID_ARGUMENT;
+ 
+ 	const char *name = blobmsg_get_string(tb[DI_NAME]);
++#ifdef CONFIG_RTK_NETIFD
++	bool dynamic = blobmsg_get_bool_default(tb[DI_DYNAMIC], true);
++	const char *type = blobmsg_get_string(tb[DI_TYPE]);
++	struct device *dev = NULL;
++
++	if(type)
++	{
++		struct device_type *devtype = NULL;
++		const char *ifname = blobmsg_get_string(tb[DI_IFNAME]);
++		devtype = device_type_get(type);
++		if(devtype && ifname)
++		{
++			dev = device_find(ifname);
++			if(!dev)
++			{
++				dev = device_create(ifname, devtype, msg);
++				if(!dev) goto error;
++				dev->current_config = false;
++			}
++		}
++	}
+ 
++	iface = interface_alloc(name, msg, dynamic);
++#else
+ 	iface = interface_alloc(name, msg, true);
++#endif
+ 	if (!iface)
+ 		return UBUS_STATUS_UNKNOWN_ERROR;
+ 
+@@ -159,9 +193,102 @@ error_free_config:
+ 	free(config);
+ error:
+ 	free(iface);
++#ifdef CONFIG_RTK_NETIFD
++	if(dev)
++		device_free_unused();
++#endif
+ 	return UBUS_STATUS_UNKNOWN_ERROR;
+ }
+ 
++#ifdef CONFIG_RTK_NETIFD
++extern struct vlist_tree route_lists;
++static int netifd_dump_static_route(int family)
++{
++	struct device_route *route;
++	int buflen = 128;
++	char *buf;
++	void *r;
++	int af;
++	time_t now = system_get_rtime();
++
++	vlist_for_each_element(&route_lists, route, node) {
++		if ((route->flags & DEVADDR_FAMILY) == DEVADDR_INET4)
++			af = AF_INET;
++		else
++			af = AF_INET6;
++
++		if(af != AF_UNSPEC && af != family) continue;
++
++		r = blobmsg_open_table(&b, NULL);
++
++		blobmsg_add_u8(&b, "enable", (route->enabled && (!route->valid_until || (route->valid_until - now)>0))?1:0);
++
++		buf = blobmsg_alloc_string_buffer(&b, "target", buflen);
++		inet_ntop(af, &route->addr, buf, buflen);
++		blobmsg_add_string_buffer(&b);
++
++		blobmsg_add_u32(&b, "mask", route->mask);
++
++		buf = blobmsg_alloc_string_buffer(&b, "nexthop", buflen);
++		inet_ntop(af, &route->nexthop, buf, buflen);
++		blobmsg_add_string_buffer(&b);
++
++		if (route->flags & DEVROUTE_TYPE)
++			blobmsg_add_u32(&b, "type", route->type);
++
++		if (route->flags & DEVROUTE_PROTO)
++			blobmsg_add_u32(&b, "proto", route->proto);
++
++		if (route->flags & DEVROUTE_MTU)
++			blobmsg_add_u32(&b, "mtu", route->mtu);
++
++		if (route->flags & DEVROUTE_METRIC)
++			blobmsg_add_u32(&b, "metric", route->metric);
++
++		if (route->flags & DEVROUTE_TABLE)
++			blobmsg_add_u32(&b, "table", route->table);
++
++		if (route->valid_until)
++			blobmsg_add_u32(&b, "valid", route->valid_until - now);
++
++		buf = blobmsg_alloc_string_buffer(&b, "source", buflen);
++		inet_ntop(af, &route->source, buf, buflen);
++		snprintf(buf + strlen(buf), buflen - strlen(buf), "/%u", route->sourcemask);
++		blobmsg_add_string_buffer(&b);
++
++#ifdef CONFIG_RTK_NETIFD
++		if (route->ifdev[0]){
++			blobmsg_add_string(&b, "ifname", route->ifdev);
++		}
++#endif
++		blobmsg_add_u8(&b, "failed", route->failed);
++		blobmsg_close_table(&b, r);
++	}
++	return 0;
++}
++static int
++netifd_handle_dump_static_route(struct ubus_context *ctx, struct ubus_object *obj,
++		     struct ubus_request_data *req, const char *method,
++		     struct blob_attr *msg)
++{
++	void *a;
++
++	blob_buf_init(&b, 0);
++
++	a = blobmsg_open_array(&b, "v4_routes");
++	netifd_dump_static_route(AF_INET);
++	blobmsg_close_array(&b, a);
++
++	a = blobmsg_open_array(&b, "v6_routes");
++	netifd_dump_static_route(AF_INET6);
++	blobmsg_close_array(&b, a);
++
++	ubus_send_reply(ctx, req, b.head);
++
++	return UBUS_STATUS_OK;
++}
++#endif
++
+ enum {
+ 	NETNS_UPDOWN_JAIL,
+ 	NETNS_UPDOWN_START,
+@@ -208,6 +335,9 @@ static struct ubus_method main_object_me
+ 	UBUS_METHOD("add_host_route", netifd_add_host_route, route_policy),
+ 	{ .name = "get_proto_handlers", .handler = netifd_get_proto_handlers },
+ 	UBUS_METHOD("add_dynamic", netifd_add_dynamic, dynamic_policy),
++#ifdef CONFIG_RTK_NETIFD
++	{ .name = "dump_static_route", .handler = netifd_handle_dump_static_route },
++#endif
+ 	UBUS_METHOD("netns_updown", netifd_netns_updown, netns_updown_policy),
+ };
+ 
+@@ -344,6 +474,85 @@ netifd_handle_set_state(struct ubus_cont
+ 	return 0;
+ }
+ 
++#ifdef CONFIG_RTK_NETIFD
++enum {
++	DEV_ADD_NAME,
++	DEV_ADD_TYPE,
++	DEV_ADD_MAX,
++};
++
++static const struct blobmsg_policy dev_add_policy[DEV_ADD_MAX] = {
++	[DEV_ADD_NAME] = { .name = "name", .type = BLOBMSG_TYPE_STRING },
++	[DEV_ADD_TYPE] = { .name = "type", .type = BLOBMSG_TYPE_STRING },
++};
++
++static int
++netifd_handle_add_device(struct ubus_context *ctx, struct ubus_object *obj,
++			struct ubus_request_data *req, const char *method,
++			struct blob_attr *msg)
++{
++	struct device *dev = NULL;
++	struct blob_attr *tb[DEV_ADD_MAX];
++	const char *name = NULL, *type = NULL;
++	struct device_type *devtype = NULL;
++
++	blobmsg_parse(dev_add_policy, DEV_ADD_MAX, tb, blob_data(msg), blob_len(msg));
++
++	name = blobmsg_get_string(tb[DEV_ADD_NAME]);
++	if(!name || device_find(name)) return UBUS_STATUS_INVALID_ARGUMENT;
++
++	type = blobmsg_get_string(tb[DEV_ADD_TYPE]);
++	if(type) devtype = device_type_get(type);
++
++	if (devtype)
++	{
++		dev = device_create(name, devtype, msg);
++	}
++	else
++	{
++		dev = device_get(name, 1);
++		if(dev) device_apply_config(dev, dev->type, msg);
++	}
++
++	if (dev)
++	{
++		dev->current_config = true;
++		return UBUS_STATUS_OK;
++	}
++
++	return UBUS_STATUS_UNKNOWN_ERROR;
++}
++
++enum {
++	DEV_DEL_NAME,
++	DEV_DEL_MAX,
++};
++
++static const struct blobmsg_policy dev_del_policy[DEV_DEL_MAX] = {
++	[DEV_DEL_NAME] = { .name = "name", .type = BLOBMSG_TYPE_STRING },
++};
++
++static int
++netifd_handle_del_device(struct ubus_context *ctx, struct ubus_object *obj,
++			struct ubus_request_data *req, const char *method,
++			struct blob_attr *msg)
++{
++	struct device *dev = NULL;
++	struct blob_attr *tb[DEV_DEL_MAX];
++	const char *name = NULL;
++
++	blobmsg_parse(dev_del_policy, DEV_DEL_MAX, tb, blob_data(msg), blob_len(msg));
++
++	name = blobmsg_get_string(tb[DEV_DEL_NAME]);
++	if(!name) return UBUS_STATUS_INVALID_ARGUMENT;
++	if(!(dev = device_find(name))) return UBUS_STATUS_NOT_FOUND;
++	dev->current_config = false;
++	device_free_unused();
++
++	return UBUS_STATUS_OK;
++}
++#endif
++
+ #ifdef DUMMY_MODE
+ enum {
+     DEV_HOTPLUG_ATTR_NAME,
+@@ -391,6 +600,10 @@ static struct ubus_method dev_object_met
+ 	UBUS_METHOD("status", netifd_dev_status, dev_policy),
+ 	UBUS_METHOD("set_alias", netifd_handle_alias, alias_attrs),
+ 	UBUS_METHOD("set_state", netifd_handle_set_state, dev_state_policy),
++#ifdef CONFIG_RTK_NETIFD
++	UBUS_METHOD("add_device", netifd_handle_add_device, dev_add_policy),
++	UBUS_METHOD("del_device", netifd_handle_del_device, dev_del_policy),
++#endif
+ #ifdef DUMMY_MODE
+ 	UBUS_METHOD("hotplug_event", netifd_handle_dev_hotplug, dev_hotplug_policy),
+ #endif
+@@ -656,6 +869,14 @@ interface_ip_dump_route_list(struct inte
+ 		snprintf(buf + strlen(buf), buflen - strlen(buf), "/%u", route->sourcemask);
+ 		blobmsg_add_string_buffer(&b);
+ 
++#ifdef CONFIG_RTK_NETIFD
++		if (route->ifdev[0]){
++			buf = blobmsg_alloc_string_buffer(&b, "ifname", buflen);
++			snprintf(buf, buflen, "%s", route->ifdev);
++			blobmsg_add_string_buffer(&b);
++		}
++#endif
++
+ 		blobmsg_close_table(&b, r);
+ 	}
+ }
+@@ -716,6 +937,69 @@ interface_ip_dump_prefix_list(struct int
+ 	}
+ }
+ 
++#ifdef CONFIG_RTK_NETIFD
++static void interface_dump_host_route(struct interface *iface)
++{
++	struct device_route *route;
++	int buflen = 128;
++	char *buf;
++	void *r;
++	int af;
++
++	time_t now = system_get_rtime();
++	vlist_for_each_element(&iface->host_routes, route, node) {
++		if ((route->flags & DEVADDR_FAMILY) == DEVADDR_INET4)
++			af = AF_INET;
++		else
++			af = AF_INET6;
++
++		r = blobmsg_open_table(&b, NULL);
++
++		buf = blobmsg_alloc_string_buffer(&b, "target", buflen);
++		inet_ntop(af, &route->addr, buf, buflen);
++		blobmsg_add_string_buffer(&b);
++
++		blobmsg_add_u32(&b, "mask", route->mask);
++
++		buf = blobmsg_alloc_string_buffer(&b, "nexthop", buflen);
++		inet_ntop(af, &route->nexthop, buf, buflen);
++		blobmsg_add_string_buffer(&b);
++
++		if (route->flags & DEVROUTE_TYPE)
++			blobmsg_add_u32(&b, "type", route->type);
++
++		if (route->flags & DEVROUTE_PROTO)
++			blobmsg_add_u32(&b, "proto", route->proto);
++
++		if (route->flags & DEVROUTE_MTU)
++			blobmsg_add_u32(&b, "mtu", route->mtu);
++
++		if (route->flags & DEVROUTE_METRIC)
++			blobmsg_add_u32(&b, "metric", route->metric);
++
++		if (route->flags & DEVROUTE_TABLE)
++			blobmsg_add_u32(&b, "table", route->table);
++
++		if (route->valid_until)
++			blobmsg_add_u32(&b, "valid", route->valid_until - now);
++
++		buf = blobmsg_alloc_string_buffer(&b, "source", buflen);
++		inet_ntop(af, &route->source, buf, buflen);
++		snprintf(buf + strlen(buf), buflen - strlen(buf), "/%u", route->sourcemask);
++		blobmsg_add_string_buffer(&b);
++
++#ifdef CONFIG_RTK_NETIFD
++		if (route->ifdev[0]){
++			buf = blobmsg_alloc_string_buffer(&b, "ifname", buflen);
++			snprintf(buf, buflen, "%s", route->ifdev);
++			blobmsg_add_string_buffer(&b);
++		}
++#endif
++
++		blobmsg_close_table(&b, r);
++	}
++}
++#endif
+ 
+ static void
+ interface_ip_dump_prefix_assignment_list(struct interface *iface)
+@@ -768,6 +1052,18 @@ interface_ip_dump_prefix_assignment_list
+ 	}
+ }
+ 
++#ifdef CONFIG_RTK_NETIFD
++static void
++interface_ip_dump_ip6class_list(struct interface *iface)
++{
++	struct interface_assignment_class *c;
++
++	list_for_each_entry(c, &iface->assignment_classes, head) {
++		blobmsg_add_string(&b, NULL, c->name);
++	}
++}
++#endif
++
+ static void
+ interface_ip_dump_dns_server_list(struct interface_ip_settings *ip, bool enabled)
+ {
+@@ -809,6 +1105,9 @@ netifd_dump_status(struct interface *ifa
+ 	blobmsg_add_u8(&b, "pending", iface->state == IFS_SETUP);
+ 	blobmsg_add_u8(&b, "available", iface->available);
+ 	blobmsg_add_u8(&b, "autostart", iface->autostart);
++#ifdef CONFIG_RTK_NETIFD
++	blobmsg_add_u32(&b, "auto_wait", iface->auto_wait);
++#endif
+ 	blobmsg_add_u8(&b, "dynamic", iface->dynamic);
+ 
+ 	if (iface->state == IFS_UP) {
+@@ -872,10 +1171,20 @@ netifd_dump_status(struct interface *ifa
+ 		a = blobmsg_open_array(&b, "ipv6-prefix-assignment");
+ 		interface_ip_dump_prefix_assignment_list(iface);
+ 		blobmsg_close_array(&b, a);
++#ifdef CONFIG_RTK_NETIFD
++		a = blobmsg_open_array(&b, "ipv6-class");
++		interface_ip_dump_ip6class_list(iface);
++		blobmsg_close_array(&b, a);
++#endif
+ 		a = blobmsg_open_array(&b, "route");
+ 		interface_ip_dump_route_list(&iface->config_ip, true);
+ 		interface_ip_dump_route_list(&iface->proto_ip, true);
+ 		blobmsg_close_array(&b, a);
++#ifdef CONFIG_RTK_NETIFD
++		a = blobmsg_open_array(&b, "host-route");
++		interface_dump_host_route(iface);
++		blobmsg_close_array(&b, a);
++#endif
+ 		a = blobmsg_open_array(&b, "dns-server");
+ 		interface_ip_dump_dns_server_list(&iface->config_ip, true);
+ 		interface_ip_dump_dns_server_list(&iface->proto_ip, true);
+@@ -925,6 +1234,33 @@ netifd_dump_status(struct interface *ifa
+ 		blobmsg_add_blob(&b, data->data);
+ 
+ 	blobmsg_close_table(&b, a);
++#ifdef CONFIG_RTK_NETIFD
++	// policy-route
++	a = blobmsg_open_table(&b, "policy-route-info");
++	blobmsg_add_u32(&b, "wan_mark", iface->iface_wan_mark);
++	blobmsg_add_u32(&b, "wan_mask", iface->iface_wan_mask);
++	blobmsg_add_u32(&b, "ip4table2", iface->ip4table2);
++	blobmsg_add_u32(&b, "ip6table2", iface->ip6table2);
++	blobmsg_close_table(&b, a);
++
++	//interface-config-info
++	a = blobmsg_open_table(&b, "interface_config_info");
++	if(iface->ip6gw[0]){
++		blobmsg_add_string(&b, "ip6gw", iface->ip6gw);
++	}
++	blobmsg_add_u8(&b, "static_peerdns", iface->static_peerdns);
++	if(iface->iface_dslite[0]){
++		blobmsg_add_string(&b, "static_iface_dslite", iface->iface_dslite);
++		if(iface->zone_dslite[0])
++			blobmsg_add_string(&b, "static_zone_dslite", iface->zone_dslite);
++		if(iface->peeraddr[0])
++			blobmsg_add_string(&b, "static_peeraddr", iface->peeraddr);
++	}
++	blobmsg_close_table(&b, a);
++
++	// WAN/LAN feature
++	blobmsg_add_u8(&b, "upstream", iface->upstream);
++#endif
+ 
+ 	if (!list_empty(&iface->errors))
+ 		netifd_add_interface_errors(&b, iface);
+@@ -1387,6 +1723,21 @@ netifd_ubus_done(void)
+ 	ubus_free(ubus_ctx);
+ }
+ 
++#ifdef CONFIG_RTK_NETIFD
++void
++netifd_ubus_device_event(struct device *dev, int state)
++{
++	if (dev) {
++		blob_buf_init(&b, 0);
++		blobmsg_add_string(&b, "device", dev->ifname);
++		blobmsg_add_u32(&b, "ifindex", dev->ifindex);
++		blobmsg_add_u32(&b, "status", state);
++		device_dump_status(&b, dev);
++		ubus_send_event(ubus_ctx, "network.device", b.head);
++	}
++}
++#endif
++
+ void
+ netifd_ubus_interface_event(struct interface *iface, bool up)
+ {
+Index: netifd-2022-08-25-76d2d41b/CMakeLists.txt
+===================================================================
+--- netifd-2022-08-25-76d2d41b.orig/CMakeLists.txt
++++ netifd-2022-08-25-76d2d41b/CMakeLists.txt
+@@ -20,7 +20,7 @@ SET(SOURCES
+ 	interface.c interface-ip.c interface-event.c
+ 	iprule.c proto.c proto-static.c proto-shell.c
+ 	config.c device.c bridge.c veth.c vlan.c alias.c
+-	macvlan.c ubus.c vlandev.c wireless.c
++	macvlan.c ubus.c vlandev.c wireless.c smux.c
+ 	extdev.c bonding.c)
+ 
+ 
+Index: netifd-2022-08-25-76d2d41b/alias.c
+===================================================================
+--- netifd-2022-08-25-76d2d41b.orig/alias.c
++++ netifd-2022-08-25-76d2d41b/alias.c
+@@ -58,6 +58,12 @@ static void alias_set_device(struct alia
+ 	if (dev) {
+ 		device_set_ifindex(&alias->dev, dev->ifindex);
+ 		device_set_ifname(&alias->dev, dev->ifname);
++		//This is for alias v6 interface because EUI-64 need to know parent interface MAC.
++		memcpy(alias->dev.settings.macaddr,
++				(dev->settings.flags & DEV_OPT_MACADDR ? dev->settings.macaddr : dev->orig_settings.macaddr),
++				sizeof(alias->dev.settings.macaddr));
++		alias->dev.settings.flags |= DEV_OPT_MACADDR;
++
+ 		device_add_user(&alias->dep, dev);
+ 	} else {
+ 		device_set_ifname(&alias->dev, "");
+Index: netifd-2022-08-25-76d2d41b/bridge.c
+===================================================================
+--- netifd-2022-08-25-76d2d41b.orig/bridge.c
++++ netifd-2022-08-25-76d2d41b/bridge.c
+@@ -39,6 +39,9 @@ enum {
+ 	BRIDGE_ATTR_QUERY_INTERVAL,
+ 	BRIDGE_ATTR_QUERY_RESPONSE_INTERVAL,
+ 	BRIDGE_ATTR_LAST_MEMBER_INTERVAL,
++#ifdef CONFIG_RTK_NETIFD
++	BRIDGE_ATTR_BRIFNAMES,
++#endif
+ 	BRIDGE_ATTR_VLAN_FILTERING,
+ 	BRIDGE_ATTR_HAS_VLANS,
+ 	BRIDGE_ATTR_STP_KERNEL,
+@@ -62,6 +65,9 @@ static const struct blobmsg_policy bridg
+ 	[BRIDGE_ATTR_QUERY_INTERVAL] = { "query_interval", BLOBMSG_TYPE_INT32 },
+ 	[BRIDGE_ATTR_QUERY_RESPONSE_INTERVAL] = { "query_response_interval", BLOBMSG_TYPE_INT32 },
+ 	[BRIDGE_ATTR_LAST_MEMBER_INTERVAL] = { "last_member_interval", BLOBMSG_TYPE_INT32 },
++#ifdef CONFIG_RTK_NETIFD
++	[BRIDGE_ATTR_BRIFNAMES] = { "bridge_ifnames", BLOBMSG_TYPE_ARRAY },
++#endif
+ 	[BRIDGE_ATTR_VLAN_FILTERING] = { "vlan_filtering", BLOBMSG_TYPE_BOOL },
+ 	[BRIDGE_ATTR_HAS_VLANS] = { "__has_vlans", BLOBMSG_TYPE_BOOL }, /* internal */
+ 	[BRIDGE_ATTR_STP_KERNEL] = { "stp_kernel", BLOBMSG_TYPE_BOOL },
+@@ -1140,6 +1146,10 @@ bridge_reload(struct device *dev, struct
+ 		bst->primary_port = NULL;
+ 
+ 	bst->ports = tb_br[BRIDGE_ATTR_PORTS];
++#ifdef CONFIG_RTK_NETIFD
++	if(bst->ports == NULL)
++		bst->ports = tb_br[BRIDGE_ATTR_BRIFNAMES];
++#endif
+ 	device_init_settings(dev, tb_dev);
+ 	bridge_apply_settings(bst, tb_br);
+ 
+Index: netifd-2022-08-25-76d2d41b/config.c
+===================================================================
+--- netifd-2022-08-25-76d2d41b.orig/config.c
++++ netifd-2022-08-25-76d2d41b/config.c
+@@ -485,6 +485,10 @@ config_init_ip(void)
+ {
+ 	struct interface *iface;
+ 	struct uci_element *e;
++#ifdef CONFIG_RTK_NETIFD
++	extern struct vlist_tree route_lists;
++	vlist_update(&route_lists);
++#endif
+ 
+ 	vlist_for_each_element(&interfaces, iface, node)
+ 		interface_ip_update_start(&iface->config_ip);
+@@ -496,6 +500,12 @@ config_init_ip(void)
+ 			config_parse_route(s, false);
+ 		else if (!strcmp(s->type, "route6"))
+ 			config_parse_route(s, true);
++#ifdef CONFIG_RTK_NETIFD
++		else if (!strcmp(s->type, "stroute"))
++			config_parse_route(s, false);
++		else if (!strcmp(s->type, "stroute6"))
++			config_parse_route(s, true);
++#endif
+ 		if (!strcmp(s->type, "neighbor"))
+ 			config_parse_neighbor(s, false);
+ 		else if (!strcmp(s->type, "neighbor6"))
+@@ -504,6 +514,9 @@ config_init_ip(void)
+ 
+ 	vlist_for_each_element(&interfaces, iface, node)
+ 		interface_ip_update_complete(&iface->config_ip);
++#ifdef CONFIG_RTK_NETIFD
++	vlist_flush(&route_lists);
++#endif
+ }
+ 
+ static void
+@@ -536,6 +549,34 @@ config_init_globals(void)
+ 	const char *ula_prefix = uci_lookup_option_string(
+ 			uci_ctx, globals, "ula_prefix");
+ 	interface_ip_set_ula_prefix(ula_prefix);
++
++#ifdef CONFIG_RTK_NETIFD
++	{
++		const char *val;
++		unsigned int priority;
++
++		IPRULE_PRIORITY_ADDR = _IPRULE_PRIORITY_ADDR;
++		IPRULE_PRIORITY_ADDR_MASK = _IPRULE_PRIORITY_ADDR_MASK;
++		IPRULE_PRIORITY_NW = _IPRULE_PRIORITY_NW;
++		IPRULE_PRIORITY_REJECT = _IPRULE_PRIORITY_REJECT;
++
++		val = uci_lookup_option_string(uci_ctx, globals, "IPRULE_PRIORITY_ADDR");
++		if(val && (priority=(unsigned int)strtoul(val, NULL, 0)))
++			IPRULE_PRIORITY_ADDR = priority;
++
++		val = uci_lookup_option_string(uci_ctx, globals, "IPRULE_PRIORITY_ADDR_MASK");
++		if(val && (priority=(unsigned int)strtoul(val, NULL, 0)))
++			IPRULE_PRIORITY_ADDR_MASK = priority;
++
++		val = uci_lookup_option_string(uci_ctx, globals, "IPRULE_PRIORITY_NW");
++		if(val && (priority=(unsigned int)strtoul(val, NULL, 0)))
++			IPRULE_PRIORITY_NW = priority;
++
++		val = uci_lookup_option_string(uci_ctx, globals, "IPRULE_PRIORITY_REJECT");
++		if(val && (priority=(unsigned int)strtoul(val, NULL, 0)))
++			IPRULE_PRIORITY_REJECT = priority;
++	}
++#endif
+ }
+ 
+ static void
+Index: netifd-2022-08-25-76d2d41b/interface-ip.h
+===================================================================
+--- netifd-2022-08-25-76d2d41b.orig/interface-ip.h
++++ netifd-2022-08-25-76d2d41b/interface-ip.h
+@@ -107,6 +107,10 @@ struct device_route {
+ 	unsigned int sourcemask;
+ 	union if_addr addr;
+ 	union if_addr source;
++#ifdef CONFIG_RTK_NETIFD
++	char ifdev[32];
++	unsigned int table2; //used by other table
++#endif
+ };
+ 
+ struct device_neighbor {
+@@ -192,6 +196,11 @@ struct device_prefix* interface_ip_add_d
+ 		struct in6_addr *excl_addr, uint8_t excl_length, const char *pclass);
+ void interface_ip_set_ula_prefix(const char *prefix);
+ void interface_refresh_assignments(bool hint);
++#ifdef CONFIG_RTK_NETIFD
++void interface_force_refresh_assignments(void);
++void check_proto_route(struct interface *iface);
++struct device_addr* find_interface_address(struct interface_ip_settings *ip, struct device_addr *b);
++#endif
+ void interface_update_prefix_delegation(struct interface_ip_settings *ip);
+ 
+ #endif
+Index: netifd-2022-08-25-76d2d41b/iprule.c
+===================================================================
+--- netifd-2022-08-25-76d2d41b.orig/iprule.c
++++ netifd-2022-08-25-76d2d41b/iprule.c
+@@ -30,6 +30,12 @@
+ struct vlist_tree iprules;
+ static bool iprules_flushed = false;
+ static unsigned int iprules_counter[2];
++#ifdef CONFIG_RTK_NETIFD
++unsigned int IPRULE_PRIORITY_ADDR = _IPRULE_PRIORITY_ADDR;
++unsigned int IPRULE_PRIORITY_ADDR_MASK = _IPRULE_PRIORITY_ADDR_MASK;
++unsigned int IPRULE_PRIORITY_NW = _IPRULE_PRIORITY_NW;
++unsigned int IPRULE_PRIORITY_REJECT = _IPRULE_PRIORITY_REJECT;
++#endif
+ 
+ enum {
+ 	RULE_INTERFACE_IN,
+Index: netifd-2022-08-25-76d2d41b/iprule.h
+===================================================================
+--- netifd-2022-08-25-76d2d41b.orig/iprule.h
++++ netifd-2022-08-25-76d2d41b/iprule.h
+@@ -17,10 +17,21 @@
+ 
+ #include "interface-ip.h"
+ 
++#ifdef CONFIG_RTK_NETIFD
++#define _IPRULE_PRIORITY_ADDR		10000
++#define _IPRULE_PRIORITY_ADDR_MASK	20000
++#define _IPRULE_PRIORITY_NW		90000
++#define _IPRULE_PRIORITY_REJECT		4200000000
++extern unsigned int IPRULE_PRIORITY_ADDR;
++extern unsigned int IPRULE_PRIORITY_ADDR_MASK;
++extern unsigned int IPRULE_PRIORITY_NW;
++extern unsigned int IPRULE_PRIORITY_REJECT;
++#else
+ #define IPRULE_PRIORITY_ADDR		10000
+ #define IPRULE_PRIORITY_ADDR_MASK	20000
+ #define IPRULE_PRIORITY_NW		90000
+ #define IPRULE_PRIORITY_REJECT		4200000000
++#endif
+ 
+ enum iprule_flags {
+ 	/* address family for rule */
+Index: netifd-2022-08-25-76d2d41b/proto-shell.c
+===================================================================
+--- netifd-2022-08-25-76d2d41b.orig/proto-shell.c
++++ netifd-2022-08-25-76d2d41b/proto-shell.c
+@@ -396,7 +396,11 @@ proto_shell_free(struct interface_proto_
+ 	free(state);
+ }
+ 
++#ifdef CONFIG_RTK_NETIFD
++void
++#else
+ static void
++#endif
+ proto_shell_parse_route_list(struct interface *iface, struct blob_attr *attr,
+ 			     bool v6)
+ {
+@@ -413,7 +417,11 @@ proto_shell_parse_route_list(struct inte
+ 	}
+ }
+ 
++#ifdef CONFIG_RTK_NETIFD
++void
++#else
+ static void
++#endif
+ proto_shell_parse_neighbor_list(struct interface *iface, struct blob_attr *attr,
+ 				bool v6)
+ {
+@@ -592,7 +600,11 @@ proto_shell_update_link(struct proto_she
+ 	return 0;
+ }
+ 
++#ifdef CONFIG_RTK_NETIFD
++bool
++#else
+ static bool
++#endif
+ fill_string_list(struct blob_attr *attr, char **argv, int max)
+ {
+ 	struct blob_attr *cur;
+Index: netifd-2022-08-25-76d2d41b/proto-static.c
+===================================================================
+--- netifd-2022-08-25-76d2d41b.orig/proto-static.c
++++ netifd-2022-08-25-76d2d41b/proto-static.c
+@@ -23,13 +23,33 @@
+ #include "interface-ip.h"
+ #include "proto.h"
+ #include "system.h"
++#include "handler.h"
++
++#ifdef CONFIG_RTK_NETIFD
++enum proto_static_sm {
++	S_IDLE,
++	S_SETUP,
++	S_SETUP_ABORT,
++	S_TEARDOWN,
++};
++#endif
+ 
+ struct static_proto_state {
+ 	struct interface_proto_state proto;
+ 
+ 	struct blob_attr *config;
++#ifdef CONFIG_RTK_NETIFD
++	struct netifd_process script_task;
++	struct netifd_process proto_task;
++	enum proto_static_sm sm;
++#endif
+ };
+ 
++#ifdef CONFIG_RTK_NETIFD
++static char STATIC_SCRIPT[128];
++static int proto_static_fd = -1;
++#endif
++
+ static bool
+ static_proto_setup(struct static_proto_state *state)
+ {
+@@ -60,6 +80,46 @@ static_handler(struct interface_proto_st
+ 		break;
+ 	}
+ 
++#ifdef CONFIG_RTK_NETIFD
++	{
++		char *config;
++		const char *action;
++		const char *argv[7];
++		char *envp[2];
++		uint16_t i=0, j=0;
++		struct netifd_process *proc;
++
++		proc = &state->script_task;
++
++		if (cmd == PROTO_CMD_SETUP) {
++			action = "setup";
++			state->sm = S_SETUP;
++		} else if (cmd == PROTO_CMD_RENEW) {
++			action = "renew";
++		} else {
++			action = "teardown";
++			state->sm = S_TEARDOWN;
++		}
++
++		config = blobmsg_format_json(state->config, true);
++		if (config)
++		{
++			argv[i++] = STATIC_SCRIPT;
++			argv[i++] = proto->handler->name;
++			argv[i++] = action;
++			argv[i++] = proto->iface->name;
++			argv[i++] = config;
++			if (proto->iface->main_dev.dev)
++				argv[i++] = proto->iface->main_dev.dev->ifname;
++			argv[i] = NULL;
++			envp[j] = NULL;
++
++			ret = netifd_start_process(argv, envp, proc);
++			free(config);
++		}
++	}
++#endif
++
+ 	return ret;
+ }
+ 
+@@ -69,10 +129,280 @@ static_free(struct interface_proto_state
+ 	struct static_proto_state *state;
+ 
+ 	state = container_of(proto, struct static_proto_state, proto);
++#ifdef CONFIG_RTK_NETIFD
++	netifd_kill_process(&state->script_task);
++	netifd_kill_process(&state->proto_task);
++#endif
+ 	free(state->config);
+ 	free(state);
+ }
+ 
++#ifdef CONFIG_RTK_NETIFD
++enum {
++	STATIC_NOTIFY_ACTION,
++	STATIC_NOTIFY_ERROR,
++	STATIC_NOTIFY_COMMAND,
++	STATIC_NOTIFY_ENV,
++	STATIC_NOTIFY_SIGNAL,
++	STATIC_NOTIFY_AVAILABLE,
++	STATIC_NOTIFY_LINK_UP,
++	STATIC_NOTIFY_IFNAME,
++	STATIC_NOTIFY_ADDR_EXT,
++	STATIC_NOTIFY_ROUTES,
++	STATIC_NOTIFY_ROUTES6,
++	STATIC_NOTIFY_TUNNEL,
++	STATIC_NOTIFY_DATA,
++	STATIC_NOTIFY_KEEP,
++	STATIC_NOTIFY_HOST,
++	STATIC_NOTIFY_DNS,
++	STATIC_NOTIFY_DNS_SEARCH,
++	STATIC_NOTIFY_NEIGHBORS,
++	STATIC_NOTIFY_NEIGHBORS6,
++	__STATIC_NOTIFY_LAST
++};
++
++static const struct blobmsg_policy static_notify_attr[__STATIC_NOTIFY_LAST] = {
++	[STATIC_NOTIFY_ACTION] = { .name = "action", .type = BLOBMSG_TYPE_INT32 },
++	[STATIC_NOTIFY_ERROR] = { .name = "error", .type = BLOBMSG_TYPE_ARRAY },
++	[STATIC_NOTIFY_COMMAND] = { .name = "command", .type = BLOBMSG_TYPE_ARRAY },
++	[STATIC_NOTIFY_ENV] = { .name = "env", .type = BLOBMSG_TYPE_ARRAY },
++	[STATIC_NOTIFY_SIGNAL] = { .name = "signal", .type = BLOBMSG_TYPE_INT32 },
++	[STATIC_NOTIFY_AVAILABLE] = { .name = "available", .type = BLOBMSG_TYPE_BOOL },
++	[STATIC_NOTIFY_LINK_UP] = { .name = "link-up", .type = BLOBMSG_TYPE_BOOL },
++	[STATIC_NOTIFY_IFNAME] = { .name = "ifname", .type = BLOBMSG_TYPE_STRING },
++	[STATIC_NOTIFY_ADDR_EXT] = { .name = "address-external", .type = BLOBMSG_TYPE_BOOL },
++	[STATIC_NOTIFY_ROUTES] = { .name = "routes", .type = BLOBMSG_TYPE_ARRAY },
++	[STATIC_NOTIFY_ROUTES6] = { .name = "routes6", .type = BLOBMSG_TYPE_ARRAY },
++	[STATIC_NOTIFY_TUNNEL] = { .name = "tunnel", .type = BLOBMSG_TYPE_TABLE },
++	[STATIC_NOTIFY_DATA] = { .name = "data", .type = BLOBMSG_TYPE_TABLE },
++	[STATIC_NOTIFY_KEEP] = { .name = "keep", .type = BLOBMSG_TYPE_BOOL },
++	[STATIC_NOTIFY_HOST] = { .name = "host", .type = BLOBMSG_TYPE_STRING },
++	[STATIC_NOTIFY_DNS] = { .name = "dns", .type = BLOBMSG_TYPE_ARRAY },
++	[STATIC_NOTIFY_DNS_SEARCH] = { .name = "dns_search", .type = BLOBMSG_TYPE_ARRAY },
++	[STATIC_NOTIFY_NEIGHBORS]= {.name = "neighbor", .type = BLOBMSG_TYPE_ARRAY},
++	[STATIC_NOTIFY_NEIGHBORS6]= {.name = "neighbor6", .type = BLOBMSG_TYPE_ARRAY},
++};
++
++static int
++static_update_link(struct static_proto_state *state, struct blob_attr *data, struct blob_attr **tb)
++{
++	struct interface_proto_state *proto = &state->proto;
++	struct interface *iface = proto->iface;
++	struct blob_attr *cur;
++	struct device *dev;
++	const char *devname;
++	bool addr_ext = false;
++	bool keep = false;
++	int dev_create = 1;
++
++	netifd_log_message(L_NOTICE, "Interface do %s for '%s'\n", __FUNCTION__, iface->name);
++
++	if ((cur = tb[STATIC_NOTIFY_KEEP]) != NULL)
++		keep = blobmsg_get_bool(cur);
++
++	// we don't know what it will cause for dev_create = 2
++	if ((cur = tb[STATIC_NOTIFY_ADDR_EXT]) != NULL) {
++		addr_ext = blobmsg_get_bool(cur);
++		if (addr_ext)
++			dev_create = 2;
++	}
++
++	if (iface->state != IFS_UP || !iface->l3_dev.dev)
++		keep = false;
++
++	netifd_log_message(L_NOTICE, "Interface do %s for '%s' keep=%s\n", __FUNCTION__, iface->name, keep ? "true" : "false");
++	D(INTERFACE, "%s keep=%s dev_create %d !!\n", iface->name, keep ? "true" : "false", dev_create);
++	/* TODO:below code for !keep is reference from proto_shell_update_link(), we don't assure if it can
++	 * work well.
++	 */
++
++	if (!keep) {
++		dev = iface->main_dev.dev;
++		if (tb[STATIC_NOTIFY_IFNAME]) {
++			keep = false;
++			devname = blobmsg_data(tb[STATIC_NOTIFY_IFNAME]);
++			if (tb[STATIC_NOTIFY_TUNNEL])
++				;
++				//TODO dev = proto_shell_create_tunnel(devname, tb[STATIC_NOTIFY_TUNNEL]);
++			else
++				dev = device_get(devname, dev_create);
++		}
++
++		if (!dev)
++			return UBUS_STATUS_INVALID_ARGUMENT;
++
++		interface_set_l3_dev(iface, dev);
++		if (device_claim(&iface->l3_dev) < 0)
++			return UBUS_STATUS_UNKNOWN_ERROR;
++
++		device_set_present(dev, true);
++	}
++
++	/* Not sure if it's necessary */
++	interface_update_start(iface, keep);
++
++	/* It seems that static wan always be link up, so if user don't want to keep origin info,
++	 * we just flush its IP and dns info etc...
++	 * */
++#if 0
++	if (!keep)
++		interface_ip_flush(&iface->proto_ip);
++#endif
++	//proto_apply_ip_settings(iface, data, addr_ext);
++	proto_apply_static_ip_settings(iface, data);
++
++	if ((cur = tb[STATIC_NOTIFY_ROUTES]) != NULL)
++		proto_shell_parse_route_list(iface, cur, false);
++
++	if ((cur = tb[STATIC_NOTIFY_ROUTES6]) != NULL)
++		proto_shell_parse_route_list(iface, cur, true);
++
++	if ((cur = tb[STATIC_NOTIFY_NEIGHBORS]) != NULL)
++		proto_shell_parse_neighbor_list(iface, cur, false);
++
++	if ((cur = tb[STATIC_NOTIFY_NEIGHBORS6]) != NULL)
++		proto_shell_parse_neighbor_list(iface, cur, true);
++
++	if ((cur = tb[STATIC_NOTIFY_DNS]))
++		interface_add_dns_server_list(&iface->proto_ip, cur);
++
++	if ((cur = tb[STATIC_NOTIFY_DNS_SEARCH]))
++		interface_add_dns_search_list(&iface->proto_ip, cur);
++
++	//TODO
++#if 0
++	if ((cur = tb[STATIC_NOTIFY_DATA]))
++		proto_shell_parse_data(iface, cur);
++#endif
++
++	interface_update_complete(iface);
++
++	return 0;
++}
++
++static int
++proto_static_run_command(struct static_proto_state *state, struct blob_attr **tb)
++{
++	static char *argv[64];
++	static char *env[32];
++
++	if (state->sm != S_SETUP)
++		return UBUS_STATUS_PERMISSION_DENIED;
++
++	if (!tb[STATIC_NOTIFY_COMMAND])
++		goto error;
++
++	if (!fill_string_list(tb[STATIC_NOTIFY_COMMAND], argv, ARRAY_SIZE(argv)))
++		goto error;
++
++	if (!fill_string_list(tb[STATIC_NOTIFY_ENV], env, ARRAY_SIZE(env)))
++		goto error;
++
++	netifd_start_process((const char **) argv, (char **) env, &state->proto_task);
++
++	return 0;
++
++error:
++	return UBUS_STATUS_INVALID_ARGUMENT;
++}
++
++static int
++proto_static_kill_command(struct static_proto_state *state, struct blob_attr **tb)
++{
++	unsigned int signal = ~0;
++
++	if (tb[STATIC_NOTIFY_SIGNAL])
++		signal = blobmsg_get_u32(tb[STATIC_NOTIFY_SIGNAL]);
++
++	if (signal > 31)
++		signal = SIGTERM;
++
++	if (state->proto_task.uloop.pending) {
++		kill(state->proto_task.uloop.pid, signal);
++	}
++
++	return 0;
++}
++
++static int
++proto_static_notify_error(struct static_proto_state *state, struct blob_attr **tb)
++{
++	struct blob_attr *cur;
++	char *data[16];
++	int n_data = 0;
++	int rem;
++
++	if (!tb[STATIC_NOTIFY_ERROR])
++		return UBUS_STATUS_INVALID_ARGUMENT;
++
++	blobmsg_for_each_attr(cur, tb[STATIC_NOTIFY_ERROR], rem) {
++		if (n_data + 1 == ARRAY_SIZE(data))
++			goto error;
++
++		if (blobmsg_type(cur) != BLOBMSG_TYPE_STRING)
++			goto error;
++
++		if (!blobmsg_check_attr(cur, false))
++			goto error;
++
++		data[n_data++] = blobmsg_data(cur);
++	}
++
++	if (!n_data)
++		goto error;
++
++	interface_add_error(state->proto.iface, state->proto.handler->name,
++			data[0], (const char **) &data[1], n_data - 1);
++
++	return 0;
++
++error:
++	return UBUS_STATUS_INVALID_ARGUMENT;
++}
++
++static int
++proto_static_shell_notify(struct interface_proto_state *proto, struct blob_attr *attr)
++{
++	struct static_proto_state *state;
++	struct blob_attr *tb[__STATIC_NOTIFY_LAST];
++
++	state = container_of(proto, struct static_proto_state, proto);
++	// D(INTERFACE, "%s  %s !!\n", state->proto.iface->name, blob_get_string(attr));
++	blobmsg_parse(static_notify_attr, __STATIC_NOTIFY_LAST, tb, blob_data(attr), blob_len(attr));
++	if (!tb[STATIC_NOTIFY_ACTION])
++		return UBUS_STATUS_INVALID_ARGUMENT;
++
++	switch(blobmsg_get_u32(tb[STATIC_NOTIFY_ACTION])) {
++		case 0:
++			return static_update_link(state, attr, tb);
++		case 1:
++			return proto_static_run_command(state, tb);
++		case 2:
++			return proto_static_kill_command(state, tb);
++		case 3:
++			return proto_static_notify_error(state, tb);
++		default:
++			return UBUS_STATUS_INVALID_ARGUMENT;
++	}
++}
++
++static void
++proto_static_script_cb(struct netifd_process *p, int ret)
++{
++	__attribute__((unused)) struct static_proto_state *state;
++
++	state = container_of(p, struct static_proto_state, script_task);
++}
++
++static void
++proto_static_proto_cb(struct netifd_process *p, int ret)
++{
++	__attribute__((unused)) struct static_proto_state *state;
++
++	state = container_of(p, struct static_proto_state, proto_task);
++}
++#endif
++
+ static struct interface_proto_state *
+ static_attach(const struct proto_handler *h, struct interface *iface,
+ 	      struct blob_attr *attr)
+@@ -90,6 +420,15 @@ static_attach(const struct proto_handler
+ 	memcpy(state->config, attr, blob_pad_len(attr));
+ 	state->proto.free = static_free;
+ 	state->proto.cb = static_handler;
++#ifdef CONFIG_RTK_NETIFD
++	state->proto.notify = proto_static_shell_notify;
++	state->script_task.cb = proto_static_script_cb;
++	state->script_task.dir_fd = proto_static_fd;
++	state->script_task.log_prefix = iface->name;
++	state->proto_task.cb = proto_static_proto_cb;
++	state->proto_task.dir_fd = proto_static_fd;
++	state->proto_task.log_prefix = iface->name;
++#endif
+ 
+ 	return &state->proto;
+ 
+@@ -109,5 +448,9 @@ static struct proto_handler static_proto
+ static void __init
+ static_proto_init(void)
+ {
++#ifdef CONFIG_RTK_NETIFD
++	snprintf(STATIC_SCRIPT, sizeof(STATIC_SCRIPT), "%s/static_proto.sh", main_path);
++	proto_static_fd = netifd_open_subdir("proto");
++#endif
+ 	add_proto_handler(&static_proto);
+ }
+Index: netifd-2022-08-25-76d2d41b/proto.h
+===================================================================
+--- netifd-2022-08-25-76d2d41b.orig/proto.h
++++ netifd-2022-08-25-76d2d41b/proto.h
+@@ -81,5 +81,11 @@ int proto_apply_static_ip_settings(struc
+ int proto_apply_ip_settings(struct interface *iface, struct blob_attr *attr, bool ext);
+ void proto_dump_handlers(struct blob_buf *b);
+ void proto_shell_init(void);
++#ifdef CONFIG_RTK_NETIFD
++//int rtk_proto_static_set_gw(struct interface *iface, const char *gateway_str, int is_v4, int setup);
++void proto_shell_parse_route_list(struct interface *iface, struct blob_attr *attr, bool v6);
++void proto_shell_parse_neighbor_list(struct interface *iface, struct blob_attr *attr, bool v6);
++bool fill_string_list(struct blob_attr *attr, char **argv, int max);
++#endif
+ 
+ #endif
+Index: netifd-2022-08-25-76d2d41b/smux.c
+===================================================================
+--- /dev/null
++++ netifd-2022-08-25-76d2d41b/smux.c
+@@ -0,0 +1,535 @@
++/*
++ * netifd - network interface daemon
++ * Copyright (C) 2012 Felix Fietkau <nbd@openwrt.org>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2
++ * as published by the Free Software Foundation
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ */
++#include <string.h>
++#include <stdlib.h>
++#include <stdio.h>
++#include <assert.h>
++#include <errno.h>
++
++#include "netifd.h"
++#include "device.h"
++#include "interface.h"
++#include "system.h"
++
++#define SMUX_MAX_TAGS 2
++
++struct smux_config {
++	char ifname[IFNAMSIZ];
++	char phydev[IFNAMSIZ];
++	int	rule_priority;
++	char carrier_mode[16];
++	int vid;
++	int vpri;
++	int mvid;
++	unsigned char unicast;
++};
++
++int system_smux_update(struct smux_config *scfg);
++int system_smux_del(struct smux_config *scfg);
++int system_smux_add(struct smux_config *scfg);
++
++enum {
++	//SMUX_ATTR_IFNAME,
++	SMUX_ATTR_PHYDEV,
++	SMUX_ATTR_PRIORITY,
++	SMUX_ATTR_CARRIER,
++	SMUX_ATTR_VID,
++	SMUX_ATTR_VPRI,
++	SMUX_ATTR_MVID,
++	SMUX_ATTR_UNICAST,
++	__SMUX_ATTR_MAX
++};
++
++static const struct blobmsg_policy smux_attrs[__SMUX_ATTR_MAX] = {
++	//[SMUX_ATTR_IFNAME] = { "ifname", BLOBMSG_TYPE_STRING},
++	[SMUX_ATTR_PHYDEV] = { "phydev", BLOBMSG_TYPE_STRING},
++	[SMUX_ATTR_PRIORITY] = { .name = "rule_priority", .type = BLOBMSG_TYPE_INT32 },
++	[SMUX_ATTR_CARRIER] = { .name = "carrier_mode", .type = BLOBMSG_TYPE_STRING },
++	[SMUX_ATTR_VID] = { .name = "vid", .type = BLOBMSG_TYPE_INT32 },
++	[SMUX_ATTR_VPRI] = { .name = "vpri", .type = BLOBMSG_TYPE_INT32 },
++	[SMUX_ATTR_MVID] = { .name = "mvid", .type = BLOBMSG_TYPE_INT32 },
++	[SMUX_ATTR_UNICAST] = { .name = "unicast", .type = BLOBMSG_TYPE_BOOL },
++};
++
++static const struct uci_blob_param_info smux_attr_info[__SMUX_ATTR_MAX] = {
++	//[SMUX_ATTR_IFNAME] = { .type = BLOBMSG_TYPE_STRING },
++	[SMUX_ATTR_PHYDEV] = { .type = BLOBMSG_TYPE_STRING },
++	[SMUX_ATTR_PRIORITY] = { .type = BLOBMSG_TYPE_INT32 },
++	[SMUX_ATTR_CARRIER] = { .type = BLOBMSG_TYPE_STRING },
++	[SMUX_ATTR_VID] = { .type = BLOBMSG_TYPE_INT32 },
++	[SMUX_ATTR_VPRI] = { .type = BLOBMSG_TYPE_INT32 },
++	[SMUX_ATTR_MVID] = { .type = BLOBMSG_TYPE_INT32 },
++	[SMUX_ATTR_UNICAST] = { .type = BLOBMSG_TYPE_BOOL },
++};
++
++static const struct uci_blob_param_list smux_attr_list = {
++	.n_params = __SMUX_ATTR_MAX,
++	.params = smux_attrs,
++	.info = smux_attr_info,
++	.n_next = 1,
++	.next = { &device_attr_list },
++};
++
++static struct device *smux_create(const char *name, struct device_type *devtype,
++	struct blob_attr *attr);
++static void smux_config_init(struct device *dev);
++static void smux_free(struct device *dev);
++static void smux_dump_info(struct device *dev, struct blob_buf *b);
++static enum dev_change_type smux_reload(struct device *dev, struct blob_attr *attr);
++
++static struct device_type smux_device_type = {
++	.name = "SMUX",
++	.config_params = &smux_attr_list,
++	.create = smux_create,
++	.config_init = smux_config_init,
++	.free = smux_free,
++	.reload = smux_reload,
++	.dump_info = smux_dump_info,
++};
++
++struct smux_state {
++	struct device dev;
++	device_state_cb set_state;
++	struct smux_config config;
++	bool active;
++};
++
++static int
++smux_enable_interface(struct smux_state *sst)
++{
++	if (sst->active)
++		return 0;
++
++	sst->active = true;
++	return 0;
++}
++
++static void
++smux_disable_interface(struct smux_state *sst)
++{
++	if (!sst->active)
++		return;
++
++	sst->active = false;
++}
++
++static int
++smux_set_down(struct smux_state *sst)
++{
++	sst->set_state(&sst->dev, false);
++
++	smux_disable_interface(sst);
++
++	return 0;
++}
++
++static int
++smux_set_up(struct smux_state *sst)
++{
++	int ret;
++
++	ret = smux_enable_interface(sst);
++	if (ret)
++		return ret;
++
++	ret = sst->set_state(&sst->dev, true);
++	if (ret < 0)
++		smux_set_down(sst);
++
++	return ret;
++}
++
++static int
++smux_set_state(struct device *dev, bool up)
++{
++	struct smux_state *sst;
++
++	sst = container_of(dev, struct smux_state, dev);
++
++	if (up)
++		return smux_set_up(sst);
++	else
++		return smux_set_down(sst);
++}
++
++static void
++smux_free(struct device *dev)
++{
++	struct smux_config *cfg;
++	struct smux_state *sst;
++
++	sst = container_of(dev, struct smux_state, dev);
++
++	cfg = &sst->config;
++
++	system_smux_del(cfg);
++
++	free(sst);
++}
++
++static void
++smux_dump_info(struct device *dev, struct blob_buf *b)
++{
++	struct smux_state *sst;
++	struct smux_config *cfg;
++	void *c;
++
++	sst = container_of(dev, struct smux_state, dev);
++	cfg = &sst->config;
++
++	system_if_dump_info(dev, b);
++
++	//blobmsg_add_string(b, "ifname", cfg->ifname);
++	c = blobmsg_open_table(b, "smux-info");
++	blobmsg_add_string(b, "phydev", cfg->phydev);
++	blobmsg_add_u32(b, "rule_priority", cfg->rule_priority);
++	blobmsg_add_string(b, "carrier_mode", cfg->carrier_mode);
++	blobmsg_add_u32(b, "vid", cfg->vid);
++	blobmsg_add_u32(b, "vpri", cfg->vpri);
++	blobmsg_add_u32(b, "mvid", cfg->mvid);
++	blobmsg_add_u8(b, "unicast", cfg->unicast);
++	blobmsg_close_table(b, c);
++
++	return;
++}
++
++static void
++smux_config_init(struct device *dev)
++{
++	struct smux_state *sst;
++
++	sst = container_of(dev, struct smux_state, dev);
++
++	device_set_present(&sst->dev, true);
++
++	//dev->current_config = false;
++}
++
++static int
++smux_apply_settings(struct smux_state *sst, struct blob_attr **tb)
++{
++	struct smux_config *cfg = &sst->config;
++	struct blob_attr *cur;
++	int ret = 0;
++
++	/*if ((cur = tb[SMUX_ATTR_IFNAME]))
++		snprintf(cfg->ifname, sizeof(cfg->ifname)-1, "%s", (char *) blobmsg_data(cur));*/
++	snprintf(cfg->ifname, sizeof(cfg->ifname)-1, "%s", sst->dev.ifname);
++
++	if ((cur = tb[SMUX_ATTR_PHYDEV]))
++	{
++		if (cfg->phydev[0] && strcmp(cfg->phydev, (char *)blobmsg_data(cur)))
++			ret = 2; //need recreate
++		snprintf(cfg->phydev, sizeof(cfg->phydev)-1, "%s", (char *) blobmsg_data(cur));
++	}
++
++	cfg->rule_priority=0;
++	if ((cur = tb[SMUX_ATTR_PRIORITY]))
++		cfg->rule_priority = blobmsg_get_u32(cur);
++
++	snprintf(cfg->carrier_mode, sizeof(cfg->carrier_mode)-1, "AUTO");
++	if ((cur = tb[SMUX_ATTR_CARRIER])){
++		snprintf(cfg->carrier_mode, sizeof(cfg->carrier_mode)-1, "%s", (char *) blobmsg_data(cur));
++		if (strcmp(cfg->carrier_mode, "AUTO") && strcmp(cfg->carrier_mode, "MANUAL"))
++		{
++			D(DEVICE, "illegal carrier=%s\n", cfg->carrier_mode);
++			snprintf(cfg->carrier_mode, sizeof(cfg->carrier_mode)-1, "AUTO");
++		}
++	}
++
++	cfg->vid = -1;
++	if ((cur = tb[SMUX_ATTR_VID])){
++		cfg->vid = blobmsg_get_u32(cur);
++		if(cfg->vid < -2 || cfg->vid > 4094) {
++			D(DEVICE, "illegal vid=%d\n", cfg->vid);
++			cfg->vid = -1;
++		}
++	}
++
++	cfg->vpri = -1;
++	if ((cur = tb[SMUX_ATTR_VPRI])){
++		cfg->vpri = blobmsg_get_u32(cur);
++		if(cfg->vpri < -1 || cfg->vpri > 7) {
++			D(DEVICE, "illegal vpri=%d\n", cfg->vpri);
++			cfg->vpri = -1;
++		}
++	}
++
++	cfg->mvid = -1;
++	if ((cur = tb[SMUX_ATTR_MVID])){
++		cfg->mvid = blobmsg_get_u32(cur);
++		if(cfg->mvid < -1 || cfg->mvid > 4094) {
++			D(DEVICE, "illegal mvid=%d\n", cfg->mvid);
++			cfg->mvid = -1;
++		}
++	}
++
++	if ((cur = tb[SMUX_ATTR_UNICAST]))
++		cfg->unicast = blobmsg_get_u8(cur);
++
++	return ret;
++}
++
++static struct device *
++smux_create(const char *name, struct device_type *devtype,
++	struct blob_attr *attr)
++{
++	struct blob_attr *tb[__SMUX_ATTR_MAX];
++	struct blob_attr *tb_dev[__DEV_ATTR_MAX];
++	struct smux_state *sst;
++	struct smux_config *cfg;
++	struct device *dev = NULL;
++
++	sst = calloc(1, sizeof(*sst));
++	if (!sst)
++		return NULL;
++
++	dev = &sst->dev;
++
++	if (device_init(dev, devtype, name) < 0) {
++		device_cleanup(dev);
++		free(sst);
++		return NULL;
++	}
++
++	if (attr) {
++		blobmsg_parse(device_attr_list.params, __DEV_ATTR_MAX, tb_dev,
++			blob_data(attr), blob_len(attr));
++		blobmsg_parse(smux_attrs, __SMUX_ATTR_MAX, tb,
++			blob_data(attr), blob_len(attr));
++
++		device_init_settings(dev, tb_dev);
++		smux_apply_settings(sst, tb);
++
++		cfg = &sst->config;
++		system_smux_add(cfg);
++	}
++
++	dev->config_pending = true;
++
++	sst->set_state = dev->set_state;
++	dev->set_state = smux_set_state;
++
++	return dev;
++}
++
++static enum dev_change_type
++smux_reload(struct device *dev, struct blob_attr *attr)
++{
++	struct smux_state *sst;
++	struct smux_config *cfg;
++	struct blob_attr *tb[__SMUX_ATTR_MAX];
++	struct blob_attr *tb_dev[__DEV_ATTR_MAX];
++	enum dev_change_type ret = DEV_CONFIG_APPLIED;
++	int ret1;
++
++	if (uci_blob_check_equal(dev->config, attr, &smux_attr_list))
++		return DEV_CONFIG_NO_CHANGE;
++
++	if (attr) {
++		sst = container_of(dev, struct smux_state, dev);
++
++		blobmsg_parse(device_attr_list.params, __DEV_ATTR_MAX, tb_dev,
++			blob_data(attr), blob_len(attr));
++		blobmsg_parse(smux_attrs, __SMUX_ATTR_MAX, tb,
++			blob_data(attr), blob_len(attr));
++
++		device_init_settings(dev, tb_dev);
++		ret1 = smux_apply_settings(sst, tb);
++
++		cfg = &sst->config;
++		if(ret1 == 2)
++		{
++			D(DEVICE, "Recreate SMUX interface of %s\n", dev->ifname);
++			system_smux_del(cfg);
++			system_smux_add(cfg);
++		}
++		else
++		{
++			D(DEVICE, "Update SMUX rule of %s\n", dev->ifname);
++			system_smux_update(cfg);
++		}
++	}
++	return ret;
++}
++
++static void __init smux_device_type_init(void)
++{
++	device_type_add(&smux_device_type);
++}
++
++
++int system_smux_del(struct smux_config *scfg)
++{
++	char cmd[128] = {0};
++	int ret=-1;
++
++	if(!scfg->ifname[0])
++	{
++		D(DEVICE, "No interface name\n");
++		return -1;
++	}
++
++	snprintf(cmd, sizeof(cmd), "smuxctl --if-delete %s", scfg->ifname);
++	D(DEVICE, "cmd=%s\n", cmd);
++	ret = system(cmd);
++
++	return ret;
++}
++
++int system_smux_update(struct smux_config *scfg)
++{
++	char cmd[256] = {0}, alias[64];
++	char *p_cmd = NULL;
++	int ret, i;
++
++	snprintf(alias, sizeof(alias), "%s-default", scfg->ifname);
++	for (i=0; i<=SMUX_MAX_TAGS; i++)
++	{
++		sprintf(cmd, "smuxctl --rx --if %s --tags %d --rule-remove-alias %s+", scfg->phydev, i, alias); ret = system(cmd);
++		sprintf(cmd, "smuxctl --tx --if %s --tags %d --rule-remove-alias %s+", scfg->phydev, i, alias); ret = system(cmd);
++		sprintf(cmd, "smuxctl --rx --if %s --tags %d --rule-remove-alias %s+", scfg->ifname, i, alias); ret = system(cmd);
++		sprintf(cmd, "smuxctl --tx --if %s --tags %d --rule-remove-alias %s+", scfg->ifname, i, alias); ret = system(cmd);
++	}
++
++	snprintf(cmd, sizeof(cmd), "smuxctl --if %s --carrier %s", scfg->ifname, scfg->carrier_mode);
++	D(DEVICE, "cmd=%s\n", cmd);
++	ret = system(cmd);
++	if (ret < 0) D(DEVICE, "Error do cmd, ret=%d\n", ret);
++
++	// RX PHYDEV
++	for (i=0; i<=SMUX_MAX_TAGS; i++)
++	{
++		if(scfg->vid != -2)
++		{
++			if (i == 0 && (scfg->vid > 0 || (scfg->vid == 0 && scfg->vpri >= 0)))
++				continue;
++			else if (i > 0 && !(scfg->vid > 0 || (scfg->vid == 0 && scfg->vpri >= 0)))
++				continue;
++		}
++
++		p_cmd = cmd;
++		p_cmd += sprintf(p_cmd, "smuxctl --rx --if %s", scfg->phydev);
++
++		if (scfg->vid > 0)
++			p_cmd += sprintf(p_cmd, " --tags %d --filter-vid %d %d", i, scfg->vid, i);
++		else if (scfg->vid == 0 && scfg->vpri >= 0)
++			p_cmd += sprintf(p_cmd, " --tags %d --filter-vid %d %d --filter-priority %d %d", i, scfg->vid, i, scfg->vpri, i);
++		else if (scfg->vid == -2)
++			p_cmd += sprintf(p_cmd, " --tags %d",i);
++		else
++			p_cmd += sprintf(p_cmd, " --tags 0");
++
++		if (scfg->unicast)
++			p_cmd += sprintf(p_cmd, " --filter-unicast-mac 1");
++
++		if (scfg->rule_priority > 0)
++			p_cmd += sprintf(p_cmd, " --rule-priority %d", scfg->rule_priority);
++
++		p_cmd += sprintf(p_cmd, " --set-rxif %s --rule-alias %s-rx-phy --target ACCEPT --rule-append",
++								scfg->ifname, alias);
++
++		D(DEVICE, "cmd=%s\n", cmd);
++		ret = system(cmd);
++		if (ret < 0) D(DEVICE, "Error do cmd, ret=%d\n", ret);
++	}
++
++	// RX MVLAN
++	if (scfg->mvid > 0 && scfg->mvid != scfg->vid)
++	{
++		for (i=1; i<=SMUX_MAX_TAGS; i++)
++		{
++			p_cmd = cmd;
++			p_cmd += sprintf(p_cmd, "smuxctl --rx --if %s", scfg->phydev);
++			p_cmd += sprintf(p_cmd, " --tags %d --filter-vid %d %d --filter-multicast", i, scfg->mvid, i);
++			if (scfg->vid > 0)
++				p_cmd += sprintf(p_cmd, " --set-vid %d %d", scfg->vid, i);
++			else if (scfg->vid == 0 && scfg->vpri >= 0)
++				p_cmd += sprintf(p_cmd, " --set-vid 0 %d --set-priority %d %d", i, scfg->vpri, i);
++			else
++				p_cmd += sprintf(p_cmd, " --pop-tag");
++
++			if (scfg->rule_priority > 0)
++			p_cmd += sprintf(p_cmd, " --rule-priority %d", scfg->rule_priority);
++
++			p_cmd += sprintf(p_cmd, " --set-rxif %s --rule-alias %s-rx-mvlan --target ACCEPT --rule-append",
++									scfg->ifname, alias);
++
++			D(DEVICE, "cmd=%s\n", cmd);
++			ret = system(cmd);
++			if (ret < 0) D(DEVICE, "Error do cmd, ret=%d\n", ret);
++		}
++	}
++
++	if (scfg->vid > 0 || (scfg->vid == 0 && scfg->vpri >= 0))
++	{
++		for (i=1; i<=SMUX_MAX_TAGS; i++)
++		{
++			// RX
++			p_cmd = cmd;
++			p_cmd += sprintf(p_cmd, "smuxctl --if %s --rx --tags %d --filter-vid %d %d", scfg->ifname, i, scfg->vid, i);
++			p_cmd += sprintf(p_cmd, " --pop-tag --rule-alias %s-rx --rule-append ", alias);
++
++			D(DEVICE, "cmd=%s\n", cmd);
++			ret = system(cmd);
++			if (ret < 0) D(DEVICE, "Error do cmd, ret=%d\n", ret);
++		}
++
++		//TX
++		for (i=0; i<=SMUX_MAX_TAGS; i++)
++		{
++			p_cmd = cmd;
++			p_cmd += sprintf(p_cmd, "smuxctl --if %s --tx --tags %d", scfg->ifname, i);
++
++			if (i == 0)
++				p_cmd += sprintf(p_cmd, " --push-tag");
++
++			p_cmd += sprintf(p_cmd, " --set-vid %d %d ", scfg->vid, (i==0)?i+1:i);
++
++			if (scfg->vpri >= 0)
++				p_cmd += sprintf(p_cmd, " --set-priority %d %d", scfg->vpri, (i==0)?i+1:i);
++
++			p_cmd += sprintf(p_cmd, " --target ACCEPT --rule-alias %s-tx --rule-append", alias);
++
++			D(SYSTEM, "cmd=%s\n", cmd);
++			ret = system(cmd);
++			if (ret < 0) D(DEVICE, "Error do cmd, ret=%d\n", ret);
++		}
++	}
++	return 0;
++}
++
++int system_smux_add(struct smux_config *scfg)
++{
++	char cmd[256] = {0};
++	int ret;
++
++	if(!scfg->ifname[0] && !scfg->phydev[0])
++	{
++		D(DEVICE, "No interface name\n");
++		return -1;
++	}
++
++	snprintf(cmd, sizeof(cmd), "smuxctl --if-create-name %s %s --set-if-rsmux --carrier %s",
++								scfg->phydev, scfg->ifname, scfg->carrier_mode);
++
++	D(DEVICE, "cmd=%s\n", cmd);
++	ret = system(cmd);
++	if (ret < 0)
++		return -1;
++
++	ret = system_smux_update(scfg);
++
++	return ret;
++}
+Index: netifd-2022-08-25-76d2d41b/ubus.h
+===================================================================
+--- netifd-2022-08-25-76d2d41b.orig/ubus.h
++++ netifd-2022-08-25-76d2d41b/ubus.h
+@@ -26,5 +26,8 @@ void netifd_ubus_remove_interface(struct
+ void netifd_ubus_interface_event(struct interface *iface, bool up);
+ void netifd_ubus_interface_notify(struct interface *iface, bool up);
+ void netifd_ubus_device_notify(const char *event, struct blob_attr *data, int timeout);
++#ifdef CONFIG_RTK_NETIFD
++void netifd_ubus_device_event(struct device *dev, int state);
++#endif
+ 
+ #endif

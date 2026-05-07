@@ -1,0 +1,12 @@
+--- a/net/8021q/vlan_dev.c
++++ b/net/8021q/vlan_dev.c
+@@ -563,6 +563,9 @@ static int vlan_dev_init(struct net_devi
+ 			   NETIF_F_HIGHDMA | NETIF_F_SCTP_CRC |
+ 			   NETIF_F_ALL_FCOE;
+ 
++	dev->hw_features |= (NETIF_F_HW_CSUM | NETIF_F_GRO | NETIF_F_SG | NETIF_F_GSO 
++		| NETIF_F_TSO | NETIF_F_TSO6);
++
+ 	dev->features |= dev->hw_features | NETIF_F_LLTX;
+ 	dev->gso_max_size = real_dev->gso_max_size;
+ 	dev->gso_max_segs = real_dev->gso_max_segs;

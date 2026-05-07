@@ -1,0 +1,98 @@
+#!/bin/sh
+
+# This is forked process from procd and it will output to the default
+# tty which is the serial console. To accommodate this
+# and not lose information, we avoid doing 'echo's here, and use the
+# `v()` function, defined in /lib/upgrade/common.sh. This might also
+# print to the serial console if VERBOSE is set to 1, but most of all
+# explicitly logs data to the system logs, so that one can inspect
+# what succeeded or failed by invoking logread.
+
+#--------------------------------------------------------------
+init() {
+	source /lib/functions.sh
+	include /lib/upgrade
+
+	# UNLOCK when receive EXIT/INT/TERM signal.
+	#trap finish EXIT INT TERM
+
+	upgrade_bank="$(platform_get_next_bank_id)"
+}
+
+#--------------------------------------------------------------
+# make sure the lock is removed when done even when killed
+finish() {
+    lock -u /tmp/sysupgrade.lock
+}
+#--------------------------------------------------------------
+
+init
+v "Performing system upgrade..."
+
+# just one instance
+#if ! lock -n /tmp/sysupgrade.lock
+#then
+#	v "Another instance of sysupgrade already running"
+#	v "If you are sure this is wrong remove file /tmp/sysupgrade.lock"
+#	exit 1
+#fi
+
+rtk_set_fwbank_status "$upgrade_bank" "Downloading"
+
+if type 'platform_do_upgrade' >/dev/null 2>/dev/null; then
+	platform_do_upgrade "$IMAGE"
+else
+	default_do_upgrade "$IMAGE"
+fi
+[ $? -eq 0 ] || {
+	v "Failed upgrade"
+	rtk_set_fwbank_status "$upgrade_bank" "InstallationFailed"
+	exit 1
+}
+
+if [ -n "$UPGRADE_BACKUP" ] && type 'platform_copy_config' >/dev/null 2>/dev/null; then
+	platform_copy_config || {
+		v "Failed copying config"
+		rtk_set_fwbank_status "$upgrade_bank" "InstallationFailed"
+		exit 1
+	}
+fi
+
+# Tell the bootloader to activate (boot) from
+# the flash "bank" we have just upgraded.
+if [ "$UPGRADE_OPT_BANK_ACTIVATION" -eq 1 ]; then
+	if type 'platform_set_bootbank' >/dev/null 2>/dev/null; then
+		platform_set_bootbank $upgrade_bank || {
+			v "Failed activating bank($upgrade_bank)"
+			rtk_set_fwbank_status "$upgrade_bank" "ActivationFailed"
+			exit 1
+		}
+	fi
+fi
+
+if type 'rtk_set_nv_env' >/dev/null 2>/dev/null; then
+	if [ "$UPGRADE_OPT_FROM_CWMP" -eq 1 ]; then
+		rtk_set_nv_env "sw_updater" "cwmp" || {
+			v "Set upgrader failed"
+		}
+	else
+		rtk_set_nv_env "sw_updater" "web" || {
+			v "Set upgrader failed"
+		}
+	fi
+fi
+
+rtk_set_fwbank_status "$upgrade_bank" "Available"
+v "Upgrade completed"
+sleep 1
+
+# Reboot after upgrade (unless deferred activation).
+if [ "$UPGRADE_OPT_REBOOT" -eq 1 ]; then
+	v "Rebooting system..."
+	umount -a
+	reboot -f
+	sleep 5
+	echo b 2>/dev/null >/proc/sysrq-trigger
+else
+	v "Not rebooting system."
+fi

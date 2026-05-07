@@ -1,0 +1,40 @@
+//
+// Copyright (C) 2011 Realtek Semiconductor Corp.
+// All Rights Reserved.
+//
+// This program is the proprietary software of Realtek Semiconductor
+// Corporation and/or its licensors, and only be used, duplicated,
+// modified or distributed under the authorized license from Realtek.
+//
+// ANY USE OF THE SOFTWARE OTHER THAN AS AUTHORIZED UNDER
+// THIS LICENSE OR COPYRIGHT LAW IS PROHIBITED.
+//
+// $Revision: $
+// $Date: $
+//
+// Purpose : Define diag shell commands for trunk.
+//
+// Feature : The file have include the following module and sub-modules
+//           1) counter commands.
+//
+
+//rt_mib configuration
+//intial
+rt_mib init
+
+//rt_mib configuration
+//reset configuration
+//counter configuration
+//port configuration
+//port list, <0-6>
+//all ports
+rt_mib reset counter port ( <PORT_LIST:ports> | all )
+
+//rt_mib configuration
+//dump configuration
+//counter configuration
+//port configuration
+//port list
+//all ports
+//nonZero configuration
+rt_mib dump counter port ( <PORT_LIST:ports> | all ) { nonZero }
