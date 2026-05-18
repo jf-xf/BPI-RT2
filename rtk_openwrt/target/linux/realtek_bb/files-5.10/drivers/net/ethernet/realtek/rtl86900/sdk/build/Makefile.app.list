@@ -191,7 +191,10 @@ ifeq ($(CONFIG_EUROPA),m)
 		ln -sfn $(EUROPA_DRV_DIR) europa/drv; \
 	fi
 endif
-	for dir in $(APPS) ; do $(MAKE) -C $$dir FLAGS=$(FLAGS) PON_CFLAGS="$(PON_CFLAGS)" RTK_LIB=$(RTK_LIB) all || exit 1; done
+	for dir in $(APPS) ; do \
+	mkdir -p $$dir/bin; \
+	$(MAKE) -C $$dir FLAGS=$(FLAGS) PON_CFLAGS="$(PON_CFLAGS)" RTK_LIB=$(RTK_LIB) all || exit 1; \
+	done
 ifeq ($(CONFIG_SDK_LUNA_G3),y)
 ifeq ($(CONFIG_ARCH_RTL8198F),y)
 	$(MAKE) -C $(SDKDIR)/src/dal/rtl8198f

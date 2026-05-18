@@ -790,6 +790,9 @@ all:
 
 $(TARGET_A): $(ALL_OBJ)
 	$(AR) rcs $@ $(ALL_OBJ)
+    mkdir -p $(OBJDIR)/src/app/lib/
+    mkdir -p $(OBJDIR)/src/app/lib/bin/
+    mkdir -p $(OBJDIR)/src/app/bin/
 	cp -af $@ $(OBJDIR)/src/app/lib/
 
 $(TARGET_SO): $(ALL_OBJ)

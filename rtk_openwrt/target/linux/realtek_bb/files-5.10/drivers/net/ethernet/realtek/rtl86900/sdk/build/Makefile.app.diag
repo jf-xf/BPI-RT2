@@ -310,6 +310,8 @@ RM_OBJ:
 
 
 $(EXEC): $(OBJ)
+        mkdir -p bin
+        mkdir -p ../bin
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $(EXTRA_SEC_EXE_LDFLAGS) $(INCLUDE) $(OBJ) $(LIB) -o $(BIN)/$@
 	$(STRIP) $(BIN)/$@
 
