@@ -43,13 +43,13 @@
 		btn_reset {
 			label = "btn,reset";
 			linux,code = <KEY_RESTART>;
-			gpios = <&gpio1 28 GPIO_ACTIVE_LOW>;  //gpio60
+			gpios = <&gpio1 2 GPIO_ACTIVE_LOW>;  //gpio60
 		};
 		
 		btn_wps {
 			label = "btn,wps";
 			linux,code = <KEY_WPS_BUTTON>;
-			gpios = <&gpio1 2 GPIO_ACTIVE_LOW>;  //gpio34
+			gpios = <&gpio1 28 GPIO_ACTIVE_LOW>;  //gpio34
 		};
 	};
 	
