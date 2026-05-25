@@ -192,8 +192,8 @@ ifeq ($(CONFIG_EUROPA),m)
 	fi
 endif
 	for dir in $(APPS) ; do \
-	mkdir -p $$dir/bin; \
-	$(MAKE) -C $$dir FLAGS=$(FLAGS) PON_CFLAGS="$(PON_CFLAGS)" RTK_LIB=$(RTK_LIB) all || exit 1; \
+		mkdir -p $$dir/bin; \
+		$(MAKE) -C $$dir FLAGS=$(FLAGS) PON_CFLAGS="$(PON_CFLAGS)" RTK_LIB=$(RTK_LIB) all || exit 1; \
 	done
 ifeq ($(CONFIG_SDK_LUNA_G3),y)
 ifeq ($(CONFIG_ARCH_RTL8198F),y)
